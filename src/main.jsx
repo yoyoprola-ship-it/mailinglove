@@ -3,12 +3,14 @@ import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.jsx'
 import AdminApp from './admin/AdminApp.jsx'
+import AccountApp from './account/AccountApp.jsx'
 import { track } from './track.js'
 
-const isAdmin = window.location.pathname.startsWith('/admin')
+const path = window.location.pathname
+const view = path.startsWith('/admin') ? 'admin' : path.startsWith('/account') ? 'account' : 'site'
 
-if (!isAdmin) track()
+if (view === 'site') track()
 
-createRoot(document.getElementById('root')).render(
-  <StrictMode>{isAdmin ? <AdminApp /> : <App />}</StrictMode>
-)
+const root = view === 'admin' ? <AdminApp /> : view === 'account' ? <AccountApp /> : <App />
+
+createRoot(document.getElementById('root')).render(<StrictMode>{root}</StrictMode>)

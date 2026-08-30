@@ -42,9 +42,10 @@ Same SPA, rendered when `location.pathname` starts with `/admin`
   both required. On success the server sets an HMAC-signed, `HttpOnly`,
   `SameSite=Strict` session cookie (`ADMIN_SESSION_SECRET`, 8 h). Only
   `ADMIN_EMAIL` / `ADMIN_PHONE` can log in — codes are sent only there.
-- **Overview**: visit counts (today / 7 d / 30 d + a 30-day bar list) and
-  recent waitlist signups. Visits come from a first-party beacon
-  (`POST /api/track`, [src/track.js](src/track.js)) → Firestore `analytics/`.
+- **Overview**: visit counts (today / 7 d / 30 d + a 30-day bar list),
+  customer accounts, and recent waitlist signups. Visits come from a
+  first-party beacon (`POST /api/track`, [src/track.js](src/track.js)) →
+  Firestore `analytics/`.
 - **Settings**: the image-generation config above.
 - Uses `firebase-admin` (Admin SDK). On App Hosting it auto-authenticates;
   locally set `GOOGLE_APPLICATION_CREDENTIALS`. Without it, the admin and
@@ -53,15 +54,31 @@ Same SPA, rendered when `location.pathname` starts with `/admin`
 Not built yet: orders (waiting on Stripe), saving generations to
 Storage/Firestore.
 
+## Customer accounts (`/account`)
+
+Same SPA, rendered when the path starts with `/account`. Routes: `/api/auth/*`
+and `/api/me` in [server.js](server.js); logic in [server/userAuth.js](server/userAuth.js).
+
+- **Login is an email code** — enter email, get a 6-digit code (Resend),
+  no password. On success a signed `HttpOnly` `SameSite=Strict` cookie
+  (`ml_session`, 30 d). Signed with `ADMIN_SESSION_SECRET` but scoped
+  `aud:"user"`, so it and the admin cookie can't be swapped.
+- The account holds **name + US delivery address** (`users/` in Firestore):
+  street, apt, city, state (50 + DC), ZIP (`12345` or `12345-6789`).
+  Server-side validated in `validateProfile()`.
+- The user doc is created on first successful login. `users/` is never
+  client-readable (it holds mailing addresses) — only the server touches it.
+
+Needs `RESEND_*` and firebase-admin, same as the admin; no new secrets.
+
 ## Roadmap (not built yet)
 - **Payment**: Stripe checkout once generation is real.
 - **Physical mail fulfillment**: an actual print-and-mail API (e.g. Lob,
   PostGrid, Click2Mail) to print the finished design and mail it — this is
   what turns a generated image into something that shows up in someone's
   mailbox. Needs to be picked and integrated.
-- **Auth**: only the admin has a login so far (2FA, above). Customer auth
-  will be needed once there's a real order flow.
-- **Orders**: the admin has no orders view yet — add it with Stripe.
+- **Orders**: no order/checkout flow yet — add it with Stripe, tied to the
+  customer accounts above.
 
 ## Stack
 

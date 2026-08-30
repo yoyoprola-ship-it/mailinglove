@@ -10,9 +10,14 @@ export default function Nav() {
           </span>
           <span>MailingLove</span>
         </a>
-        <a className="btn btn--primary btn--sm" href="#waitlist">
-          Join the waitlist
-        </a>
+        <span className="site-nav__actions">
+          <a className="site-nav__link" href="/account">
+            Account
+          </a>
+          <a className="btn btn--primary btn--sm" href="#waitlist">
+            Join the waitlist
+          </a>
+        </span>
       </div>
     </header>
   )

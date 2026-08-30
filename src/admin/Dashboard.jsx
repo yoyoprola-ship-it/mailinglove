@@ -59,6 +59,37 @@ export default function Dashboard() {
       </section>
 
       <section className="adm__panel">
+        <h2 className="adm__h2">Customers ({stats.usersTotal || 0})</h2>
+        <table className="adm__table">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Email</th>
+              <th>Location</th>
+              <th>Joined</th>
+            </tr>
+          </thead>
+          <tbody>
+            {(stats.usersRecent || []).map((u, i) => (
+              <tr key={i}>
+                <td>{u.name || '—'}</td>
+                <td>{u.email}</td>
+                <td>{u.hasAddress ? `${u.city}, ${u.state}` : 'no address'}</td>
+                <td>{fmtDate(u.createdAt)}</td>
+              </tr>
+            ))}
+            {!(stats.usersRecent || []).length && (
+              <tr>
+                <td colSpan={4} className="adm__muted">
+                  No accounts yet.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </section>
+
+      <section className="adm__panel">
         <h2 className="adm__h2">Waitlist ({stats.waitlistTotal})</h2>
         <table className="adm__table">
           <thead>

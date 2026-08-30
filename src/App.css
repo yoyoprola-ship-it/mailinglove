@@ -72,6 +72,23 @@
   padding: 16px 32px;
 }
 
+.site-nav__actions {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+
+.site-nav__link {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--rose-900);
+  text-decoration: none;
+}
+
+.site-nav__link:hover {
+  color: var(--rose);
+}
+
 .brand {
   display: flex;
   align-items: center;

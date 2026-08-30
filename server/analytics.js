@@ -70,6 +70,27 @@ export async function getStats() {
     console.warn('[analytics] waitlist read failed:', err?.message || err)
   }
 
+  let usersTotal = 0
+  let usersRecent = []
+  try {
+    const countSnap = await db.collection('users').count().get()
+    usersTotal = countSnap.data().count
+    const recentSnap = await db.collection('users').orderBy('createdAt', 'desc').limit(20).get()
+    usersRecent = recentSnap.docs.map((d) => {
+      const v = d.data()
+      return {
+        email: v.email || '',
+        name: v.name || '',
+        city: v.address?.city || '',
+        state: v.address?.state || '',
+        hasAddress: Boolean(v.address?.line1),
+        createdAt: v.createdAt || null,
+      }
+    })
+  } catch (err) {
+    console.warn('[analytics] users read failed:', err?.message || err)
+  }
+
   return {
     available: true,
     today,
@@ -78,6 +99,8 @@ export async function getStats() {
     days,
     waitlistTotal,
     waitlistRecent,
+    usersTotal,
+    usersRecent,
   }
 }
 

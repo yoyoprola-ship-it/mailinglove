@@ -10,9 +10,11 @@ service cloud.firestore {
       allow read, update, delete: if false;
     }
 
-    // config/, analytics/, adminChallenges/ are written only by the server
-    // (Admin SDK, which bypasses these rules). Clients get nothing — the
-    // catch-all below already denies them; listed here to make that explicit.
+    // config/, analytics/, adminChallenges/, users/, authChallenges/ are
+    // written only by the server (Admin SDK, which bypasses these rules).
+    // Clients get nothing — the catch-all below already denies them; listed
+    // here to make that explicit. In particular users/ holds names and
+    // mailing addresses and must never be client-readable.
     match /config/{doc} {
       allow read, write: if false;
     }
@@ -20,6 +22,12 @@ service cloud.firestore {
       allow read, write: if false;
     }
     match /adminChallenges/{doc} {
+      allow read, write: if false;
+    }
+    match /users/{doc} {
+      allow read, write: if false;
+    }
+    match /authChallenges/{doc} {
       allow read, write: if false;
     }
 

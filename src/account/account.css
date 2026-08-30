@@ -1,0 +1,131 @@
+.acc {
+  min-height: 100vh;
+  font-family: var(--sans);
+  color: var(--text-dark);
+  background: linear-gradient(180deg, var(--blush) 0%, var(--cream) 40%);
+}
+
+.acc__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 24px;
+  max-width: 640px;
+  margin: 0 auto;
+}
+
+.acc__brand {
+  font-family: var(--serif);
+  font-weight: 600;
+  font-size: 1.15rem;
+  color: var(--rose-900);
+  text-decoration: none;
+}
+
+.acc__main {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 12px 24px 60px;
+}
+
+.acc__card {
+  background: #fff;
+  border-radius: 16px;
+  padding: 32px;
+  box-shadow: 0 16px 40px rgba(74, 22, 38, 0.08);
+  max-width: 420px;
+}
+
+.acc__card--wide {
+  max-width: 640px;
+}
+
+.acc__title {
+  font-size: 1.4rem;
+  color: var(--rose-900);
+  margin-bottom: 10px;
+}
+
+.acc__muted {
+  color: var(--muted);
+  font-size: 0.9rem;
+  margin-bottom: 18px;
+}
+
+.acc__label {
+  display: block;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--rose-900);
+  margin-bottom: 16px;
+}
+
+.acc__label--grow {
+  flex: 1;
+}
+
+.acc__opt {
+  font-weight: 400;
+  color: var(--muted);
+}
+
+.acc__input {
+  display: block;
+  width: 100%;
+  margin-top: 6px;
+  padding: 11px 14px;
+  border-radius: 9px;
+  border: 1px solid rgba(74, 22, 38, 0.25);
+  font-size: 0.95rem;
+  font-family: inherit;
+  background: #fff;
+}
+
+.acc__input--zip {
+  width: 110px;
+}
+
+.acc__row {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.acc__btn {
+  background: linear-gradient(120deg, var(--rose-light), var(--rose));
+  color: #fff;
+  border: none;
+  border-radius: 999px;
+  padding: 12px 26px;
+  font-weight: 600;
+  font-size: 0.95rem;
+  cursor: pointer;
+}
+
+.acc__btn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.acc__link {
+  display: block;
+  margin-top: 14px;
+  background: none;
+  border: none;
+  color: var(--rose);
+  font-size: 0.85rem;
+  cursor: pointer;
+  padding: 0;
+}
+
+.acc__error {
+  color: #b8355f;
+  font-size: 0.85rem;
+  margin-top: 12px;
+}
+
+.acc__ok {
+  color: #2e7d5b;
+  font-size: 0.85rem;
+  margin-top: 12px;
+}

@@ -18,6 +18,16 @@ import {
   sessionCookie,
   clearCookie,
 } from './server/adminAuth.js'
+import {
+  userAuthConfigured,
+  startUserChallenge,
+  verifyUserChallenge,
+  requireUser,
+  getUser,
+  saveProfile,
+  userSessionCookie,
+  clearUserCookie,
+} from './server/userAuth.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const PORT = process.env.PORT || 8080
@@ -93,6 +103,14 @@ const generateLimiter = rateLimit({
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   limit: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many attempts — wait a few minutes.' },
+})
+
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 30, // customer sign-in code requests + verifies per IP
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: 'Too many attempts — wait a few minutes.' },
@@ -236,6 +254,61 @@ app.get('/api/admin/stats', requireAdmin, async (req, res) => {
   } catch (err) {
     console.error('[admin] stats failed:', err?.message || err)
     res.status(500).json({ error: 'Could not load stats.' })
+  }
+})
+
+// --- customer accounts ---------------------------------------------
+
+app.post('/api/auth/start', authLimiter, async (req, res) => {
+  if (!userAuthConfigured()) return res.status(503).json({ error: 'Accounts are not available yet.' })
+  try {
+    const result = await startUserChallenge((req.body || {}).email)
+    if (!result.ok) return res.status(400).json({ error: result.error })
+    res.json({ challengeId: result.challengeId })
+  } catch (err) {
+    console.error('[auth] start failed:', err?.message || err)
+    res.status(502).json({ error: 'Could not send the code. Try again.' })
+  }
+})
+
+app.post('/api/auth/verify', authLimiter, async (req, res) => {
+  if (!userAuthConfigured()) return res.status(503).json({ error: 'Accounts are not available yet.' })
+  const { challengeId, code } = req.body || {}
+  try {
+    const result = await verifyUserChallenge(challengeId, code)
+    if (!result.ok) return res.status(401).json({ error: result.error, remaining: result.remaining })
+    res.setHeader('Set-Cookie', userSessionCookie(result.token, req.secure))
+    res.json({ user: result.user })
+  } catch (err) {
+    console.error('[auth] verify failed:', err?.message || err)
+    res.status(500).json({ error: 'Verification failed. Try again.' })
+  }
+})
+
+app.post('/api/auth/logout', (req, res) => {
+  res.setHeader('Set-Cookie', clearUserCookie(req.secure))
+  res.status(204).end()
+})
+
+app.get('/api/me', requireUser, async (req, res) => {
+  try {
+    const user = await getUser(req.userEmail)
+    if (!user) return res.status(404).json({ error: 'Account not found.' })
+    res.json({ user })
+  } catch (err) {
+    console.error('[auth] me failed:', err?.message || err)
+    res.status(500).json({ error: 'Could not load your account.' })
+  }
+})
+
+app.put('/api/me', requireUser, async (req, res) => {
+  try {
+    const result = await saveProfile(req.userEmail, req.body || {})
+    if (!result.ok) return res.status(400).json({ error: result.errors[0], errors: result.errors })
+    res.json({ user: result.user })
+  } catch (err) {
+    console.error('[auth] profile save failed:', err?.message || err)
+    res.status(500).json({ error: 'Could not save.' })
   }
 })
 
