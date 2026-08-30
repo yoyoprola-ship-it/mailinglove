@@ -10,6 +10,19 @@ service cloud.firestore {
       allow read, update, delete: if false;
     }
 
+    // config/, analytics/, adminChallenges/ are written only by the server
+    // (Admin SDK, which bypasses these rules). Clients get nothing — the
+    // catch-all below already denies them; listed here to make that explicit.
+    match /config/{doc} {
+      allow read, write: if false;
+    }
+    match /analytics/{doc=**} {
+      allow read, write: if false;
+    }
+    match /adminChallenges/{doc} {
+      allow read, write: if false;
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }

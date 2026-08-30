@@ -6,24 +6,22 @@ import OpenAI, { toFile } from 'openai'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
+import { getConfig, invalidateConfigCache, pickValid, CONFIG_FIELDS, CONFIG_DEFAULTS } from './server/config.js'
+import { getDb } from './server/firebaseAdmin.js'
+import { recordVisit, getStats } from './server/analytics.js'
+import {
+  adminConfigured,
+  adminSetupIssues,
+  startChallenge,
+  verifyChallenge,
+  requireAdmin,
+  sessionCookie,
+  clearCookie,
+} from './server/adminAuth.js'
+
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const PORT = process.env.PORT || 8080
-
-// gpt-image-1-mini keeps per-image cost around a cent while we're in the
-// waitlist/testing phase. Swap OPENAI_IMAGE_MODEL to gpt-image-2 for launch
-// — same endpoint, same params.
-const IMAGE_MODEL = process.env.OPENAI_IMAGE_MODEL || 'gpt-image-1-mini'
-const IMAGE_QUALITY = process.env.OPENAI_IMAGE_QUALITY || 'medium'
-const IMAGE_SIZE = process.env.OPENAI_IMAGE_SIZE || '1024x1536' // portrait postcard
-
-// 'high' makes the model preserve faces/features from the input far more
-// faithfully (costs extra input tokens). Only gpt-image-1 documents support
-// for it; runEdit() retries without it if the model rejects the param. Set
-// OPENAI_IMAGE_INPUT_FIDELITY to an empty string to turn it off.
-// NOTE: gpt-image-1-mini is the weakest at keeping a face identical across an
-// edit. For face-critical output use gpt-image-1 or gpt-image-2 via
-// OPENAI_IMAGE_MODEL.
-const INPUT_FIDELITY = process.env.OPENAI_IMAGE_INPUT_FIDELITY ?? 'high'
+const RATE_WINDOW_MS = (Number(process.env.RATE_LIMIT_WINDOW_MIN) || 15) * 60 * 1000
 
 // Restoring an old photo should keep its own framing, so let the model match
 // the input aspect ratio instead of forcing the portrait postcard size.
@@ -52,14 +50,16 @@ const CATEGORY_PROMPTS = {
 }
 
 const app = express()
+app.set('trust proxy', 1) // Firebase App Hosting terminates TLS in front of us
 app.use(compression())
+app.use(express.json({ limit: '256kb' }))
 
 const openai = process.env.OPENAI_API_KEY
   ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
   : null
 
-// input_fidelity is only documented for gpt-image-1. If the configured model
-// rejects it, drop the param and retry once so a model swap can't 400 us.
+// input_fidelity is only documented for gpt-image-1 / 1.5. If the configured
+// model rejects it, drop the param and retry once so a model swap can't 400 us.
 async function runEdit(params) {
   try {
     return await openai.images.edit(params)
@@ -83,12 +83,22 @@ const upload = multer({
 })
 
 const generateLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 5, // 5 generations per IP per 15 min while we're testing
+  windowMs: RATE_WINDOW_MS,
+  limit: async () => (await getConfig()).rateLimitMax, // admin-tunable
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: 'Too many requests — try again in a few minutes.' },
 })
+
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many attempts — wait a few minutes.' },
+})
+
+// --- image redesign -------------------------------------------------------
 
 app.post('/api/generate', generateLimiter, (req, res) => {
   upload.single('photo')(req, res, async (uploadErr) => {
@@ -110,17 +120,22 @@ app.post('/api/generate', generateLimiter, (req, res) => {
         .json({ error: 'Image generation is not configured yet. Set OPENAI_API_KEY.' })
     }
 
+    const cfg = await getConfig()
+    if (!cfg.generateEnabled) {
+      return res.status(503).json({ error: 'Image generation is paused right now.' })
+    }
+
     try {
       const image = await toFile(req.file.buffer, req.file.originalname || 'photo.png', {
         type: req.file.mimetype,
       })
       const result = await runEdit({
-        model: IMAGE_MODEL,
+        model: cfg.imageModel,
         image,
         prompt,
-        size: CATEGORY_SIZE[category] || IMAGE_SIZE,
-        quality: IMAGE_QUALITY,
-        ...(INPUT_FIDELITY ? { input_fidelity: INPUT_FIDELITY } : {}),
+        size: CATEGORY_SIZE[category] || cfg.imageSize,
+        quality: cfg.imageQuality,
+        ...(cfg.inputFidelity ? { input_fidelity: cfg.inputFidelity } : {}),
       })
 
       const b64 = result.data?.[0]?.b64_json
@@ -129,8 +144,8 @@ app.post('/api/generate', generateLimiter, (req, res) => {
       }
 
       console.log(
-        `[generate] category=${category} model=${IMAGE_MODEL} quality=${IMAGE_QUALITY} ` +
-          `fidelity=${INPUT_FIDELITY || 'off'} bytes_in=${req.file.size} ` +
+        `[generate] category=${category} model=${cfg.imageModel} quality=${cfg.imageQuality} ` +
+          `fidelity=${cfg.inputFidelity || 'off'} bytes_in=${req.file.size} ` +
           `usage=${JSON.stringify(result.usage || {})}`
       )
 
@@ -142,6 +157,89 @@ app.post('/api/generate', generateLimiter, (req, res) => {
     }
   })
 })
+
+// --- visit tracking -----------------------------------------------------
+
+app.post('/api/track', (req, res) => {
+  const { path: p, ref, visitorId } = req.body || {}
+  recordVisit({
+    path: typeof p === 'string' ? p : '/',
+    ref: typeof ref === 'string' ? ref : '',
+    visitorId: typeof visitorId === 'string' ? visitorId : '',
+  })
+  res.status(204).end()
+})
+
+// --- admin: auth ------------------------------------------------------
+
+app.post('/api/admin/login/start', loginLimiter, async (req, res) => {
+  if (!adminConfigured()) {
+    return res.status(503).json({ error: 'Admin login is not set up yet.', missing: adminSetupIssues() })
+  }
+  try {
+    const { challengeId, expiresInSec } = await startChallenge()
+    res.json({ challengeId, expiresInSec })
+  } catch (err) {
+    console.error('[admin] login start failed:', err?.message || err)
+    res.status(502).json({ error: 'Could not send the codes. Try again.' })
+  }
+})
+
+app.post('/api/admin/login/verify', loginLimiter, async (req, res) => {
+  if (!adminConfigured()) return res.status(503).json({ error: 'Admin login is not set up yet.' })
+  const { challengeId, emailCode, smsCode } = req.body || {}
+  try {
+    const result = await verifyChallenge(challengeId, emailCode, smsCode)
+    if (!result.ok) return res.status(401).json({ error: result.error, remaining: result.remaining })
+    res.setHeader('Set-Cookie', sessionCookie(result.token, req.secure))
+    res.json({ ok: true })
+  } catch (err) {
+    console.error('[admin] login verify failed:', err?.message || err)
+    res.status(500).json({ error: 'Verification failed. Try again.' })
+  }
+})
+
+app.post('/api/admin/logout', (req, res) => {
+  res.setHeader('Set-Cookie', clearCookie(req.secure))
+  res.status(204).end()
+})
+
+app.get('/api/admin/me', requireAdmin, (req, res) => {
+  res.json({ email: req.adminEmail })
+})
+
+// --- admin: config & stats -------------------------------------------
+
+app.get('/api/admin/config', requireAdmin, async (req, res) => {
+  res.json({ config: await getConfig(), fields: CONFIG_FIELDS, defaults: CONFIG_DEFAULTS })
+})
+
+app.put('/api/admin/config', requireAdmin, async (req, res) => {
+  const db = getDb()
+  if (!db) return res.status(503).json({ error: 'Config store unavailable.' })
+  const patch = pickValid(req.body || {})
+  if (!Object.keys(patch).length) return res.status(400).json({ error: 'No valid fields.' })
+  try {
+    await db.collection('config').doc('app').set(patch, { merge: true })
+    invalidateConfigCache()
+    console.log(`[admin] ${req.adminEmail} updated config: ${Object.keys(patch).join(', ')}`)
+    res.json({ config: await getConfig() })
+  } catch (err) {
+    console.error('[admin] config write failed:', err?.message || err)
+    res.status(500).json({ error: 'Could not save.' })
+  }
+})
+
+app.get('/api/admin/stats', requireAdmin, async (req, res) => {
+  try {
+    res.json(await getStats())
+  } catch (err) {
+    console.error('[admin] stats failed:', err?.message || err)
+    res.status(500).json({ error: 'Could not load stats.' })
+  }
+})
+
+// --- static site + SPA fallback -------------------------------------
 
 // Hashed filenames change on every build, so they're safe to cache forever;
 // index.html/the SPA fallback must never be cached, or a browser/CDN can keep

@@ -1,0 +1,275 @@
+.adm {
+  min-height: 100vh;
+  font-family: var(--sans);
+  color: var(--text-dark);
+  background: #f6f2f3;
+}
+
+.adm--center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+}
+
+/* login card */
+.adm__card {
+  background: #fff;
+  border-radius: 14px;
+  padding: 32px;
+  width: 100%;
+  max-width: 380px;
+  box-shadow: 0 16px 40px rgba(74, 22, 38, 0.08);
+}
+
+.adm__title {
+  font-size: 1.3rem;
+  color: var(--rose-900);
+  margin-bottom: 12px;
+}
+
+/* top bar */
+.adm__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 24px;
+  background: #fff;
+  border-bottom: 1px solid rgba(74, 22, 38, 0.1);
+}
+
+.adm__brand {
+  font-family: var(--serif);
+  font-weight: 600;
+  color: var(--rose-900);
+}
+
+.adm__top-right {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.adm__who {
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.adm__tabs {
+  display: flex;
+  gap: 4px;
+  padding: 0 24px;
+  background: #fff;
+  border-bottom: 1px solid rgba(74, 22, 38, 0.1);
+}
+
+.adm__tab {
+  border: none;
+  background: none;
+  padding: 12px 14px;
+  font-size: 0.9rem;
+  color: var(--muted);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+}
+
+.adm__tab.is-active {
+  color: var(--rose-900);
+  border-bottom-color: var(--rose);
+}
+
+.adm__main {
+  padding: 24px;
+  max-width: 1000px;
+  margin: 0 auto;
+}
+
+.adm__grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+@media (max-width: 820px) {
+  .adm__grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.adm__panel {
+  background: #fff;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 10px 30px rgba(74, 22, 38, 0.05);
+}
+
+.adm__panel--narrow {
+  max-width: 520px;
+}
+
+.adm__h2 {
+  font-size: 1.05rem;
+  color: var(--rose-900);
+  margin-bottom: 16px;
+}
+
+/* KPIs */
+.adm__kpis {
+  display: flex;
+  gap: 18px;
+  margin-bottom: 18px;
+}
+
+.adm__kpi {
+  display: flex;
+  flex-direction: column;
+}
+
+.adm__kpi-n {
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: var(--rose-900);
+}
+
+.adm__kpi-l {
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+/* bars */
+.adm__bars {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.adm__bar-row {
+  display: grid;
+  grid-template-columns: 44px 1fr 34px;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+.adm__bar-track {
+  background: #f0e6ea;
+  border-radius: 4px;
+  height: 12px;
+  overflow: hidden;
+}
+
+.adm__bar-fill {
+  display: block;
+  height: 100%;
+  background: var(--rose);
+  border-radius: 4px;
+}
+
+.adm__bar-n {
+  text-align: right;
+  color: var(--text-dark);
+}
+
+/* table */
+.adm__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+
+.adm__table th,
+.adm__table td {
+  text-align: left;
+  padding: 8px 6px;
+  border-bottom: 1px solid rgba(74, 22, 38, 0.08);
+}
+
+.adm__table th {
+  color: var(--muted);
+  font-weight: 600;
+}
+
+/* form */
+.adm__field {
+  margin-bottom: 18px;
+}
+
+.adm__label {
+  display: block;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--rose-900);
+  margin-bottom: 6px;
+}
+
+.adm__input {
+  width: 100%;
+  padding: 9px 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(74, 22, 38, 0.25);
+  font-size: 0.9rem;
+  background: #fff;
+}
+
+input.adm__input[type='checkbox'] {
+  width: auto;
+}
+
+.adm__hint {
+  font-size: 0.75rem;
+  color: var(--muted);
+  margin-top: 4px;
+}
+
+/* buttons + messages */
+.adm__btn {
+  background: var(--rose);
+  color: #fff;
+  border: none;
+  border-radius: 999px;
+  padding: 11px 22px;
+  font-weight: 600;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.adm__btn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.adm__link {
+  display: block;
+  margin-top: 12px;
+  background: none;
+  border: none;
+  color: var(--rose);
+  font-size: 0.85rem;
+  cursor: pointer;
+  padding: 0;
+}
+
+.adm__muted {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.adm__error {
+  color: #b8355f;
+  font-size: 0.85rem;
+  margin-top: 12px;
+}
+
+.adm__ok {
+  color: #2e7d5b;
+  font-size: 0.85rem;
+  margin-top: 12px;
+}
+
+.adm__missing {
+  margin: 10px 0 0;
+  padding-left: 18px;
+  font-size: 0.8rem;
+  color: var(--muted);
+}

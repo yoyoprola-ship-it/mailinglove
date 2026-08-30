@@ -12,13 +12,16 @@ runConfig:
   memoryMiB: 1024 # image buffers + the OpenAI SDK need more headroom than 512
 
 env:
+  # --- OpenAI (image redesign) ---
   # Set with: firebase apphosting:secrets:set OPENAI_API_KEY
   - variable: OPENAI_API_KEY
     secret: OPENAI_API_KEY
     availability:
       - RUNTIME
+  # These are DEFAULTS only — the admin panel (config/app in Firestore)
+  # overrides them at runtime without a redeploy.
   - variable: OPENAI_IMAGE_MODEL
-    value: gpt-image-1 # mini is cheaper but drifts on faces; gpt-image-1 supports input_fidelity
+    value: gpt-image-1.5 # supports input_fidelity, ~20% cheaper than gpt-image-1
     availability:
       - RUNTIME
   - variable: OPENAI_IMAGE_QUALITY
@@ -31,5 +34,39 @@ env:
       - RUNTIME
   - variable: OPENAI_IMAGE_INPUT_FIDELITY
     value: high # preserve faces/features from the uploaded photo
+    availability:
+      - RUNTIME
+
+  # --- Admin panel: 2FA login (SMS + email codes) ---
+  - variable: ADMIN_SESSION_SECRET
+    secret: ADMIN_SESSION_SECRET
+    availability:
+      - RUNTIME
+  - variable: ADMIN_EMAIL
+    secret: ADMIN_EMAIL
+    availability:
+      - RUNTIME
+  - variable: ADMIN_PHONE
+    secret: ADMIN_PHONE
+    availability:
+      - RUNTIME
+  - variable: TWILIO_ACCOUNT_SID
+    secret: TWILIO_ACCOUNT_SID
+    availability:
+      - RUNTIME
+  - variable: TWILIO_AUTH_TOKEN
+    secret: TWILIO_AUTH_TOKEN
+    availability:
+      - RUNTIME
+  - variable: TWILIO_SMS_FROM
+    secret: TWILIO_SMS_FROM
+    availability:
+      - RUNTIME
+  - variable: SENDGRID_API_KEY
+    secret: SENDGRID_API_KEY
+    availability:
+      - RUNTIME
+  - variable: SENDGRID_FROM
+    secret: SENDGRID_FROM
     availability:
       - RUNTIME
