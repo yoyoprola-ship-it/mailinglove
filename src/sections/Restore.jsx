@@ -2,7 +2,7 @@ import PhotoStudio from '../components/PhotoStudio'
 import Reveal from '../components/Reveal'
 
 const modes = [
-  { value: 'modernize', label: 'Modernize — repair, sharpen & add color' },
+  { value: 'modernize', label: 'Modernize — fill missing pieces, deblur & add color' },
   { value: 'restore', label: 'Restore — repair damage, keep the vintage look' },
 ]
 
@@ -18,8 +18,9 @@ export default function Restore() {
         </Reveal>
         <Reveal delay={80}>
           <p className="section__lead section__lead--light">
-            Scan a faded, torn, or black-and-white photo and let AI repair the
-            damage — then keep it vintage or bring it fully up to date.
+            Scan a faded, torn, or blurry black-and-white photo. AI rebuilds the
+            missing pieces, sharpens soft faces, and adds realistic color — or
+            keeps the original vintage look if you'd rather.
           </p>
         </Reveal>
         <Reveal delay={120}>

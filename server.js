@@ -16,6 +16,13 @@ const IMAGE_MODEL = process.env.OPENAI_IMAGE_MODEL || 'gpt-image-1-mini'
 const IMAGE_QUALITY = process.env.OPENAI_IMAGE_QUALITY || 'medium'
 const IMAGE_SIZE = process.env.OPENAI_IMAGE_SIZE || '1024x1536' // portrait postcard
 
+// Restoring an old photo should keep its own framing, so let the model match
+// the input aspect ratio instead of forcing the portrait postcard size.
+const CATEGORY_SIZE = {
+  modernize: 'auto',
+  restore: 'auto',
+}
+
 // Prompt templates per category. Users never send a free-form prompt — that
 // keeps cost, tone, and content predictable.
 const CATEGORY_PROMPTS = {
@@ -28,9 +35,9 @@ const CATEGORY_PROMPTS = {
   christmas:
     'Redesign this photo as a Christmas holiday card. Keep every person and their face recognizable and unchanged. Replace the background with a cozy festive scene — snow, warm string lights, pine, and a soft winter palette. Classic and heartwarming.',
   modernize:
-    'Restore and modernize this old photograph. Repair scratches, tears, creases, dust spots, and fading. Sharpen soft focus, fix exposure and color casts, and add natural, realistic color if the original is black and white or sepia. Keep every face, feature, pose, clothing detail, and the original composition exactly as they are — do not change identities or expressions. The result should look like a well-preserved, high-quality modern photo.',
+    'Fully restore and modernize this damaged old photograph. Reconstruct any missing, torn-away, or destroyed areas — fill them in seamlessly so they match the surrounding content, lighting, and texture with no visible seams or gaps. Add natural, realistic color throughout if the original is black and white or sepia (lifelike skin tones, hair, clothing, and background). Remove blur and soft focus: recover sharp, clean, natural facial features — eyes, mouth, hair, and skin should read clearly and look like a real person, staying faithful to the original face. Remove scratches, creases, stains, dust, grain, and fading, and correct exposure and contrast. Keep every person\'s identity, likeness, pose, expression, clothing, and the original framing and composition true to the source — do not invent new people or change who anyone is. Deliver a clean, sharp, high-quality result that looks like a well-preserved modern photograph.',
   restore:
-    'Carefully restore this old photograph to the condition it was in when new. Repair physical damage — scratches, tears, creases, stains, spots, missing corners — and gently reduce dust and fading. Preserve the original character: keep the black-and-white, sepia, or faded-color tone and the period look. Do not colorize a black-and-white photo. Do not alter faces, expressions, clothing, or composition.',
+    'Carefully restore this old photograph to the condition it was in when new. Repair physical damage — scratches, tears, creases, stains, spots — and reconstruct missing or torn-away areas so they blend in seamlessly with the surrounding content. Reduce dust, grain, and fading, and gently recover sharpness where the image is soft, keeping facial features clean and natural. Preserve the original character: keep the black-and-white, sepia, or faded-color tone and the period look — do not colorize a black-and-white photo. Do not alter faces, expressions, clothing, or composition.',
 }
 
 const app = express()
@@ -85,7 +92,7 @@ app.post('/api/generate', generateLimiter, (req, res) => {
         model: IMAGE_MODEL,
         image,
         prompt,
-        size: IMAGE_SIZE,
+        size: CATEGORY_SIZE[category] || IMAGE_SIZE,
         quality: IMAGE_QUALITY,
       })
 
