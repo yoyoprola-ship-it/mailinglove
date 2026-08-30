@@ -1,0 +1,17 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Public waitlist signup — anyone can add themselves, nobody can
+    // read, edit, or delete existing entries from the client.
+    match /waitlist/{entryId} {
+      allow create: if request.resource.data.keys().hasAll(['email', 'createdAt'])
+        && request.resource.data.email is string
+        && request.resource.data.email.size() > 3;
+      allow read, update, delete: if false;
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

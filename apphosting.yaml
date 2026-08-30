@@ -1,0 +1,12 @@
+# Firebase App Hosting config for mailinglove.
+#
+# minInstances: 0 on purpose — this is a pre-launch waitlist site with
+# little to no traffic yet. Scaling to zero means an occasional cold
+# start (a few seconds) for the first visitor after an idle period,
+# instead of paying for a container to sit idle 24/7. Revisit once
+# there's real, steady traffic to justify the always-on cost.
+runConfig:
+  minInstances: 0
+  maxInstances: 2
+  cpu: 1
+  memoryMiB: 512
