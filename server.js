@@ -27,6 +27,10 @@ const CATEGORY_PROMPTS = {
     'Redesign this photo as a cheerful birthday card. Keep the people and their faces recognizable and unchanged. Add a festive background with confetti, balloons, and bright celebratory colors. Fun, joyful, print-ready.',
   christmas:
     'Redesign this photo as a Christmas holiday card. Keep every person and their face recognizable and unchanged. Replace the background with a cozy festive scene — snow, warm string lights, pine, and a soft winter palette. Classic and heartwarming.',
+  modernize:
+    'Restore and modernize this old photograph. Repair scratches, tears, creases, dust spots, and fading. Sharpen soft focus, fix exposure and color casts, and add natural, realistic color if the original is black and white or sepia. Keep every face, feature, pose, clothing detail, and the original composition exactly as they are — do not change identities or expressions. The result should look like a well-preserved, high-quality modern photo.',
+  restore:
+    'Carefully restore this old photograph to the condition it was in when new. Repair physical damage — scratches, tears, creases, stains, spots, missing corners — and gently reduce dust and fading. Preserve the original character: keep the black-and-white, sepia, or faded-color tone and the period look. Do not colorize a black-and-white photo. Do not alter faces, expressions, clothing, or composition.',
 }
 
 const app = express()
@@ -58,11 +62,6 @@ app.post('/api/generate', generateLimiter, (req, res) => {
     if (uploadErr) {
       return res.status(400).json({ error: uploadErr.message })
     }
-    if (!openai) {
-      return res
-        .status(503)
-        .json({ error: 'Image generation is not configured yet. Set OPENAI_API_KEY.' })
-    }
 
     const category = String(req.body.category || '').toLowerCase()
     const prompt = CATEGORY_PROMPTS[category]
@@ -71,6 +70,11 @@ app.post('/api/generate', generateLimiter, (req, res) => {
     }
     if (!req.file) {
       return res.status(400).json({ error: 'Attach a photo.' })
+    }
+    if (!openai) {
+      return res
+        .status(503)
+        .json({ error: 'Image generation is not configured yet. Set OPENAI_API_KEY.' })
     }
 
     try {

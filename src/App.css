@@ -509,6 +509,16 @@
   margin-top: 16px;
 }
 
+.section--dark .studio__panel--result {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.22);
+}
+
+.section--dark .studio__placeholder,
+.section--dark .studio__note {
+  color: rgba(255, 255, 255, 0.7);
+}
+
 @media (max-width: 760px) {
   .studio {
     grid-template-columns: 1fr;

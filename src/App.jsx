@@ -3,6 +3,7 @@ import Hero from './sections/Hero'
 import Categories from './sections/Categories'
 import HowItWorks from './sections/HowItWorks'
 import Studio from './sections/Studio'
+import Restore from './sections/Restore'
 import Products from './sections/Products'
 import Waitlist from './sections/Waitlist'
 import Footer from './sections/Footer'
@@ -16,6 +17,7 @@ export default function App() {
       <Categories />
       <HowItWorks />
       <Studio />
+      <Restore />
       <Products />
       <Waitlist />
       <Footer />
