@@ -18,7 +18,7 @@ env:
     availability:
       - RUNTIME
   - variable: OPENAI_IMAGE_MODEL
-    value: gpt-image-1-mini # swap to gpt-image-2 for launch
+    value: gpt-image-1 # mini is cheaper but drifts on faces; gpt-image-1 supports input_fidelity
     availability:
       - RUNTIME
   - variable: OPENAI_IMAGE_QUALITY
@@ -27,5 +27,9 @@ env:
       - RUNTIME
   - variable: OPENAI_IMAGE_SIZE
     value: 1024x1536
+    availability:
+      - RUNTIME
+  - variable: OPENAI_IMAGE_INPUT_FIDELITY
+    value: high # preserve faces/features from the uploaded photo
     availability:
       - RUNTIME

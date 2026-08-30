@@ -17,8 +17,13 @@ the redesigned image as a data URL. Prompts are fixed templates per category
 
 - Set `OPENAI_API_KEY` (see `.env.example`). Without it the endpoint returns
   503 and the rest of the site works normally.
-- Model is `OPENAI_IMAGE_MODEL` — `gpt-image-1-mini` (~1¢/image) for now;
-  switch to `gpt-image-2` for launch. Same endpoint and params.
+- Model is `OPENAI_IMAGE_MODEL`. `gpt-image-1-mini` is cheapest (~1¢) but
+  drifts on faces; `gpt-image-1` (default in prod) supports
+  `OPENAI_IMAGE_INPUT_FIDELITY=high`, which keeps the uploaded faces
+  faithful; `gpt-image-2` is the top option. Same endpoint and params —
+  `runEdit()` drops `input_fidelity` and retries if a model rejects it.
+- Occasion prompts change **only the background** — the people are locked.
+  `modernize`/`restore` do touch faces (deblur, reconstruct damage) by design.
 - Rate-limited to 5 requests / 15 min per IP; 10 MB max upload; PNG/JPEG/WebP.
 - Local dev: run `npm run dev` and `npm run dev:api` in two terminals (Vite
   proxies `/api` to the Express server on :8080).

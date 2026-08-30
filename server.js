@@ -16,6 +16,15 @@ const IMAGE_MODEL = process.env.OPENAI_IMAGE_MODEL || 'gpt-image-1-mini'
 const IMAGE_QUALITY = process.env.OPENAI_IMAGE_QUALITY || 'medium'
 const IMAGE_SIZE = process.env.OPENAI_IMAGE_SIZE || '1024x1536' // portrait postcard
 
+// 'high' makes the model preserve faces/features from the input far more
+// faithfully (costs extra input tokens). Only gpt-image-1 documents support
+// for it; runEdit() retries without it if the model rejects the param. Set
+// OPENAI_IMAGE_INPUT_FIDELITY to an empty string to turn it off.
+// NOTE: gpt-image-1-mini is the weakest at keeping a face identical across an
+// edit. For face-critical output use gpt-image-1 or gpt-image-2 via
+// OPENAI_IMAGE_MODEL.
+const INPUT_FIDELITY = process.env.OPENAI_IMAGE_INPUT_FIDELITY ?? 'high'
+
 // Restoring an old photo should keep its own framing, so let the model match
 // the input aspect ratio instead of forcing the portrait postcard size.
 const CATEGORY_SIZE = {
@@ -25,15 +34,17 @@ const CATEGORY_SIZE = {
 
 // Prompt templates per category. Users never send a free-form prompt — that
 // keeps cost, tone, and content predictable.
+
+// Every "occasion" edit must leave the people untouched and only restyle the
+// scene around them. This clause leads each of those prompts.
+const KEEP_PEOPLE =
+  'Do NOT change any person in this photo. Every face and body must stay identical to the input: same facial features, face shape, jawline, eyes, eyebrows, nose, lips, teeth, skin tone and texture, freckles, moles, wrinkles, facial hair, hairline and hairstyle, apparent age, body shape, posture, and pose. Do not slim, smooth, retouch, beautify, restyle, age, or de-age anyone. The people must be pixel-faithful to the original — treat them as fixed and uneditable. Only the background and the surrounding scene may change.'
+
 const CATEGORY_PROMPTS = {
-  love:
-    'Redesign this photo as a romantic postcard. Keep the people and their faces recognizable and unchanged. Replace the background with a warm, dreamy scene with soft golden light, delicate florals, and gentle bokeh. Elegant, heartfelt, print-ready.',
-  family:
-    'Redesign this photo as a warm family keepsake print. Keep every person and their face recognizable and unchanged. Give it a cozy, timeless setting with soft natural light and a tasteful painterly background. Wholesome and frame-worthy.',
-  birthday:
-    'Redesign this photo as a cheerful birthday card. Keep the people and their faces recognizable and unchanged. Add a festive background with confetti, balloons, and bright celebratory colors. Fun, joyful, print-ready.',
-  christmas:
-    'Redesign this photo as a Christmas holiday card. Keep every person and their face recognizable and unchanged. Replace the background with a cozy festive scene — snow, warm string lights, pine, and a soft winter palette. Classic and heartwarming.',
+  love: `${KEEP_PEOPLE} Replace only the background with a warm, dreamy romantic setting: soft golden light, delicate florals, gentle bokeh. Keep every person exactly where and how they are in the frame. Elegant, heartfelt, print-ready postcard.`,
+  family: `${KEEP_PEOPLE} Replace only the background with a cozy, timeless setting with soft natural light and a tasteful, subtly painterly backdrop. Keep every person exactly where and how they are in the frame. Wholesome, frame-worthy family keepsake.`,
+  birthday: `${KEEP_PEOPLE} Replace only the background with a festive birthday scene: confetti, balloons, and bright celebratory colors. Keep every person exactly where and how they are in the frame. Fun, joyful, print-ready card.`,
+  christmas: `${KEEP_PEOPLE} Replace only the background with a cozy festive Christmas scene: snow, warm string lights, pine, a soft winter palette. Keep every person exactly where and how they are in the frame. Classic, heartwarming holiday card.`,
   modernize:
     'Fully restore and modernize this damaged old photograph. Reconstruct any missing, torn-away, or destroyed areas — fill them in seamlessly so they match the surrounding content, lighting, and texture with no visible seams or gaps. Add natural, realistic color throughout if the original is black and white or sepia (lifelike skin tones, hair, clothing, and background). Remove blur and soft focus: recover sharp, clean, natural facial features — eyes, mouth, hair, and skin should read clearly and look like a real person, staying faithful to the original face. Remove scratches, creases, stains, dust, grain, and fading, and correct exposure and contrast. Keep every person\'s identity, likeness, pose, expression, clothing, and the original framing and composition true to the source — do not invent new people or change who anyone is. Deliver a clean, sharp, high-quality result that looks like a well-preserved modern photograph.',
   restore:
@@ -46,6 +57,21 @@ app.use(compression())
 const openai = process.env.OPENAI_API_KEY
   ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
   : null
+
+// input_fidelity is only documented for gpt-image-1. If the configured model
+// rejects it, drop the param and retry once so a model swap can't 400 us.
+async function runEdit(params) {
+  try {
+    return await openai.images.edit(params)
+  } catch (err) {
+    if (params.input_fidelity && /input_fidelity/i.test(err?.message || '')) {
+      console.warn('[generate] model rejected input_fidelity; retrying without it')
+      const { input_fidelity, ...rest } = params
+      return await openai.images.edit(rest)
+    }
+    throw err
+  }
+}
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -88,12 +114,13 @@ app.post('/api/generate', generateLimiter, (req, res) => {
       const image = await toFile(req.file.buffer, req.file.originalname || 'photo.png', {
         type: req.file.mimetype,
       })
-      const result = await openai.images.edit({
+      const result = await runEdit({
         model: IMAGE_MODEL,
         image,
         prompt,
         size: CATEGORY_SIZE[category] || IMAGE_SIZE,
         quality: IMAGE_QUALITY,
+        ...(INPUT_FIDELITY ? { input_fidelity: INPUT_FIDELITY } : {}),
       })
 
       const b64 = result.data?.[0]?.b64_json
@@ -103,7 +130,8 @@ app.post('/api/generate', generateLimiter, (req, res) => {
 
       console.log(
         `[generate] category=${category} model=${IMAGE_MODEL} quality=${IMAGE_QUALITY} ` +
-          `bytes_in=${req.file.size} usage=${JSON.stringify(result.usage || {})}`
+          `fidelity=${INPUT_FIDELITY || 'off'} bytes_in=${req.file.size} ` +
+          `usage=${JSON.stringify(result.usage || {})}`
       )
 
       res.json({ image: `data:image/png;base64,${b64}` })
