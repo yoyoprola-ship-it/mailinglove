@@ -62,11 +62,11 @@ env:
     secret: TWILIO_SMS_FROM
     availability:
       - RUNTIME
-  - variable: SENDGRID_API_KEY
-    secret: SENDGRID_API_KEY
+  - variable: RESEND_API_KEY
+    secret: RESEND_API_KEY
     availability:
       - RUNTIME
-  - variable: SENDGRID_FROM
-    secret: SENDGRID_FROM
+  - variable: RESEND_FROM
+    secret: RESEND_FROM
     availability:
       - RUNTIME

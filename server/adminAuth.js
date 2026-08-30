@@ -22,7 +22,7 @@ export function adminSetupIssues() {
   if (!ADMIN_EMAIL) missing.push('ADMIN_EMAIL')
   if (!ADMIN_PHONE) missing.push('ADMIN_PHONE')
   if (!smsConfigured()) missing.push('Twilio (TWILIO_ACCOUNT_SID/AUTH_TOKEN/SMS_FROM)')
-  if (!emailConfigured()) missing.push('SendGrid (SENDGRID_API_KEY/SENDGRID_FROM)')
+  if (!emailConfigured()) missing.push('Resend (RESEND_API_KEY/RESEND_FROM)')
   if (!getDb()) missing.push('firebase-admin credentials')
   return missing
 }

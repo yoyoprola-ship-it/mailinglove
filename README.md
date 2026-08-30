@@ -38,7 +38,7 @@ Same SPA, rendered when `location.pathname` starts with `/admin`
 ([src/main.jsx](src/main.jsx)). Server routes are under `/api/admin/*` in
 [server.js](server.js); logic in [server/](server/).
 
-- **Login is 2FA**: one code by SMS (Twilio) + one code by email (SendGrid),
+- **Login is 2FA**: one code by SMS (Twilio) + one code by email (Resend),
   both required. On success the server sets an HMAC-signed, `HttpOnly`,
   `SameSite=Strict` session cookie (`ADMIN_SESSION_SECRET`, 8 h). Only
   `ADMIN_EMAIL` / `ADMIN_PHONE` can log in — codes are sent only there.
