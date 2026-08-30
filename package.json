@@ -8,6 +8,7 @@
   },
   "scripts": {
     "dev": "vite",
+    "dev:api": "node --watch server.js",
     "build": "vite build",
     "gcp-build": "vite build",
     "start": "node server.js",
@@ -17,7 +18,10 @@
     "@vitejs/plugin-react": "^6.0.3",
     "compression": "^1.8.1",
     "express": "^5.2.1",
+    "express-rate-limit": "^8.7.0",
     "firebase": "^12.16.0",
+    "multer": "^2.3.0",
+    "openai": "^7.8.0",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
     "vite": "^8.1.1"

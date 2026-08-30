@@ -9,4 +9,23 @@ runConfig:
   minInstances: 0
   maxInstances: 2
   cpu: 1
-  memoryMiB: 512
+  memoryMiB: 1024 # image buffers + the OpenAI SDK need more headroom than 512
+
+env:
+  # Set with: firebase apphosting:secrets:set OPENAI_API_KEY
+  - variable: OPENAI_API_KEY
+    secret: OPENAI_API_KEY
+    availability:
+      - RUNTIME
+  - variable: OPENAI_IMAGE_MODEL
+    value: gpt-image-1-mini # swap to gpt-image-2 for launch
+    availability:
+      - RUNTIME
+  - variable: OPENAI_IMAGE_QUALITY
+    value: medium
+    availability:
+      - RUNTIME
+  - variable: OPENAI_IMAGE_SIZE
+    value: 1024x1536
+    availability:
+      - RUNTIME
