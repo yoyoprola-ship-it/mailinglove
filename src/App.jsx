@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import Nav from './sections/Nav'
 import Hero from './sections/Hero'
 import Categories from './sections/Categories'
@@ -11,6 +12,17 @@ import Footer from './sections/Footer'
 import './App.css'
 
 export default function App() {
+  // The AI photo-redesign sections (Studio, Restore) are shown only while
+  // the admin has generation enabled. Fail open if the check errors.
+  const [aiEnabled, setAiEnabled] = useState(null)
+
+  useEffect(() => {
+    fetch('/api/site-config')
+      .then((r) => r.json())
+      .then((c) => setAiEnabled(Boolean(c.generateEnabled)))
+      .catch(() => setAiEnabled(true))
+  }, [])
+
   return (
     <div className="page">
       <Nav />
@@ -18,8 +30,12 @@ export default function App() {
       <Categories />
       <HowItWorks />
       <Postcards />
-      <Studio />
-      <Restore />
+      {aiEnabled && (
+        <>
+          <Studio />
+          <Restore />
+        </>
+      )}
       <Products />
       <Waitlist />
       <Footer />

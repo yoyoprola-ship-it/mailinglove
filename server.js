@@ -126,6 +126,15 @@ const authLimiter = rateLimit({
   message: { error: 'Too many attempts — wait a few minutes.' },
 })
 
+// --- public site config -------------------------------------------------
+
+// Read-only flags the public site needs. No auth; nothing sensitive.
+app.get('/api/site-config', async (req, res) => {
+  const cfg = await getConfig()
+  res.setHeader('Cache-Control', 'no-store')
+  res.json({ generateEnabled: cfg.generateEnabled })
+})
+
 // --- image redesign -------------------------------------------------------
 
 app.post('/api/generate', generateLimiter, (req, res) => {
