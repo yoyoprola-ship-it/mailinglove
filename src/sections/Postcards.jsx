@@ -1,13 +1,32 @@
+import { useEffect, useState } from 'react'
 import Reveal from '../components/Reveal'
 import catalog from '../data/postcards.json'
 
+const PER_PAGE = 25
+
 export default function Postcards({ filter, onFilter }) {
+  const [page, setPage] = useState(1)
+
   const activeType = catalog.types.find((t) => t.id === filter.type) || catalog.types[0]
   const subs = activeType.subcategories
 
   const cards = catalog.postcards.filter(
     (p) => p.type === activeType.id && (!filter.sub || p.subcategory === filter.sub)
   )
+
+  const pageCount = Math.max(1, Math.ceil(cards.length / PER_PAGE))
+  const current = Math.min(page, pageCount)
+  const shown = cards.slice((current - 1) * PER_PAGE, current * PER_PAGE)
+
+  // Back to page 1 whenever the filter changes.
+  useEffect(() => {
+    setPage(1)
+  }, [filter.type, filter.sub])
+
+  function goPage(n) {
+    setPage(n)
+    document.getElementById('postcards')?.scrollIntoView({ behavior: 'smooth' })
+  }
 
   return (
     <section className="section" id="postcards">
@@ -55,8 +74,15 @@ export default function Postcards({ filter, onFilter }) {
           </div>
         )}
 
+        {cards.length > 0 && (
+          <p className="pc-count">
+            {cards.length} design{cards.length > 1 ? 's' : ''}
+            {pageCount > 1 && ` · page ${current} of ${pageCount}`}
+          </p>
+        )}
+
         <div className="pc-grid">
-          {cards.map((p, i) => (
+          {shown.map((p, i) => (
             <Reveal key={p.id} delay={(i % 4) * 50}>
               <article className="pc-card">
                 <img className="pc-card__img" src={p.image} alt={p.title} loading="lazy" />
@@ -71,6 +97,28 @@ export default function Postcards({ filter, onFilter }) {
           ))}
           {!cards.length && <p className="section__lead">No designs here yet.</p>}
         </div>
+
+        {pageCount > 1 && (
+          <div className="pc-pager">
+            <button
+              className="pc-pager__btn"
+              onClick={() => goPage(current - 1)}
+              disabled={current === 1}
+            >
+              ‹ Prev
+            </button>
+            <span className="pc-pager__status">
+              Page {current} / {pageCount}
+            </span>
+            <button
+              className="pc-pager__btn"
+              onClick={() => goPage(current + 1)}
+              disabled={current === pageCount}
+            >
+              Next ›
+            </button>
+          </div>
+        )}
       </div>
     </section>
   )
