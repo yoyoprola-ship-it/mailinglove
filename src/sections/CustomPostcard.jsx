@@ -199,6 +199,11 @@ export default function CustomPostcard() {
                     </a>
                   </div>
                 </>
+              ) : status === 'working' ? (
+                <span className="studio__placeholder">
+                  <span className="spinner" />
+                  Generating your postcard…
+                </span>
               ) : (
                 <span className="studio__placeholder">
                   <Icon name="sparkles" size={26} />

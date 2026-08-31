@@ -1044,6 +1044,21 @@
   color: rgba(255, 255, 255, 0.7);
 }
 
+.spinner {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 3px solid rgba(184, 53, 95, 0.25);
+  border-top-color: var(--rose);
+  animation: spinner-rot 0.8s linear infinite;
+}
+
+@keyframes spinner-rot {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 @media (max-width: 760px) {
   .studio {
     grid-template-columns: 1fr;
