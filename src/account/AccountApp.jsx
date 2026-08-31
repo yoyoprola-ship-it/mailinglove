@@ -6,12 +6,16 @@ import Cart from './Cart'
 import Orders from './Orders'
 import './account.css'
 
-const addParam = new URLSearchParams(window.location.search).get('add') || ''
+const params = new URLSearchParams(window.location.search)
+const addParam = params.get('add') || ''
+const tabParam = params.get('tab') || ''
 
 export default function AccountApp() {
   const [state, setState] = useState('loading') // loading | out | in
   const [user, setUser] = useState(null)
-  const [tab, setTab] = useState(addParam ? 'cart' : 'profile')
+  const [tab, setTab] = useState(
+    addParam || tabParam === 'cart' ? 'cart' : tabParam === 'orders' ? 'orders' : 'profile'
+  )
   const [cartCount, setCartCount] = useState(0)
 
   async function refresh() {

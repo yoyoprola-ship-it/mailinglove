@@ -14,13 +14,12 @@ const clampQty = (v) => {
   return Number.isFinite(n) ? Math.min(MAX_QTY, Math.max(1, n)) : 1
 }
 
-// Two lines are "the same product" when the design, recipient and message
-// all match — adding it again just bumps the quantity.
-const lineKey = (i) => `${i.postcardId}|${JSON.stringify(i.recipient)}|${i.message || ''}`
-
-// Validate an incoming cart-item recipient. `self` means "use my account
-// address" (resolved at order time); `other` carries a name + US address.
-function validateRecipient(r = {}) {
+// Validate an incoming cart-item recipient. A missing/pending recipient is
+// allowed in the cart (you add designs freely, then set who each goes to
+// before ordering). `self` = use the account address, resolved at order
+// time; `other` carries a name + US address.
+function validateRecipient(r) {
+  if (r == null || r.type === 'pending') return { errors: [], value: null }
   if (r.type === 'self') return { errors: [], value: { type: 'self' } }
   if (r.type === 'other') {
     const name = clip(r.name, 120)
@@ -67,14 +66,8 @@ export async function addItem(email, input) {
   if (errors.length) return { ok: false, errors }
   const ref = await userRef(email)
   const cart = await getCart(email)
-
-  const existing = cart.find((i) => lineKey(i) === lineKey(value))
-  if (existing) {
-    existing.qty = clampQty((existing.qty || 1) + value.qty)
-  } else {
-    if (cart.length >= MAX_LINES) return { ok: false, errors: ['Your cart is full.'] }
-    cart.push(value)
-  }
+  if (cart.length >= MAX_LINES) return { ok: false, errors: ['Your cart is full.'] }
+  cart.push(value)
   await ref.set({ cart, updatedAt: Date.now() }, { merge: true })
   return { ok: true, cart }
 }
@@ -93,16 +86,8 @@ export async function updateItem(email, itemId, patch) {
     item.recipient = rec.value
   }
 
-  // Editing may have made this line identical to another — merge them.
-  const dup = cart.find((i) => i.id !== item.id && lineKey(i) === lineKey(item))
-  let next = cart
-  if (dup) {
-    dup.qty = clampQty((dup.qty || 1) + (item.qty || 1))
-    next = cart.filter((i) => i.id !== item.id)
-  }
-
-  await ref.set({ cart: next, updatedAt: Date.now() }, { merge: true })
-  return { ok: true, cart: next }
+  await ref.set({ cart, updatedAt: Date.now() }, { merge: true })
+  return { ok: true, cart }
 }
 
 export async function clearCart(email) {
@@ -124,6 +109,14 @@ export async function placeOrder(email) {
   const user = snap.exists ? snap.data() : {}
   const cart = user.cart || []
   if (!cart.length) return { ok: false, errors: ['Your cart is empty.'] }
+
+  const pending = cart.filter((i) => !i.recipient).length
+  if (pending) {
+    return {
+      ok: false,
+      errors: [`Set who ${pending === 1 ? 'a card goes' : `${pending} cards go`} to before ordering.`],
+    }
+  }
 
   const needsAccountAddr = cart.some((i) => i.recipient?.type === 'self')
   if (needsAccountAddr && !(user.address && user.address.line1 && user.name)) {

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Nav from './sections/Nav'
 import Hero from './sections/Hero'
 import Categories from './sections/Categories'
@@ -13,6 +13,8 @@ import Footer from './sections/Footer'
 import AuthModal from './components/AuthModal'
 import './App.css'
 
+const countCards = (items) => items.reduce((n, i) => n + (i.qty || 1), 0)
+
 export default function App() {
   // The AI sections are shown only while the admin has each one enabled.
   // Fail open if the check errors.
@@ -22,7 +24,10 @@ export default function App() {
   const [postcardSizes, setPostcardSizes] = useState(null)
   const [pcFilter, setPcFilter] = useState({ type: 'birthday', sub: null })
   const [signedIn, setSignedIn] = useState(false)
+  const [cartCount, setCartCount] = useState(0)
+  const [toast, setToast] = useState('')
   const [authCtx, setAuthCtx] = useState(null) // null | {mode:'account'} | {mode:'add',postcard}
+  const toastTimer = useRef(null)
 
   useEffect(() => {
     fetch('/api/site-config')
@@ -37,10 +42,39 @@ export default function App() {
         setPhotoEnabled(true)
         setPostcardEnabled(true)
       })
-    fetch('/api/me', { credentials: 'same-origin' })
-      .then((r) => setSignedIn(r.ok))
+    fetch('/api/cart', { credentials: 'same-origin' })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (d) {
+          setSignedIn(true)
+          setCartCount(countCards(d.items || []))
+        }
+      })
       .catch(() => {})
   }, [])
+
+  function flash(msg) {
+    setToast(msg)
+    clearTimeout(toastTimer.current)
+    toastTimer.current = setTimeout(() => setToast(''), 2200)
+  }
+
+  async function addToCart(postcard) {
+    try {
+      const res = await fetch('/api/cart', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ postcardId: postcard.id }),
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data.error || 'Could not add to cart.')
+      setCartCount(countCards(data.items || []))
+      flash(`Added “${postcard.title}” to cart`)
+    } catch (err) {
+      flash(err.message)
+    }
+  }
 
   function goToPostcards(type, sub = null) {
     setPcFilter({ type, sub })
@@ -54,14 +88,32 @@ export default function App() {
     else setAuthCtx({ mode: 'account' })
   }
 
+  function openCart() {
+    if (signedIn) window.location.href = '/account?tab=cart'
+    else setAuthCtx({ mode: 'account' })
+  }
+
   function addPostcard(postcard) {
-    if (signedIn) window.location.href = `/account?add=${postcard.id}`
+    if (signedIn) addToCart(postcard)
     else setAuthCtx({ mode: 'add', postcard })
+  }
+
+  function onSignedIn() {
+    setSignedIn(true)
+    if (authCtx?.mode === 'add' && authCtx.postcard) {
+      addToCart(authCtx.postcard)
+      setAuthCtx(null)
+    }
   }
 
   return (
     <div className="page">
-      <Nav onNavigate={goToPostcards} onAccount={openAccount} />
+      <Nav
+        onNavigate={goToPostcards}
+        onAccount={openAccount}
+        onCart={openCart}
+        cartCount={cartCount}
+      />
       <Postcards
         filter={pcFilter}
         onFilter={setPcFilter}
@@ -82,12 +134,10 @@ export default function App() {
       <Waitlist />
       <Footer />
 
+      {toast && <div className="toast">{toast}</div>}
+
       {authCtx && (
-        <AuthModal
-          context={authCtx}
-          onClose={() => setAuthCtx(null)}
-          onSignedIn={() => setSignedIn(true)}
-        />
+        <AuthModal context={authCtx} onClose={() => setAuthCtx(null)} onSignedIn={onSignedIn} />
       )}
     </div>
   )

@@ -238,6 +238,17 @@
   font-weight: 600;
 }
 
+.acc__needs {
+  align-self: flex-start;
+  border: none;
+  background: none;
+  padding: 0;
+  color: #b8355f;
+  font-weight: 600;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
 .acc__item-actions {
   display: flex;
   gap: 14px;

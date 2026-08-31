@@ -7,13 +7,14 @@ const emptyAddr = { line1: '', line2: '', city: '', state: '', zip: '' }
 const cardById = Object.fromEntries(catalog.postcards.map((p) => [p.id, p]))
 
 function recipientSummary(r) {
-  if (!r) return ''
+  if (!r) return null
   if (r.type === 'self') return 'To your address'
   const a = r.address || {}
   return `To ${r.name} — ${a.city}, ${a.state}`
 }
 
 const cardCount = (items) => items.reduce((n, i) => n + (i.qty || 1), 0)
+const pendingCount = (items) => items.filter((i) => !i.recipient).length
 
 function QtyStepper({ value, onChange, disabled }) {
   return (
@@ -243,11 +244,17 @@ export default function Cart({ initialAddId, user, onCount }) {
                 <img className="acc__item-img" src={it.image} alt={it.title} />
                 <div className="acc__item-body">
                   <strong>{it.title}</strong>
-                  <span className="acc__muted">{recipientSummary(it.recipient)}</span>
+                  {it.recipient ? (
+                    <span className="acc__muted">{recipientSummary(it.recipient)}</span>
+                  ) : (
+                    <button className="acc__needs" onClick={() => setEditing(it)}>
+                      Set recipient &amp; message →
+                    </button>
+                  )}
                   {it.message && <span className="acc__msg">“{it.message}”</span>}
                   <span className="acc__item-actions">
                     <button className="acc__link" onClick={() => setEditing(it)}>
-                      Edit
+                      {it.recipient ? 'Edit' : 'Details'}
                     </button>
                     <button className="acc__link" onClick={() => remove(it.id)}>
                       Remove
@@ -259,8 +266,18 @@ export default function Cart({ initialAddId, user, onCount }) {
             ))}
           </ul>
 
+          {pendingCount(items) > 0 && (
+            <p className="acc__error">
+              {pendingCount(items)} card{pendingCount(items) > 1 ? 's' : ''} still need a recipient.
+            </p>
+          )}
+
           <div className="acc__actions">
-            <button className="acc__btn" onClick={placeOrder} disabled={busy}>
+            <button
+              className="acc__btn"
+              onClick={placeOrder}
+              disabled={busy || pendingCount(items) > 0}
+            >
               {busy ? 'Placing…' : `Place order · ${cardCount(items)} card${cardCount(items) > 1 ? 's' : ''}`}
             </button>
             <a className="acc__link" href="/#postcards">

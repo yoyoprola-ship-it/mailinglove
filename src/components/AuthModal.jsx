@@ -58,8 +58,13 @@ export default function AuthModal({ context, onClose, onSignedIn }) {
     setError('')
     try {
       await post('/api/auth/verify', { challengeId, code: code.trim() })
-      onSignedIn()
-      setStep('done')
+      if (isAdd) {
+        // App adds the pending postcard and closes the modal.
+        onSignedIn()
+      } else {
+        onSignedIn()
+        setStep('done')
+      }
     } catch (err) {
       setError(err.message)
     } finally {

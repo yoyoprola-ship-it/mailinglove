@@ -64,6 +64,13 @@ const paths = {
   ),
   arrow: <polyline points="9 18 15 12 9 6" />,
   check: <polyline points="20 6 9 17 4 12" />,
+  cart: (
+    <>
+      <circle cx="9" cy="21" r="1" />
+      <circle cx="19" cy="21" r="1" />
+      <path d="M2.5 3h2l2.6 12.4a2 2 0 0 0 2 1.6h8.7a2 2 0 0 0 2-1.6L23 7H6" />
+    </>
+  ),
 }
 
 export default function Icon({ name, size = 22 }) {
