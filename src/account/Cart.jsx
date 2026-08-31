@@ -154,6 +154,7 @@ export default function Cart({ initialAddId, user, onCount }) {
   }, [items, onCount])
 
   async function setQty(it, qty) {
+    setError('')
     try {
       const { items } = await api.put(`/api/cart/${it.id}`, { qty })
       setItems(items)
@@ -163,6 +164,7 @@ export default function Cart({ initialAddId, user, onCount }) {
   }
 
   async function remove(id) {
+    setError('')
     try {
       const { items } = await api.delete(`/api/cart/${id}`)
       setItems(items)
@@ -173,6 +175,7 @@ export default function Cart({ initialAddId, user, onCount }) {
 
   async function clearAll() {
     if (!confirm('Empty the whole cart?')) return
+    setError('')
     try {
       const { items } = await api.delete('/api/cart')
       setItems(items)
