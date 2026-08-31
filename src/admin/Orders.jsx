@@ -12,7 +12,7 @@ function addrLines(a) {
   return [a.line1, a.line2, `${a.city}, ${a.state} ${a.zip}`].filter(Boolean)
 }
 
-function OrderRow({ o, onStatus }) {
+function OrderRow({ o, onStatus, onOpenGallery }) {
   const [open, setOpen] = useState(false)
   const rec = o.recipient || o.items[0]?.recipient
   const cards = o.items.reduce((n, it) => n + (it.qty || 1), 0)
@@ -59,9 +59,20 @@ function OrderRow({ o, onStatus }) {
           <ul className="adm__order-items">
             {o.items.map((it, i) => (
               <li key={i} className="adm__order-item">
-                <img className="adm__order-thumb" src={it.image} alt={it.title} />
+                <button
+                  className="adm__order-thumbbtn"
+                  onClick={() => onOpenGallery?.(it.postcardId)}
+                  title="Open in the postcard library"
+                >
+                  <img className="adm__order-thumb" src={it.image} alt={it.title} />
+                </button>
                 <div>
-                  <strong>{it.title}</strong>{' '}
+                  <button
+                    className="adm__linklike"
+                    onClick={() => onOpenGallery?.(it.postcardId)}
+                  >
+                    {it.title}
+                  </button>{' '}
                   {(it.qty || 1) > 1 && <strong className="adm__qty-badge">×{it.qty}</strong>}{' '}
                   <span className="adm__muted">({it.category})</span>
                   {it.message && <div className="adm__msg">Note: “{it.message}”</div>}
@@ -75,7 +86,7 @@ function OrderRow({ o, onStatus }) {
   )
 }
 
-export default function Orders() {
+export default function Orders({ onOpenGallery }) {
   const [orders, setOrders] = useState(null)
   const [filter, setFilter] = useState('paid')
   const [error, setError] = useState('')
@@ -124,7 +135,10 @@ export default function Orders() {
       {!orders && !error && <p className="adm__muted">Loading…</p>}
       {orders && !orders.length && <p className="adm__muted">No orders here.</p>}
 
-      {orders && orders.map((o) => <OrderRow key={o.id} o={o} onStatus={setStatus} />)}
+      {orders &&
+        orders.map((o) => (
+          <OrderRow key={o.id} o={o} onStatus={setStatus} onOpenGallery={onOpenGallery} />
+        ))}
     </div>
   )
 }

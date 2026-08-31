@@ -47,6 +47,7 @@ import {
   validateCustomPostcard,
   generateCustomPostcard,
 } from './server/customPostcard.js'
+import { streamImage, adminCatalog, uploadHiRes, removeHiRes } from './server/assets.js'
 import {
   stripe,
   stripeConfigured,
@@ -169,6 +170,16 @@ const upload = multer({
   fileFilter(req, file, cb) {
     const ok = ['image/png', 'image/jpeg', 'image/webp'].includes(file.mimetype)
     cb(ok ? null : new Error('Unsupported image type — use PNG, JPEG, or WebP.'), ok)
+  },
+})
+
+// Hi-res print files the admin uploads — larger, and PDF allowed.
+const hiresUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 40 * 1024 * 1024 }, // 40 MB
+  fileFilter(req, file, cb) {
+    const ok = ['image/png', 'image/jpeg', 'image/webp', 'application/pdf'].includes(file.mimetype)
+    cb(ok ? null : new Error('Use JPEG, PNG, WebP, or PDF.'), ok)
   },
 })
 
@@ -388,6 +399,54 @@ app.get('/api/admin/stats', requireAdmin, async (req, res) => {
   } catch (err) {
     console.error('[admin] stats failed:', err?.message || err)
     res.status(500).json({ error: 'Could not load stats.' })
+  }
+})
+
+// --- admin: postcard image library -------------------------------
+
+app.get('/api/admin/catalog', requireAdmin, async (req, res) => {
+  try {
+    res.json(await adminCatalog())
+  } catch (err) {
+    console.error('[admin] catalog failed:', err?.message || err)
+    res.status(500).json({ error: 'Could not load the catalog.' })
+  }
+})
+
+app.post('/api/admin/catalog/:id/image', requireAdmin, (req, res) => {
+  hiresUpload.single('image')(req, res, async (uploadErr) => {
+    if (uploadErr) return res.status(400).json({ error: uploadErr.message })
+    if (!req.file) return res.status(400).json({ error: 'Attach a file.' })
+    try {
+      const r = await uploadHiRes(req.params.id, req.file.buffer, req.file.mimetype)
+      if (!r.ok) return res.status(400).json({ error: r.error })
+      console.log(`[admin] ${req.adminEmail} uploaded hi-res for ${req.params.id}`)
+      res.json({ hires: true })
+    } catch (err) {
+      console.error('[admin] hi-res upload failed:', err?.message || err)
+      res.status(500).json({ error: 'Upload failed.' })
+    }
+  })
+})
+
+app.delete('/api/admin/catalog/:id/image', requireAdmin, async (req, res) => {
+  try {
+    await removeHiRes(req.params.id)
+    res.json({ hires: false })
+  } catch (err) {
+    console.error('[admin] hi-res remove failed:', err?.message || err)
+    res.status(500).json({ error: 'Could not remove.' })
+  }
+})
+
+// Public: current best image for a postcard (uploaded hi-res, else the
+// static placeholder). Used by the admin gallery.
+app.get('/api/postcard-image/:id', async (req, res) => {
+  try {
+    await streamImage(req.params.id, res)
+  } catch (err) {
+    console.error('[assets] image route failed:', err?.message || err)
+    if (!res.headersSent) res.status(500).end()
   }
 })
 

@@ -3,12 +3,14 @@ import { api } from './api'
 import Login from './Login'
 import Dashboard from './Dashboard'
 import Orders from './Orders'
+import Gallery from './Gallery'
 import Settings from './Settings'
 import './admin.css'
 
 const TABS = [
   ['overview', 'Overview'],
   ['orders', 'Orders'],
+  ['gallery', 'Postcards'],
   ['settings', 'Settings'],
 ]
 
@@ -16,6 +18,7 @@ export default function AdminApp() {
   const [state, setState] = useState('loading') // loading | out | in
   const [email, setEmail] = useState('')
   const [tab, setTab] = useState('overview')
+  const [galleryFocus, setGalleryFocus] = useState(null)
 
   async function refresh() {
     try {
@@ -34,6 +37,11 @@ export default function AdminApp() {
   async function logout() {
     await api.post('/api/admin/logout').catch(() => {})
     setState('out')
+  }
+
+  function openGallery(postcardId) {
+    setGalleryFocus(postcardId)
+    setTab('gallery')
   }
 
   if (state === 'loading') {
@@ -69,7 +77,10 @@ export default function AdminApp() {
 
       <main className="adm__main">
         {tab === 'overview' && <Dashboard />}
-        {tab === 'orders' && <Orders />}
+        {tab === 'orders' && <Orders onOpenGallery={openGallery} />}
+        {tab === 'gallery' && (
+          <Gallery focusId={galleryFocus} onFocusHandled={() => setGalleryFocus(null)} />
+        )}
         {tab === 'settings' && <Settings />}
       </main>
     </div>

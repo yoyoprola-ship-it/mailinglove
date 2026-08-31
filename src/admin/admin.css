@@ -461,3 +461,96 @@ input.adm__input[type='checkbox'] {
   padding: 1px 7px;
   font-size: 0.8rem;
 }
+
+.adm__order-thumbbtn,
+.adm__linklike {
+  border: none;
+  background: none;
+  padding: 0;
+  cursor: pointer;
+  font: inherit;
+}
+
+.adm__linklike {
+  color: var(--rose-900);
+  font-weight: 700;
+  text-decoration: underline;
+  text-decoration-color: rgba(184, 53, 95, 0.35);
+}
+
+.adm__linklike:hover {
+  color: var(--rose);
+}
+
+/* postcard library */
+.adm__gallery {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 14px;
+  margin-top: 14px;
+}
+
+.adm__gcard {
+  border: 1px solid rgba(74, 22, 38, 0.12);
+  border-radius: 10px;
+  overflow: hidden;
+  background: #fff;
+}
+
+.adm__gcard.is-focus {
+  border-color: var(--rose);
+  box-shadow: 0 0 0 3px rgba(184, 53, 95, 0.25);
+}
+
+.adm__gimg {
+  width: 100%;
+  display: block;
+  background: var(--blush);
+  aspect-ratio: 5 / 7;
+  object-fit: contain;
+}
+
+.adm__gbody {
+  padding: 8px 9px 10px;
+}
+
+.adm__gtitle {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--rose-900);
+  line-height: 1.25;
+}
+
+.adm__gtag {
+  display: inline-block;
+  margin: 4px 0 8px;
+  font-size: 0.66rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: #eee;
+  color: #888;
+}
+
+.adm__gtag.is-hires {
+  background: #e4f4ea;
+  color: #2e7d5b;
+}
+
+.adm__gactions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.adm__gactions .adm__chip {
+  font-size: 0.72rem;
+  text-decoration: none;
+}
+
+.adm__chip--file {
+  position: relative;
+  overflow: hidden;
+}
