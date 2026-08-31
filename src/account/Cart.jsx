@@ -29,6 +29,92 @@ function QtyStepper({ value, onChange, min = 1 }) {
   )
 }
 
+function CartLine({ item, priceCents, currency, onQty, onRemove, onSaveNote }) {
+  const [open, setOpen] = useState(false)
+  const [draft, setDraft] = useState(item.note || '')
+
+  function done() {
+    if (draft.trim() !== (item.note || '')) onSaveNote(item, draft.trim())
+    setOpen(false)
+  }
+
+  return (
+    <li className="acc__item acc__item--note">
+      <img className="acc__item-img" src={item.image} alt={item.title} />
+      <div className="acc__item-body">
+        <div className="acc__item-head">
+          <strong>{item.title}</strong>
+          <QtyStepper value={item.qty || 1} min={0} onChange={(v) => onQty(item, v)} />
+        </div>
+
+        {priceCents > 0 && (
+          <span className="acc__muted acc__line-total">
+            {money((item.qty || 1) * priceCents, currency)}
+          </span>
+        )}
+
+        {open ? (
+          <div className="acc__note-edit">
+            <textarea
+              className="acc__input acc__textarea"
+              rows={2}
+              maxLength={300}
+              autoFocus
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              placeholder="Printed on the back of this card"
+            />
+            <div className="acc__note-actions">
+              <button type="button" className="acc__link" onClick={done}>
+                Done
+              </button>
+              {(item.note || draft) && (
+                <button
+                  type="button"
+                  className="acc__link"
+                  onClick={() => {
+                    setDraft('')
+                    if (item.note) onSaveNote(item, '')
+                    setOpen(false)
+                  }}
+                >
+                  Clear
+                </button>
+              )}
+            </div>
+          </div>
+        ) : item.note ? (
+          <button
+            type="button"
+            className="acc__note-toggle"
+            onClick={() => {
+              setDraft(item.note || '')
+              setOpen(true)
+            }}
+          >
+            📝 “{item.note}” · <span className="acc__link-inline">edit</span>
+          </button>
+        ) : (
+          <button
+            type="button"
+            className="acc__note-toggle"
+            onClick={() => {
+              setDraft('')
+              setOpen(true)
+            }}
+          >
+            + Add a personal note
+          </button>
+        )}
+
+        <button className="acc__link" onClick={() => onRemove(item.id)}>
+          Remove
+        </button>
+      </div>
+    </li>
+  )
+}
+
 function RecipientForm({ recipient, hasAccountAddress, onDone, onCancel }) {
   const [mode, setMode] = useState(recipient ? recipient.type : hasAccountAddress ? 'self' : 'other')
   const [name, setName] = useState(recipient?.type === 'other' ? recipient.name : '')
@@ -235,34 +321,15 @@ export default function Cart({ user, onCount }) {
 
           <ul className="acc__list">
             {items.map((it) => (
-              <li className="acc__item acc__item--note" key={it.id}>
-                <img className="acc__item-img" src={it.image} alt={it.title} />
-                <div className="acc__item-body">
-                  <div className="acc__item-head">
-                    <strong>{it.title}</strong>
-                    <QtyStepper value={it.qty || 1} min={0} onChange={(v) => setQty(it, v)} />
-                  </div>
-                  {price.priceCents > 0 && (
-                    <span className="acc__muted acc__line-total">
-                      {money((it.qty || 1) * price.priceCents, price.currency)}
-                    </span>
-                  )}
-                  <label className="acc__note-label">
-                    Your personal note <span className="acc__opt">(printed on the back)</span>
-                    <textarea
-                      className="acc__input acc__textarea"
-                      rows={2}
-                      maxLength={300}
-                      defaultValue={it.note || ''}
-                      onBlur={(e) => saveNote(it, e.target.value)}
-                      placeholder="Leave blank for no note"
-                    />
-                  </label>
-                  <button className="acc__link" onClick={() => remove(it.id)}>
-                    Remove
-                  </button>
-                </div>
-              </li>
+              <CartLine
+                key={it.id}
+                item={it}
+                priceCents={price.priceCents}
+                currency={price.currency}
+                onQty={setQty}
+                onRemove={remove}
+                onSaveNote={saveNote}
+              />
             ))}
           </ul>
 

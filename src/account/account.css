@@ -267,16 +267,38 @@
   gap: 12px;
 }
 
-.acc__note-label {
-  display: block;
-  font-size: 0.8rem;
-  font-weight: 600;
-  color: var(--rose-900);
+.acc__note-toggle {
+  align-self: flex-start;
+  border: none;
+  background: none;
+  padding: 0;
+  font-size: 0.82rem;
+  color: var(--rose);
+  cursor: pointer;
+  text-align: left;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.acc__note-label .acc__textarea {
-  margin-top: 4px;
-  font-weight: 400;
+.acc__link-inline {
+  text-decoration: underline;
+}
+
+.acc__note-edit {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.acc__note-actions {
+  display: flex;
+  gap: 14px;
+}
+
+.acc__note-actions .acc__link {
+  margin-top: 0;
 }
 
 .acc__ship {
