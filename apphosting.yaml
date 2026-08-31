@@ -18,6 +18,12 @@ env:
     availability:
       - RUNTIME
 
+  # Cloud Storage bucket for admin-uploaded hi-res postcard print files.
+  - variable: STORAGE_BUCKET
+    value: mailinglove-eb540-hires
+    availability:
+      - RUNTIME
+
   # --- OpenAI (image redesign) ---
   # Set with: firebase apphosting:secrets:set OPENAI_API_KEY
   - variable: OPENAI_API_KEY
