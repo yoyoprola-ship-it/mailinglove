@@ -10,6 +10,10 @@ const MAX_MESSAGE = 300
 export const ORDER_STATUSES = ['awaiting_payment', 'paid', 'printed', 'mailed', 'cancelled']
 
 const clip = (v, n) => (typeof v === 'string' ? v.trim().slice(0, n) : '')
+const money = (cents, ccy = 'usd') =>
+  new Intl.NumberFormat('en-US', { style: 'currency', currency: ccy }).format((cents || 0) / 100)
+const shipLine = (a) =>
+  a ? [a.line1, a.line2, `${a.city}, ${a.state} ${a.zip}`].filter(Boolean).join(', ') : ''
 const clampQty = (v) => {
   const n = Math.trunc(Number(v))
   return Number.isFinite(n) ? Math.min(MAX_QTY, Math.max(1, n)) : 1
@@ -206,7 +210,39 @@ export async function markOrderPaid(orderId, { provider, ref, amountCents }) {
     .collection('users')
     .doc(order.userEmail)
     .set({ cart: [], updatedAt: Date.now() }, { merge: true })
+
+  sendReceipt({ ...order, ...patch })
+
   return { ok: true, order: { ...order, ...patch } }
+}
+
+// Fire-and-forget payment receipt to the buyer (first time an order is paid).
+function sendReceipt(order) {
+  if (!emailConfigured() || !order.userEmail) return
+  const cards = (order.items || []).reduce((n, i) => n + (i.qty || 1), 0)
+  const designs = (order.items || [])
+    .map(
+      (i) =>
+        `  • ${i.title}${(i.qty || 1) > 1 ? ` ×${i.qty}` : ''}${i.message ? ` — “${i.message}”` : ''}`
+    )
+    .join('\n')
+  const rec = order.recipient || order.items?.[0]?.recipient
+  const oid = String(order.id).slice(0, 8)
+
+  sendEmail(
+    order.userEmail,
+    `Your MailingLove receipt — Order #${oid}`,
+    `Hi${order.userName ? ' ' + order.userName : ''},\n\n` +
+      `Thanks — your payment went through. Here's your receipt.\n\n` +
+      `Order #${oid}\n` +
+      `Paid: ${money(order.amountCents, order.currency)} via ${order.paymentProvider || 'card'}\n` +
+      `${cards} card${cards === 1 ? '' : 's'} printed & mailed to:\n` +
+      `${rec?.name || ''}\n${shipLine(rec?.address)}\n\n` +
+      `Designs:\n${designs}\n\n` +
+      `Delivery: about 2–5 business days after your cards are handed to USPS ` +
+      `(we mail them within ~1–2 business days). We'll email you when they're printed and when they ship.\n\n` +
+      `— MailingLove`
+  ).catch((err) => console.error('[order] receipt email failed:', err?.message || err))
 }
 
 export async function listOrders(email) {
