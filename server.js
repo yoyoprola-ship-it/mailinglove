@@ -6,7 +6,7 @@ import OpenAI, { toFile } from 'openai'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-import { getConfig, invalidateConfigCache, pickValid, CONFIG_FIELDS, CONFIG_DEFAULTS } from './server/config.js'
+import { getConfig, invalidateConfigCache, pickValid, CONFIG_SCHEMA, CONFIG_DEFAULTS } from './server/config.js'
 import { getDb } from './server/firebaseAdmin.js'
 import { recordVisit, getStats } from './server/analytics.js'
 import {
@@ -119,9 +119,17 @@ const upload = multer({
   },
 })
 
-const generateLimiter = rateLimit({
+const photoLimiter = rateLimit({
   windowMs: RATE_WINDOW_MS,
-  limit: async () => (await getConfig()).rateLimitMax, // admin-tunable
+  limit: async () => (await getConfig()).photo.rateLimitMax,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many requests — try again in a few minutes.' },
+})
+
+const postcardLimiter = rateLimit({
+  windowMs: RATE_WINDOW_MS,
+  limit: async () => (await getConfig()).postcard.rateLimitMax,
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: 'Too many requests — try again in a few minutes.' },
@@ -150,15 +158,16 @@ app.get('/api/site-config', async (req, res) => {
   const cfg = await getConfig()
   res.setHeader('Cache-Control', 'no-store')
   res.json({
-    photoRedesignEnabled: cfg.photoRedesignEnabled,
-    postcardDesignEnabled: cfg.postcardDesignEnabled,
-    postcardsPerPage: cfg.postcardsPerPage,
+    photoRedesignEnabled: cfg.photo.enabled,
+    postcardDesignEnabled: cfg.postcard.enabled,
+    postcardsPerPage: cfg.postcard.perPage,
+    postcardSizes: cfg.postcard.sizes.map((s) => ({ id: s.id, label: s.label })),
   })
 })
 
 // --- image redesign -------------------------------------------------------
 
-app.post('/api/generate', generateLimiter, (req, res) => {
+app.post('/api/generate', photoLimiter, (req, res) => {
   upload.single('photo')(req, res, async (uploadErr) => {
     if (uploadErr) {
       return res.status(400).json({ error: uploadErr.message })
@@ -178,8 +187,8 @@ app.post('/api/generate', generateLimiter, (req, res) => {
         .json({ error: 'Image generation is not configured yet. Set OPENAI_API_KEY.' })
     }
 
-    const cfg = await getConfig()
-    if (!cfg.photoRedesignEnabled) {
+    const { photo } = await getConfig()
+    if (!photo.enabled) {
       return res.status(503).json({ error: 'Photo redesign is paused right now.' })
     }
 
@@ -188,12 +197,12 @@ app.post('/api/generate', generateLimiter, (req, res) => {
         type: req.file.mimetype,
       })
       const result = await runEdit({
-        model: cfg.imageModel,
+        model: photo.model,
         image,
         prompt,
-        size: CATEGORY_SIZE[category] || cfg.imageSize,
-        quality: cfg.imageQuality,
-        ...(cfg.inputFidelity ? { input_fidelity: cfg.inputFidelity } : {}),
+        size: CATEGORY_SIZE[category] || photo.size,
+        quality: photo.quality,
+        ...(photo.inputFidelity ? { input_fidelity: photo.inputFidelity } : {}),
       })
 
       const b64 = result.data?.[0]?.b64_json
@@ -202,8 +211,8 @@ app.post('/api/generate', generateLimiter, (req, res) => {
       }
 
       console.log(
-        `[generate] category=${category} model=${cfg.imageModel} quality=${cfg.imageQuality} ` +
-          `fidelity=${cfg.inputFidelity || 'off'} bytes_in=${req.file.size} ` +
+        `[generate] category=${category} model=${photo.model} quality=${photo.quality} ` +
+          `fidelity=${photo.inputFidelity || 'off'} bytes_in=${req.file.size} ` +
           `usage=${JSON.stringify(result.usage || {})}`
       )
 
@@ -218,8 +227,9 @@ app.post('/api/generate', generateLimiter, (req, res) => {
 
 // --- custom postcard (text-to-image) ----------------------------------
 
-app.post('/api/postcard-generate', generateLimiter, async (req, res) => {
-  const { errors, value } = validateCustomPostcard(req.body || {})
+app.post('/api/postcard-generate', postcardLimiter, async (req, res) => {
+  const { postcard } = await getConfig()
+  const { errors, value } = validateCustomPostcard(req.body || {}, postcard.sizes)
   if (errors.length) return res.status(400).json({ error: errors[0], errors })
 
   if (!openai) {
@@ -227,18 +237,16 @@ app.post('/api/postcard-generate', generateLimiter, async (req, res) => {
       .status(503)
       .json({ error: 'Image generation is not configured yet. Set OPENAI_API_KEY.' })
   }
-
-  const cfg = await getConfig()
-  if (!cfg.postcardDesignEnabled) {
+  if (!postcard.enabled) {
     return res.status(503).json({ error: 'Postcard generation is paused right now.' })
   }
 
   try {
-    const { b64, usage } = await generateCustomPostcard(openai, cfg, value)
+    const { b64, usage } = await generateCustomPostcard(openai, postcard, value)
     if (!b64) return res.status(502).json({ error: 'The model returned no image. Try again.' })
     console.log(
       `[postcard-generate] type=${value.typeLabel} sub=${value.subLabel || '-'} ` +
-        `size=${value.sizeApi} model=${cfg.imageModel} quality=${cfg.imageQuality} ` +
+        `size=${value.sizeApi} model=${postcard.model} quality=${postcard.quality} ` +
         `usage=${JSON.stringify(usage)}`
     )
     res.json({ image: imageDataUrl(b64) })
@@ -302,7 +310,7 @@ app.get('/api/admin/me', requireAdmin, (req, res) => {
 // --- admin: config & stats -------------------------------------------
 
 app.get('/api/admin/config', requireAdmin, async (req, res) => {
-  res.json({ config: await getConfig(), fields: CONFIG_FIELDS, defaults: CONFIG_DEFAULTS })
+  res.json({ config: await getConfig(), schema: CONFIG_SCHEMA, defaults: CONFIG_DEFAULTS })
 })
 
 app.put('/api/admin/config', requireAdmin, async (req, res) => {

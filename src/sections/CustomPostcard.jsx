@@ -1,19 +1,20 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import Reveal from '../components/Reveal'
 import Icon from '../components/Icon'
 import catalog from '../data/postcards.json'
 
-const SIZES = [
+const FALLBACK_SIZES = [
   { id: '4x6', label: '4×6 in — vertical' },
   { id: '6x4', label: '6×4 in — horizontal' },
   { id: '4x4', label: '4×4 in — square' },
 ]
 
-export default function CustomPostcard() {
+export default function CustomPostcard({ sizes }) {
+  const SIZES = useMemo(() => (sizes && sizes.length ? sizes : FALLBACK_SIZES), [sizes])
   const [name, setName] = useState('')
   const [category, setCategory] = useState(catalog.types[0].id)
   const [subcategory, setSubcategory] = useState('')
-  const [size, setSize] = useState('4x6')
+  const [size, setSize] = useState(SIZES[0].id)
   const [message, setMessage] = useState('')
   const [background, setBackground] = useState('')
   const [status, setStatus] = useState('idle') // idle | working | done | error
@@ -24,6 +25,11 @@ export default function CustomPostcard() {
     () => catalog.types.find((t) => t.id === category)?.subcategories || [],
     [category]
   )
+
+  // Keep the selected size valid if the admin's list loads/changes.
+  useEffect(() => {
+    if (!SIZES.some((s) => s.id === size)) setSize(SIZES[0].id)
+  }, [SIZES, size])
 
   async function handleSubmit(e) {
     e.preventDefault()

@@ -104,7 +104,39 @@
 }
 
 .adm__panel--narrow {
-  max-width: 520px;
+  max-width: 560px;
+}
+
+.adm__panels {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.adm__hint--top {
+  margin: -8px 0 18px;
+}
+
+.adm__sizes {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.adm__size-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.adm__size-row .adm__input--sm {
+  width: 92px;
+  flex: none;
+}
+
+.adm__size-row .adm__input {
+  flex: 1;
 }
 
 .adm__h2 {

@@ -1,50 +1,67 @@
 import { useEffect, useState } from 'react'
 import { api } from './api'
 
-const LABELS = {
-  photoRedesignEnabled: 'Photo redesign — "Try it now" + old photos',
-  postcardDesignEnabled: 'Custom postcard generator',
-  imageModel: 'OpenAI image model',
-  imageQuality: 'Image quality',
-  imageSize: 'Image size (occasions)',
-  inputFidelity: 'Input fidelity (face preservation)',
-  rateLimitMax: 'Rate limit — requests per window',
-  rateLimitWindowMin: 'Rate limit — window (minutes)',
-  postcardsPerPage: 'Postcards per page (gallery)',
-}
-
-const HINTS = {
-  photoRedesignEnabled:
-    'Off = /api/generate is disabled AND the "Try it now" + "old photos" sections are hidden. For the upload-a-photo redesign.',
-  postcardDesignEnabled:
-    'Off = /api/postcard-generate is disabled AND the "Generate a personalized postcard" section is hidden. For the name + category generator.',
-  imageModel: 'gpt-image-1.5 / gpt-image-1 keep faces faithful; -mini is cheapest but drifts.',
-  inputFidelity: '"high" preserves the uploaded face; "off" gives the model free rein.',
-  rateLimitWindowMin: 'Takes effect after the next deploy/restart.',
-  postcardsPerPage: 'How many designs show per page in the public gallery (4–100).',
-}
-
 const optLabel = (v) => (v === '' ? 'off (disabled)' : v)
 
-export default function Settings() {
-  const [fields, setFields] = useState(null)
-  const [form, setForm] = useState({})
+function SizesEditor({ value, apiValues, onChange }) {
+  const rows = Array.isArray(value) ? value : []
+  const setRow = (i, patch) =>
+    onChange(rows.map((r, j) => (j === i ? { ...r, ...patch } : r)))
+  const remove = (i) => onChange(rows.filter((_, j) => j !== i))
+  const add = () =>
+    onChange([...rows, { id: '', label: '', api: apiValues[0] }])
+
+  return (
+    <div className="adm__sizes">
+      {rows.map((r, i) => (
+        <div className="adm__size-row" key={i}>
+          <input
+            className="adm__input adm__input--sm"
+            placeholder="id"
+            value={r.id}
+            onChange={(e) => setRow(i, { id: e.target.value })}
+          />
+          <input
+            className="adm__input"
+            placeholder="Label shown to visitors"
+            value={r.label}
+            onChange={(e) => setRow(i, { label: e.target.value })}
+          />
+          <select
+            className="adm__input adm__input--sm"
+            value={r.api}
+            onChange={(e) => setRow(i, { api: e.target.value })}
+          >
+            {apiValues.map((a) => (
+              <option key={a} value={a}>
+                {a}
+              </option>
+            ))}
+          </select>
+          <button type="button" className="adm__chip" onClick={() => remove(i)}>
+            ✕
+          </button>
+        </div>
+      ))}
+      <button type="button" className="adm__chip" onClick={add}>
+        + Add format
+      </button>
+      <p className="adm__hint">
+        id: short slug (a–z, 0–9, -). api: the gpt-image output size. Order here is
+        the order shown on the site.
+      </p>
+    </div>
+  )
+}
+
+function Panel({ id, group, config, onSaved }) {
+  const [form, setForm] = useState(config)
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState('')
   const [error, setError] = useState('')
 
-  useEffect(() => {
-    api
-      .get('/api/admin/config')
-      .then(({ config, fields }) => {
-        setFields(fields)
-        setForm(config)
-      })
-      .catch((e) => setError(e.message))
-  }, [])
-
-  function set(key, value) {
-    setForm((f) => ({ ...f, [key]: value }))
+  const set = (key, val) => {
+    setForm((f) => ({ ...f, [key]: val }))
     setMsg('')
   }
 
@@ -54,9 +71,10 @@ export default function Settings() {
     setError('')
     setMsg('')
     try {
-      const { config } = await api.put('/api/admin/config', form)
-      setForm(config)
-      setMsg('Saved. Live within ~30 seconds.')
+      const { config: fresh } = await api.put('/api/admin/config', { [id]: form })
+      setForm(fresh[id])
+      onSaved(fresh)
+      setMsg('Saved. Live within ~30 s.')
     } catch (err) {
       setError(err.message)
     } finally {
@@ -64,22 +82,20 @@ export default function Settings() {
     }
   }
 
-  if (error && !fields) return <p className="adm__error">{error}</p>
-  if (!fields) return <p className="adm__muted">Loading…</p>
-
   return (
     <form className="adm__panel adm__panel--narrow" onSubmit={save}>
-      <h2 className="adm__h2">Image generation</h2>
+      <h2 className="adm__h2">{group.label}</h2>
+      {group.hint && <p className="adm__hint adm__hint--top">{group.hint}</p>}
 
-      {Object.entries(fields).map(([key, rule]) => (
+      {Object.entries(group.fields).map(([key, rule]) => (
         <div className="adm__field" key={key}>
-          <label className="adm__label" htmlFor={`f-${key}`}>
-            {LABELS[key] || key}
+          <label className="adm__label" htmlFor={`${id}-${key}`}>
+            {rule.label || key}
           </label>
 
           {rule.type === 'bool' && (
             <input
-              id={`f-${key}`}
+              id={`${id}-${key}`}
               type="checkbox"
               checked={Boolean(form[key])}
               onChange={(e) => set(key, e.target.checked)}
@@ -88,7 +104,7 @@ export default function Settings() {
 
           {rule.type === 'enum' && (
             <select
-              id={`f-${key}`}
+              id={`${id}-${key}`}
               className="adm__input"
               value={form[key] ?? ''}
               onChange={(e) => set(key, e.target.value)}
@@ -103,7 +119,7 @@ export default function Settings() {
 
           {rule.type === 'int' && (
             <input
-              id={`f-${key}`}
+              id={`${id}-${key}`}
               className="adm__input"
               type="number"
               min={rule.min}
@@ -113,15 +129,54 @@ export default function Settings() {
             />
           )}
 
-          {HINTS[key] && <p className="adm__hint">{HINTS[key]}</p>}
+          {rule.type === 'sizes' && (
+            <SizesEditor
+              value={form[key]}
+              apiValues={rule.apiValues}
+              onChange={(v) => set(key, v)}
+            />
+          )}
         </div>
       ))}
 
       <button className="adm__btn" type="submit" disabled={busy}>
-        {busy ? 'Saving…' : 'Save changes'}
+        {busy ? 'Saving…' : `Save ${group.label.toLowerCase()}`}
       </button>
       {msg && <p className="adm__ok">{msg}</p>}
       {error && <p className="adm__error">{error}</p>}
     </form>
+  )
+}
+
+export default function Settings() {
+  const [schema, setSchema] = useState(null)
+  const [config, setConfig] = useState(null)
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    api
+      .get('/api/admin/config')
+      .then(({ config, schema }) => {
+        setSchema(schema)
+        setConfig(config)
+      })
+      .catch((e) => setError(e.message))
+  }, [])
+
+  if (error && !schema) return <p className="adm__error">{error}</p>
+  if (!schema) return <p className="adm__muted">Loading…</p>
+
+  return (
+    <div className="adm__panels">
+      {Object.entries(schema).map(([id, group]) => (
+        <Panel
+          key={id}
+          id={id}
+          group={group}
+          config={config[id]}
+          onSaved={setConfig}
+        />
+      ))}
+    </div>
   )
 }

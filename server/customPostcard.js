@@ -5,13 +5,6 @@ import { catalog } from './catalog.js'
 // assemble a controlled prompt and call images.generate — no user free-form
 // prompt reaches the model verbatim, everything is sanitized and length-capped.
 
-// gpt-image only supports these output ratios. All three fit a #10 envelope.
-export const POSTCARD_SIZES = {
-  '4x6': { label: '4×6 in — vertical', api: '1024x1536' },
-  '6x4': { label: '6×4 in — horizontal', api: '1536x1024' },
-  '4x4': { label: '4×4 in — square', api: '1024x1024' },
-}
-
 const LIMITS = { name: 60, message: 250, background: 160 }
 
 // Keep letters (incl. accents), digits, spaces and mild punctuation. Drop
@@ -28,15 +21,15 @@ function clean(v, max) {
 
 const typeById = new Map(catalog.types.map((t) => [t.id, t]))
 
-export function validateCustomPostcard(input = {}) {
+// `allowedSizes` is the admin-configured list: [{ id, label, api }, ...].
+export function validateCustomPostcard(input = {}, allowedSizes = []) {
   const errors = []
   const name = clean(input.name, LIMITS.name)
   const message = clean(input.message, LIMITS.message)
   const background = clean(input.background, LIMITS.background)
 
   const type = typeById.get(String(input.category || ''))
-  const sizeKey = String(input.size || '')
-  const size = POSTCARD_SIZES[sizeKey]
+  const size = allowedSizes.find((s) => s.id === String(input.size || '')) || null
 
   let sub = null
   if (type && input.subcategory) {
@@ -72,12 +65,12 @@ export function buildPostcardPrompt({ name, typeLabel, subLabel, message, backgr
   return p
 }
 
-export async function generateCustomPostcard(openai, cfg, value) {
+export async function generateCustomPostcard(openai, postcardCfg, value) {
   const result = await openai.images.generate({
-    model: cfg.imageModel,
+    model: postcardCfg.model,
     prompt: buildPostcardPrompt(value),
     size: value.sizeApi,
-    quality: cfg.imageQuality,
+    quality: postcardCfg.quality,
   })
   const b64 = result.data?.[0]?.b64_json
   return { b64, usage: result.usage || {} }

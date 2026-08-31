@@ -17,14 +17,16 @@ the redesigned image as a data URL. Prompts are fixed templates per category
 
 - Set `OPENAI_API_KEY` (see `.env.example`). Without it the endpoint returns
   503 and the rest of the site works normally.
-- The model, quality, size, `input_fidelity`, the per-IP rate limit, and two
-  independent on/off switches (`photoRedesignEnabled` for this + the old-photo
-  section, `postcardDesignEnabled` for the custom-postcard generator) are
-  **runtime config** edited in the admin (Firestore `config/app`), with the
-  `OPENAI_IMAGE_*` env vars as the defaults. Env
-  default model is `gpt-image-1.5` (keeps faces faithful, supports
-  `input_fidelity`); `runEdit()` drops `input_fidelity` and retries if a
-  model rejects it.
+- **Runtime config** ([server/config.js](server/config.js), Firestore
+  `config/app`) has two fully independent groups, each its own admin panel:
+  - **`photo`** — this + the old-photo section: `enabled`, `model`,
+    `quality`, `size`, `inputFidelity`, `rateLimitMax`.
+  - **`postcard`** — the custom-postcard generator + ready-made gallery:
+    `enabled`, `model`, `quality`, `rateLimitMax`, `perPage`, and `sizes`
+    (an editable list of `{ id, label, api }` formats the generator offers).
+  `OPENAI_IMAGE_*` env vars seed the defaults; `getConfig()` migrates older
+  flat/`generateEnabled` docs onto this shape. `runEdit()` drops
+  `input_fidelity` and retries if a model rejects it.
 - Occasion prompts change **only the background** — the people are locked.
   `modernize`/`restore` do touch faces (deblur, reconstruct damage) by design.
 - 10 MB max upload; PNG/JPEG/WebP.

@@ -1,38 +1,166 @@
 import { getDb } from './firebaseAdmin.js'
 
 // Runtime config = env defaults, overridden by the Firestore doc config/app
-// that the admin panel edits. Cached briefly so /api/generate doesn't read
-// Firestore on every request.
+// that the admin panel edits. Two fully independent groups — `photo` (the
+// upload-a-photo redesign) and `postcard` (the name+category generator) —
+// each with its own model / quality / rate limit. Cached briefly.
+
+const MODELS = ['gpt-image-1-mini', 'gpt-image-1', 'gpt-image-1.5', 'gpt-image-2']
+const QUALITIES = ['low', 'medium', 'high', 'auto']
+const API_SIZES = ['1024x1024', '1024x1536', '1536x1024', 'auto']
+const FIDELITY = ['high', 'low', '']
+
+const envModel = process.env.OPENAI_IMAGE_MODEL || 'gpt-image-1.5'
+const envQuality = process.env.OPENAI_IMAGE_QUALITY || 'medium'
+const envSize = process.env.OPENAI_IMAGE_SIZE || '1024x1536'
+const envFidelity = process.env.OPENAI_IMAGE_INPUT_FIDELITY ?? 'high'
+
+const DEFAULT_POSTCARD_SIZES = [
+  { id: '4x6', label: '4×6 in — vertical', api: '1024x1536' },
+  { id: '6x4', label: '6×4 in — horizontal', api: '1536x1024' },
+  { id: '4x4', label: '4×4 in — square', api: '1024x1024' },
+]
 
 const DEFAULTS = {
-  photoRedesignEnabled: true, // "Try it now" + "old photos" sections + /api/generate
-  postcardDesignEnabled: true, // custom postcard generator + /api/postcard-generate
-  imageModel: process.env.OPENAI_IMAGE_MODEL || 'gpt-image-1.5',
-  imageQuality: process.env.OPENAI_IMAGE_QUALITY || 'medium',
-  imageSize: process.env.OPENAI_IMAGE_SIZE || '1024x1536',
-  inputFidelity: process.env.OPENAI_IMAGE_INPUT_FIDELITY ?? 'high',
-  rateLimitMax: 5,
-  rateLimitWindowMin: 15,
-  postcardsPerPage: 25,
+  photo: {
+    enabled: true,
+    model: envModel,
+    quality: envQuality,
+    size: envSize,
+    inputFidelity: envFidelity,
+    rateLimitMax: 5,
+  },
+  postcard: {
+    enabled: true,
+    model: envModel,
+    quality: envQuality,
+    rateLimitMax: 5,
+    perPage: 25, // ready-made gallery page size
+    sizes: DEFAULT_POSTCARD_SIZES,
+  },
 }
 
-// What the admin form is allowed to set, with validation.
-export const CONFIG_FIELDS = {
-  photoRedesignEnabled: { type: 'bool' },
-  postcardDesignEnabled: { type: 'bool' },
-  imageModel: {
-    type: 'enum',
-    values: ['gpt-image-1-mini', 'gpt-image-1', 'gpt-image-1.5', 'gpt-image-2'],
+// Drives the admin form and validation. `general`-less: every field lives
+// under one of the two panels.
+export const CONFIG_SCHEMA = {
+  photo: {
+    label: 'Photo redesign',
+    hint: 'The upload-a-photo "Try it now" + "old photos" sections and /api/generate.',
+    fields: {
+      enabled: { type: 'bool', label: 'Section enabled' },
+      model: { type: 'enum', values: MODELS, label: 'OpenAI image model' },
+      quality: { type: 'enum', values: QUALITIES, label: 'Image quality' },
+      size: { type: 'enum', values: API_SIZES, label: 'Output size (occasions)' },
+      inputFidelity: { type: 'enum', values: FIDELITY, label: 'Input fidelity (face preservation)' },
+      rateLimitMax: { type: 'int', min: 1, max: 100, label: 'Rate limit — requests / 15 min per IP' },
+    },
   },
-  imageQuality: { type: 'enum', values: ['low', 'medium', 'high', 'auto'] },
-  imageSize: {
-    type: 'enum',
-    values: ['1024x1024', '1024x1536', '1536x1024', 'auto'],
+  postcard: {
+    label: 'Postcards',
+    hint: 'The "Generate a personalized postcard" section, /api/postcard-generate, and the ready-made gallery.',
+    fields: {
+      enabled: { type: 'bool', label: 'Generator section enabled' },
+      model: { type: 'enum', values: MODELS, label: 'OpenAI image model' },
+      quality: { type: 'enum', values: QUALITIES, label: 'Image quality' },
+      rateLimitMax: { type: 'int', min: 1, max: 100, label: 'Rate limit — requests / 15 min per IP' },
+      perPage: { type: 'int', min: 4, max: 100, label: 'Ready-made gallery — designs per page' },
+      sizes: { type: 'sizes', apiValues: API_SIZES, label: 'Selectable formats (add more as needed)' },
+    },
   },
-  inputFidelity: { type: 'enum', values: ['high', 'low', ''] },
-  rateLimitMax: { type: 'int', min: 1, max: 100 },
-  rateLimitWindowMin: { type: 'int', min: 1, max: 1440 },
-  postcardsPerPage: { type: 'int', min: 4, max: 100 },
+}
+
+// --- validators -------------------------------------------------------
+
+const boolv = (v) => (typeof v === 'boolean' ? v : undefined)
+const enumv = (v, values) => (values.includes(v) ? v : undefined)
+const intv = (v, min, max) => {
+  const n = Math.trunc(Number(v))
+  return Number.isFinite(n) && n >= min && n <= max ? n : undefined
+}
+const slug = (v) => (typeof v === 'string' && /^[a-z0-9-]{1,20}$/.test(v.trim()) ? v.trim() : null)
+const str = (v, max) => (typeof v === 'string' && v.trim() ? v.trim().slice(0, max) : null)
+
+export function validSizes(arr) {
+  if (!Array.isArray(arr) || !arr.length || arr.length > 12) return null
+  const out = []
+  const seen = new Set()
+  for (const it of arr) {
+    const id = slug(it?.id)
+    const label = str(it?.label, 40)
+    const api = enumv(it?.api, API_SIZES)
+    if (!id || !label || !api || seen.has(id)) return null
+    seen.add(id)
+    out.push({ id, label, api })
+  }
+  return out
+}
+
+function validateField(rule, v) {
+  if (rule.type === 'bool') return boolv(v)
+  if (rule.type === 'enum') return enumv(v, rule.values)
+  if (rule.type === 'int') return intv(v, rule.min, rule.max)
+  if (rule.type === 'sizes') return validSizes(v) || undefined
+  return undefined
+}
+
+// Coerce + validate an incoming partial config. Unknown keys / groups and
+// bad values are dropped; only valid values survive.
+export function pickValid(input = {}) {
+  const out = {}
+  for (const [group, { fields }] of Object.entries(CONFIG_SCHEMA)) {
+    const src = input[group]
+    if (!src || typeof src !== 'object') continue
+    const g = {}
+    for (const [key, rule] of Object.entries(fields)) {
+      if (!(key in src)) continue
+      const val = validateField(rule, src[key])
+      if (val !== undefined) g[key] = val
+    }
+    if (Object.keys(g).length) out[group] = g
+  }
+  return out
+}
+
+// --- load + migrate -------------------------------------------------
+
+// Map a stored doc (any generation of the schema) onto the current shape.
+function migrate(s = {}) {
+  const legacy = boolv(s.generateEnabled) // the original single toggle
+  const p = s.photo || {}
+  const pc = s.postcard || {}
+  const pick = (...vals) => vals.find((v) => v !== undefined && v !== null)
+
+  return {
+    photo: {
+      enabled: pick(boolv(p.enabled), boolv(s.photoRedesignEnabled), legacy, DEFAULTS.photo.enabled),
+      model: pick(enumv(p.model, MODELS), enumv(s.imageModel, MODELS), DEFAULTS.photo.model),
+      quality: pick(enumv(p.quality, QUALITIES), enumv(s.imageQuality, QUALITIES), DEFAULTS.photo.quality),
+      size: pick(enumv(p.size, API_SIZES), enumv(s.imageSize, API_SIZES), DEFAULTS.photo.size),
+      inputFidelity: pick(
+        enumv(p.inputFidelity, FIDELITY),
+        enumv(s.inputFidelity, FIDELITY),
+        DEFAULTS.photo.inputFidelity
+      ),
+      rateLimitMax: pick(intv(p.rateLimitMax, 1, 100), intv(s.rateLimitMax, 1, 100), DEFAULTS.photo.rateLimitMax),
+    },
+    postcard: {
+      enabled: pick(
+        boolv(pc.enabled),
+        boolv(s.postcardDesignEnabled),
+        legacy,
+        DEFAULTS.postcard.enabled
+      ),
+      model: pick(enumv(pc.model, MODELS), enumv(s.imageModel, MODELS), DEFAULTS.postcard.model),
+      quality: pick(enumv(pc.quality, QUALITIES), enumv(s.imageQuality, QUALITIES), DEFAULTS.postcard.quality),
+      rateLimitMax: pick(
+        intv(pc.rateLimitMax, 1, 100),
+        intv(s.rateLimitMax, 1, 100),
+        DEFAULTS.postcard.rateLimitMax
+      ),
+      perPage: pick(intv(pc.perPage, 4, 100), intv(s.postcardsPerPage, 4, 100), DEFAULTS.postcard.perPage),
+      sizes: validSizes(pc.sizes) || DEFAULTS.postcard.sizes,
+    },
+  }
 }
 
 let cache = null
@@ -51,37 +179,13 @@ export async function getConfig() {
       console.warn('[config] read failed, using defaults:', err?.message || err)
     }
   }
-  const valid = pickValid(stored)
-  // Legacy: a single generateEnabled toggle became two. Honor an old stored
-  // value for whichever new flag hasn't been set explicitly yet.
-  if (typeof stored.generateEnabled === 'boolean') {
-    if (valid.photoRedesignEnabled === undefined) valid.photoRedesignEnabled = stored.generateEnabled
-    if (valid.postcardDesignEnabled === undefined) valid.postcardDesignEnabled = stored.generateEnabled
-  }
-  cache = { ...DEFAULTS, ...valid }
+  cache = migrate(stored)
   cacheAt = Date.now()
   return cache
 }
 
 export function invalidateConfigCache() {
   cache = null
-}
-
-// Coerce + validate an incoming partial config (from the admin form or the
-// stored doc). Unknown keys and bad values are dropped.
-export function pickValid(input) {
-  const out = {}
-  for (const [key, rule] of Object.entries(CONFIG_FIELDS)) {
-    if (!(key in input)) continue
-    const v = input[key]
-    if (rule.type === 'bool' && typeof v === 'boolean') out[key] = v
-    else if (rule.type === 'enum' && rule.values.includes(v)) out[key] = v
-    else if (rule.type === 'int') {
-      const n = Math.trunc(Number(v))
-      if (Number.isFinite(n) && n >= rule.min && n <= rule.max) out[key] = n
-    }
-  }
-  return out
 }
 
 export { DEFAULTS as CONFIG_DEFAULTS }

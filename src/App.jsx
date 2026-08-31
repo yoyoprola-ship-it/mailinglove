@@ -19,6 +19,7 @@ export default function App() {
   const [photoEnabled, setPhotoEnabled] = useState(null)
   const [postcardEnabled, setPostcardEnabled] = useState(null)
   const [perPage, setPerPage] = useState(25)
+  const [postcardSizes, setPostcardSizes] = useState(null)
   const [pcFilter, setPcFilter] = useState({ type: 'birthday', sub: null })
   const [signedIn, setSignedIn] = useState(false)
   const [authCtx, setAuthCtx] = useState(null) // null | {mode:'account'} | {mode:'add',postcard}
@@ -30,6 +31,7 @@ export default function App() {
         setPhotoEnabled(Boolean(c.photoRedesignEnabled))
         setPostcardEnabled(Boolean(c.postcardDesignEnabled))
         if (Number.isFinite(c.postcardsPerPage)) setPerPage(c.postcardsPerPage)
+        if (Array.isArray(c.postcardSizes) && c.postcardSizes.length) setPostcardSizes(c.postcardSizes)
       })
       .catch(() => {
         setPhotoEnabled(true)
@@ -66,7 +68,7 @@ export default function App() {
         onAdd={addPostcard}
         perPage={perPage}
       />
-      {postcardEnabled && <CustomPostcard />}
+      {postcardEnabled && <CustomPostcard sizes={postcardSizes} />}
       <Hero />
       <Categories />
       <HowItWorks />
