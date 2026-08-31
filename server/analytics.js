@@ -35,15 +35,18 @@ export async function getStats() {
   const db = getDb()
   if (!db) return { available: false }
 
+  // Day docs are keyed YYYY-MM-DD, so a >= filter on the document id gives
+  // the last ~30 days using the automatic ascending __name__ index — no
+  // composite index to create.
+  const since = dayKey(new Date(Date.now() - 30 * 86_400_000))
   const daysSnap = await db
     .collection('analytics')
-    .orderBy(FieldPath.documentId(), 'desc')
-    .limit(30)
+    .where(FieldPath.documentId(), '>=', since)
     .get()
 
   const days = daysSnap.docs
     .map((d) => ({ day: d.id, views: d.data().views || 0, uniques: d.data().uniques || 0 }))
-    .reverse()
+    .sort((a, b) => a.day.localeCompare(b.day))
 
   const today = days.find((d) => d.day === dayKey()) || { day: dayKey(), views: 0, uniques: 0 }
   const sum = (n) => days.slice(-n).reduce((a, d) => a + d.views, 0)
