@@ -35,6 +35,7 @@ import {
   removeItem,
   clearCart,
   decItem,
+  setCartShipping,
   createPendingOrder,
   getOrder,
   markOrderPaid,
@@ -451,10 +452,23 @@ const cartErr = (res, result) =>
 
 app.get('/api/cart', requireUser, async (req, res) => {
   try {
-    res.json({ items: await getCart(req.userEmail) })
+    res.json(await getCart(req.userEmail))
   } catch (err) {
     console.error('[cart] get failed:', err?.message || err)
     res.status(500).json({ error: 'Could not load your cart.' })
+  }
+})
+
+// One recipient + message for the whole cart. Registered before
+// /api/cart/:itemId so "shipping" isn't captured as an item id.
+app.put('/api/cart/shipping', requireUser, async (req, res) => {
+  try {
+    const result = await setCartShipping(req.userEmail, req.body || {})
+    if (!result.ok) return cartErr(res, result)
+    res.json({ recipient: result.recipient, message: result.message })
+  } catch (err) {
+    console.error('[cart] shipping failed:', err?.message || err)
+    res.status(500).json({ error: 'Could not save.' })
   }
 })
 

@@ -55,11 +55,10 @@ export default function App() {
 
   const cartCount = countCards(cartItems)
 
-  // qty of the unconfigured quick-add line for a design (the one the gallery
-  // stepper controls); 0 if it isn't in the cart that way.
-  function pendingQty(postcardId) {
+  // qty of a design in the cart, for the gallery stepper. 0 if not in cart.
+  function cartQty(postcardId) {
     return cartItems
-      .filter((i) => i.postcardId === postcardId && !i.recipient)
+      .filter((i) => i.postcardId === postcardId)
       .reduce((n, i) => n + (i.qty || 1), 0)
   }
 
@@ -141,7 +140,7 @@ export default function App() {
         onFilter={setPcFilter}
         onAdd={addPostcard}
         onDec={decFromCart}
-        cartQtyFor={pendingQty}
+        cartQtyFor={cartQty}
         perPage={perPage}
       />
       {postcardEnabled && <CustomPostcard sizes={postcardSizes} />}

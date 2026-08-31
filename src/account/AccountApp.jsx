@@ -74,7 +74,7 @@ export default function AccountApp() {
 
             {tab === 'profile' && <Profile user={user} onSaved={setUser} />}
             {tab === 'cart' && (
-              <Cart initialAddId={addParam} user={user} onCount={setCartCount} />
+              <Cart user={user} onCount={setCartCount} />
             )}
             {tab === 'orders' && <Orders />}
           </>

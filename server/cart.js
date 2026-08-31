@@ -3,8 +3,8 @@ import { getDb } from './firebaseAdmin.js'
 import { getPostcard } from './catalog.js'
 import { validateAddress } from './userAuth.js'
 
-const MAX_LINES = 50 // distinct cart lines
-const MAX_QTY = 20 // copies of one line
+const MAX_LINES = 60 // distinct designs in the cart
+const MAX_QTY = 50 // copies of one design
 const MAX_MESSAGE = 300
 export const ORDER_STATUSES = ['awaiting_payment', 'paid', 'printed', 'mailed', 'cancelled']
 
@@ -14,11 +14,9 @@ const clampQty = (v) => {
   return Number.isFinite(n) ? Math.min(MAX_QTY, Math.max(1, n)) : 1
 }
 
-// Validate an incoming cart-item recipient. A missing/pending recipient is
-// allowed in the cart (you add designs freely, then set who each goes to
-// before ordering). `self` = use the account address, resolved at order
-// time; `other` carries a name + US address.
-function validateRecipient(r) {
+// The whole cart ships to one recipient with one message. `self` = the
+// account address (resolved at order time); `other` = a name + US address.
+export function validateRecipient(r) {
   if (r == null || r.type === 'pending') return { errors: [], value: null }
   if (r.type === 'self') return { errors: [], value: { type: 'self' } }
   if (r.type === 'other') {
@@ -30,25 +28,18 @@ function validateRecipient(r) {
   return { errors: ['Choose who to send it to.'], value: null }
 }
 
-function buildItem({ postcardId, message, recipient, qty }) {
+function cartLine(postcardId, qty) {
   const card = getPostcard(postcardId)
-  if (!card) return { errors: ['That postcard is no longer available.'], value: null }
-  const rec = validateRecipient(recipient)
-  if (rec.errors.length) return { errors: rec.errors, value: null }
+  if (!card) return null
   return {
-    errors: [],
-    value: {
-      id: crypto.randomBytes(8).toString('hex'),
-      postcardId: card.id,
-      title: card.title,
-      image: card.image,
-      category: card.type,
-      subcategory: card.subcategory || null,
-      message: clip(message, MAX_MESSAGE),
-      recipient: rec.value,
-      qty: clampQty(qty),
-      addedAt: Date.now(),
-    },
+    id: crypto.randomBytes(8).toString('hex'),
+    postcardId: card.id,
+    title: card.title,
+    image: card.image,
+    category: card.type,
+    subcategory: card.subcategory || null,
+    qty: clampQty(qty),
+    addedAt: Date.now(),
   }
 }
 
@@ -58,52 +49,56 @@ async function userRef(email) {
 
 export async function getCart(email) {
   const snap = await (await userRef(email)).get()
-  return snap.exists ? snap.data().cart || [] : []
+  const d = snap.exists ? snap.data() : {}
+  return { items: d.cart || [], recipient: d.cartRecipient || null, message: d.cartMessage || '' }
 }
 
 export async function addItem(email, input) {
-  const { errors, value } = buildItem(input || {})
-  if (errors.length) return { ok: false, errors }
+  const line = cartLine((input || {}).postcardId, 1)
+  if (!line) return { ok: false, errors: ['That postcard is no longer available.'] }
   const ref = await userRef(email)
-  const cart = await getCart(email)
+  const { items } = await getCart(email)
 
-  // Quick-add (no recipient, no message yet): if this exact design is
-  // already in the cart unconfigured, bump its quantity instead of adding
-  // a second identical pending line. Once a line has a recipient it's a
-  // deliberate copy, so a re-add then makes a fresh line.
-  if (!value.recipient && !value.message) {
-    const pending = cart.find(
-      (i) => i.postcardId === value.postcardId && !i.recipient && !i.message
-    )
-    if (pending) {
-      pending.qty = clampQty((pending.qty || 1) + 1)
-      await ref.set({ cart, updatedAt: Date.now() }, { merge: true })
-      return { ok: true, cart, merged: true }
-    }
+  const existing = items.find((i) => i.postcardId === line.postcardId)
+  let merged = false
+  if (existing) {
+    existing.qty = clampQty((existing.qty || 1) + 1)
+    merged = true
+  } else {
+    if (items.length >= MAX_LINES) return { ok: false, errors: ['Your cart is full.'] }
+    items.push(line)
   }
-
-  if (cart.length >= MAX_LINES) return { ok: false, errors: ['Your cart is full.'] }
-  cart.push(value)
-  await ref.set({ cart, updatedAt: Date.now() }, { merge: true })
-  return { ok: true, cart }
+  await ref.set({ cart: items, updatedAt: Date.now() }, { merge: true })
+  return { ok: true, cart: items, merged }
 }
 
 export async function updateItem(email, itemId, patch) {
   const ref = await userRef(email)
-  const cart = await getCart(email)
-  const item = cart.find((i) => i.id === itemId)
+  const { items } = await getCart(email)
+  const item = items.find((i) => i.id === itemId)
   if (!item) return { ok: false, errors: ['Item not found.'] }
-
-  if (patch.message !== undefined) item.message = clip(patch.message, MAX_MESSAGE)
   if (patch.qty !== undefined) item.qty = clampQty(patch.qty)
-  if (patch.recipient !== undefined) {
-    const rec = validateRecipient(patch.recipient)
-    if (rec.errors.length) return { ok: false, errors: rec.errors }
-    item.recipient = rec.value
-  }
+  await ref.set({ cart: items, updatedAt: Date.now() }, { merge: true })
+  return { ok: true, cart: items }
+}
 
-  await ref.set({ cart, updatedAt: Date.now() }, { merge: true })
-  return { ok: true, cart }
+export async function decItem(email, postcardId) {
+  const ref = await userRef(email)
+  const { items } = await getCart(email)
+  const idx = items.findIndex((i) => i.postcardId === postcardId)
+  if (idx === -1) return { ok: true, cart: items }
+  if ((items[idx].qty || 1) > 1) items[idx].qty = (items[idx].qty || 1) - 1
+  else items.splice(idx, 1)
+  await ref.set({ cart: items, updatedAt: Date.now() }, { merge: true })
+  return { ok: true, cart: items }
+}
+
+export async function removeItem(email, itemId) {
+  const ref = await userRef(email)
+  const { items } = await getCart(email)
+  const next = items.filter((i) => i.id !== itemId)
+  await ref.set({ cart: next, updatedAt: Date.now() }, { merge: true })
+  return { ok: true, cart: next }
 }
 
 export async function clearCart(email) {
@@ -111,29 +106,21 @@ export async function clearCart(email) {
   return { ok: true, cart: [] }
 }
 
-// Gallery "−": step down the unconfigured quick-add line for this design,
-// removing it at zero. No-op if there's no such line.
-export async function decItem(email, postcardId) {
-  const ref = await userRef(email)
-  const cart = await getCart(email)
-  const idx = cart.findIndex((i) => i.postcardId === postcardId && !i.recipient && !i.message)
-  if (idx === -1) return { ok: true, cart }
-  if ((cart[idx].qty || 1) > 1) cart[idx].qty = (cart[idx].qty || 1) - 1
-  else cart.splice(idx, 1)
-  await ref.set({ cart, updatedAt: Date.now() }, { merge: true })
-  return { ok: true, cart }
+// Set the one recipient + message for the whole cart.
+export async function setCartShipping(email, input = {}) {
+  const rec = validateRecipient(input.recipient)
+  if (rec.errors.length) return { ok: false, errors: rec.errors }
+  if (!rec.value) return { ok: false, errors: ['Choose who to send it to.'] }
+  const message = clip(input.message, MAX_MESSAGE)
+  await (await userRef(email)).set(
+    { cartRecipient: rec.value, cartMessage: message, updatedAt: Date.now() },
+    { merge: true }
+  )
+  return { ok: true, recipient: rec.value, message }
 }
 
-export async function removeItem(email, itemId) {
-  const ref = await userRef(email)
-  const cart = (await getCart(email)).filter((i) => i.id !== itemId)
-  await ref.set({ cart, updatedAt: Date.now() }, { merge: true })
-  return { ok: true, cart }
-}
-
-// Build an unpaid order from the current cart. Does NOT clear the cart —
-// that happens when payment succeeds (markOrderPaid). `priceCents` is the
-// admin-set price per card.
+// Build an unpaid order from the cart + its shipping. Does NOT clear the
+// cart — that happens on payment (markOrderPaid).
 export async function createPendingOrder(email, priceCents) {
   const db = getDb()
   const ref = await userRef(email)
@@ -142,30 +129,25 @@ export async function createPendingOrder(email, priceCents) {
   const cart = user.cart || []
   if (!cart.length) return { ok: false, errors: ['Your cart is empty.'] }
 
-  const pending = cart.filter((i) => !i.recipient).length
-  if (pending) {
-    return {
-      ok: false,
-      errors: [`Set who ${pending === 1 ? 'a card goes' : `${pending} cards go`} to before checkout.`],
-    }
-  }
-
-  const needsAccountAddr = cart.some((i) => i.recipient?.type === 'self')
-  if (needsAccountAddr && !(user.address && user.address.line1 && user.name)) {
+  const rec = user.cartRecipient
+  if (!rec) return { ok: false, errors: ['Set who the cards go to before checkout.'] }
+  if (rec.type === 'self' && !(user.address && user.address.line1 && user.name)) {
     return { ok: false, errors: ['Add your name and address before checkout.'] }
   }
+  const recipient =
+    rec.type === 'self'
+      ? { name: user.name, address: user.address }
+      : { name: rec.name, address: rec.address }
+  const message = user.cartMessage || ''
 
   const items = cart.map((i) => ({
     postcardId: i.postcardId,
     title: i.title,
     image: i.image,
     category: i.category,
-    message: i.message || '',
     qty: clampQty(i.qty),
-    recipient:
-      i.recipient.type === 'self'
-        ? { name: user.name, address: user.address }
-        : { name: i.recipient.name, address: i.recipient.address },
+    message,
+    recipient,
   }))
 
   const cardCount = items.reduce((n, i) => n + i.qty, 0)
@@ -177,6 +159,8 @@ export async function createPendingOrder(email, priceCents) {
     id: orderId,
     userEmail: email,
     userName: user.name || '',
+    recipient,
+    message,
     items,
     cardCount,
     unitPriceCents: priceCents,
@@ -196,8 +180,7 @@ export async function getOrder(orderId) {
   return snap.exists ? snap.data() : null
 }
 
-// Idempotent: mark an order paid (webhook + client-verify may both call it),
-// then clear that user's cart.
+// Idempotent: mark an order paid, then clear the buyer's cart + shipping.
 export async function markOrderPaid(orderId, { provider, ref, amountCents }) {
   const db = getDb()
   const oref = db.collection('orders').doc(String(orderId))
@@ -218,7 +201,10 @@ export async function markOrderPaid(orderId, { provider, ref, amountCents }) {
     updatedAt: Date.now(),
   }
   await oref.set(patch, { merge: true })
-  await db.collection('users').doc(order.userEmail).set({ cart: [], updatedAt: Date.now() }, { merge: true })
+  await db
+    .collection('users')
+    .doc(order.userEmail)
+    .set({ cart: [], cartMessage: '', updatedAt: Date.now() }, { merge: true })
   return { ok: true, order: { ...order, ...patch } }
 }
 

@@ -238,6 +238,33 @@
   font-weight: 600;
 }
 
+.acc__ship {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding: 14px 0;
+  margin: 6px 0 14px;
+  border-top: 1px solid rgba(74, 22, 38, 0.1);
+  border-bottom: 1px solid rgba(74, 22, 38, 0.1);
+}
+
+.acc__ship .acc__label {
+  margin-bottom: 4px;
+}
+
+.acc__btn--soft {
+  background: #fff;
+  color: var(--rose-900);
+  border: 1px solid var(--rose);
+  flex-shrink: 0;
+}
+
+.acc__order-to {
+  margin: 4px 0 6px;
+}
+
 .acc__needs {
   align-self: flex-start;
   border: none;

@@ -70,12 +70,19 @@ export default function Orders() {
                 {o.amountCents != null && ` · ${money(o.amountCents, o.currency)}`}
               </span>
             </div>
+            <p className="acc__muted acc__order-to">
+              To {o.recipient?.name || o.items[0]?.recipient?.name || '—'}
+              {(o.recipient?.address || o.items[0]?.recipient?.address) &&
+                ` — ${(o.recipient?.address || o.items[0].recipient.address).city}, ${
+                  (o.recipient?.address || o.items[0].recipient.address).state
+                }`}
+              {o.message && ` · “${o.message}”`}
+            </p>
             <ul className="acc__order-items">
               {o.items.map((it, i) => (
                 <li key={i}>
                   {it.title}
-                  {(it.qty || 1) > 1 && ` ×${it.qty}`} → {it.recipient?.name || '—'} (
-                  {it.recipient?.address?.city}, {it.recipient?.address?.state})
+                  {(it.qty || 1) > 1 && ` ×${it.qty}`}
                 </li>
               ))}
             </ul>

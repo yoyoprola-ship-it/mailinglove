@@ -1,21 +1,17 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { api } from './api'
 import AddressFields from './AddressFields'
 import Checkout from './Checkout'
-import catalog from '../data/postcards.json'
 
 const emptyAddr = { line1: '', line2: '', city: '', state: '', zip: '' }
-const cardById = Object.fromEntries(catalog.postcards.map((p) => [p.id, p]))
+const cardCount = (items) => items.reduce((n, i) => n + (i.qty || 1), 0)
 
 function recipientSummary(r) {
   if (!r) return null
   if (r.type === 'self') return 'To your address'
   const a = r.address || {}
-  return `To ${r.name} — ${a.city}, ${a.state}`
+  return `To ${r.name} — ${a.line1}, ${a.city}, ${a.state} ${a.zip}`
 }
-
-const cardCount = (items) => items.reduce((n, i) => n + (i.qty || 1), 0)
-const pendingCount = (items) => items.filter((i) => !i.recipient).length
 
 function QtyStepper({ value, onChange, min = 1 }) {
   return (
@@ -24,20 +20,19 @@ function QtyStepper({ value, onChange, min = 1 }) {
         −
       </button>
       <span className="acc__qty-n">{value}</span>
-      <button type="button" onClick={() => onChange(value + 1)} disabled={value >= 20}>
+      <button type="button" onClick={() => onChange(value + 1)} disabled={value >= 50}>
         +
       </button>
     </span>
   )
 }
 
-function ItemForm({ postcard, editItem, hasAccountAddress, onDone, onCancel }) {
-  const r = editItem?.recipient
+function ShippingForm({ shipping, hasAccountAddress, onDone, onCancel }) {
+  const r = shipping?.recipient
   const [mode, setMode] = useState(r ? r.type : hasAccountAddress ? 'self' : 'other')
   const [name, setName] = useState(r?.type === 'other' ? r.name : '')
   const [addr, setAddr] = useState(r?.type === 'other' ? { ...emptyAddr, ...r.address } : emptyAddr)
-  const [message, setMessage] = useState(editItem?.message || '')
-  const [qty, setQty] = useState(editItem?.qty || 1)
+  const [message, setMessage] = useState(shipping?.message || '')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
 
@@ -48,11 +43,8 @@ function ItemForm({ postcard, editItem, hasAccountAddress, onDone, onCancel }) {
     try {
       const recipient =
         mode === 'self' ? { type: 'self' } : { type: 'other', name, address: addr }
-      const body = { message, recipient, qty }
-      const { items } = editItem
-        ? await api.put(`/api/cart/${editItem.id}`, body)
-        : await api.post('/api/cart', { ...body, postcardId: postcard.id })
-      onDone(items)
+      const res = await api.put('/api/cart/shipping', { recipient, message })
+      onDone(res)
     } catch (err) {
       setError(err.message)
     } finally {
@@ -62,10 +54,8 @@ function ItemForm({ postcard, editItem, hasAccountAddress, onDone, onCancel }) {
 
   return (
     <form className="acc__card acc__card--wide" onSubmit={submit}>
-      <h2 className="acc__title">
-        {editItem ? 'Edit' : 'Send'} “{postcard.title}”
-      </h2>
-      <img className="acc__pc-preview" src={postcard.image} alt={postcard.title} />
+      <h2 className="acc__title">Recipient &amp; message</h2>
+      <p className="acc__muted">Every card in this cart is sent to this person.</p>
 
       <p className="acc__label">Send to</p>
       <label className="acc__radio">
@@ -108,14 +98,9 @@ function ItemForm({ postcard, editItem, hasAccountAddress, onDone, onCancel }) {
         />
       </label>
 
-      <div className="acc__field-inline">
-        <span className="acc__label">Quantity</span>
-        <QtyStepper value={qty} onChange={(v) => setQty(Math.min(20, Math.max(1, v)))} />
-      </div>
-
       <div className="acc__actions">
         <button className="acc__btn" type="submit" disabled={busy}>
-          {busy ? 'Saving…' : editItem ? 'Save changes' : 'Add to cart'}
+          {busy ? 'Saving…' : 'Save'}
         </button>
         <button type="button" className="acc__link" onClick={onCancel}>
           Cancel
@@ -126,21 +111,21 @@ function ItemForm({ postcard, editItem, hasAccountAddress, onDone, onCancel }) {
   )
 }
 
-export default function Cart({ initialAddId, user, onCount }) {
+export default function Cart({ user, onCount }) {
   const [items, setItems] = useState(null)
+  const [shipping, setShipping] = useState({ recipient: null, message: '' })
   const [error, setError] = useState('')
-  const [adding, setAdding] = useState(initialAddId || '')
-  const [editing, setEditing] = useState(null) // cart item being edited
+  const [editShip, setEditShip] = useState(false)
   const [checkoutOrder, setCheckoutOrder] = useState(null)
   const [busy, setBusy] = useState(false)
 
   const hasAccountAddress = Boolean(user?.address?.line1 && user?.name)
-  const addPostcard = useMemo(() => (adding ? cardById[adding] : null), [adding])
 
   async function load() {
     try {
-      const { items } = await api.get('/api/cart')
-      setItems(items)
+      const d = await api.get('/api/cart')
+      setItems(d.items)
+      setShipping({ recipient: d.recipient || null, message: d.message || '' })
     } catch (err) {
       setError(err.message)
     }
@@ -157,7 +142,9 @@ export default function Cart({ initialAddId, user, onCount }) {
   async function setQty(it, qty) {
     setError('')
     try {
-      const { items } = await api.put(`/api/cart/${it.id}`, { qty })
+      const { items } = qty <= 0
+        ? await api.delete(`/api/cart/${it.id}`)
+        : await api.put(`/api/cart/${it.id}`, { qty })
       setItems(items)
     } catch (err) {
       setError(err.message)
@@ -198,28 +185,25 @@ export default function Cart({ initialAddId, user, onCount }) {
     }
   }
 
-  function closeForm(freshItems) {
-    if (freshItems) setItems(freshItems)
-    setAdding('')
-    setEditing(null)
-    history.replaceState(null, '', '/account')
-  }
-
   if (checkoutOrder) {
     return <Checkout order={checkoutOrder} onBack={() => setCheckoutOrder(null)} />
   }
 
-  if (addPostcard || editing) {
+  if (editShip) {
     return (
-      <ItemForm
-        postcard={editing ? cardById[editing.postcardId] || { title: editing.title, image: editing.image } : addPostcard}
-        editItem={editing}
+      <ShippingForm
+        shipping={shipping}
         hasAccountAddress={hasAccountAddress}
-        onDone={closeForm}
-        onCancel={() => closeForm()}
+        onDone={(res) => {
+          setShipping({ recipient: res.recipient, message: res.message })
+          setEditShip(false)
+        }}
+        onCancel={() => setEditShip(false)}
       />
     )
   }
+
+  const count = items ? cardCount(items) : 0
 
   return (
     <div className="acc__card acc__card--wide">
@@ -237,8 +221,7 @@ export default function Cart({ initialAddId, user, onCount }) {
       {items && items.length > 0 && (
         <>
           <p className="acc__muted acc__cart-sum">
-            {items.length} design{items.length > 1 ? 's' : ''} · {cardCount(items)} card
-            {cardCount(items) > 1 ? 's' : ''}
+            {items.length} design{items.length > 1 ? 's' : ''} · {count} card{count > 1 ? 's' : ''}
           </p>
 
           <ul className="acc__list">
@@ -247,47 +230,39 @@ export default function Cart({ initialAddId, user, onCount }) {
                 <img className="acc__item-img" src={it.image} alt={it.title} />
                 <div className="acc__item-body">
                   <strong>{it.title}</strong>
-                  {it.recipient ? (
-                    <span className="acc__muted">{recipientSummary(it.recipient)}</span>
-                  ) : (
-                    <button className="acc__needs" onClick={() => setEditing(it)}>
-                      Set recipient &amp; message →
-                    </button>
-                  )}
-                  {it.message && <span className="acc__msg">“{it.message}”</span>}
-                  <span className="acc__item-actions">
-                    <button className="acc__link" onClick={() => setEditing(it)}>
-                      {it.recipient ? 'Edit' : 'Details'}
-                    </button>
-                    <button className="acc__link" onClick={() => remove(it.id)}>
-                      Remove
-                    </button>
-                  </span>
+                  <button className="acc__link" onClick={() => remove(it.id)}>
+                    Remove
+                  </button>
                 </div>
-                <QtyStepper
-                  value={it.qty || 1}
-                  min={0}
-                  onChange={(v) => (v <= 0 ? remove(it.id) : setQty(it, v))}
-                />
+                <QtyStepper value={it.qty || 1} min={0} onChange={(v) => setQty(it, v)} />
               </li>
             ))}
           </ul>
 
-          {pendingCount(items) > 0 && (
-            <p className="acc__error">
-              {pendingCount(items)} card{pendingCount(items) > 1 ? 's' : ''} still need a recipient.
-            </p>
-          )}
+          <div className="acc__ship">
+            <div>
+              <span className="acc__label">Recipient &amp; message</span>
+              {shipping.recipient ? (
+                <>
+                  <p className="acc__muted">{recipientSummary(shipping.recipient)}</p>
+                  {shipping.message && <p className="acc__msg">“{shipping.message}”</p>}
+                </>
+              ) : (
+                <p className="acc__muted">Not set yet — every card ships to one person.</p>
+              )}
+            </div>
+            <button className="acc__btn acc__btn--soft" onClick={() => setEditShip(true)}>
+              {shipping.recipient ? 'Change' : 'Set recipient & message'}
+            </button>
+          </div>
 
           <div className="acc__actions">
             <button
               className="acc__btn"
               onClick={startCheckout}
-              disabled={busy || pendingCount(items) > 0}
+              disabled={busy || !shipping.recipient}
             >
-              {busy
-                ? 'Loading…'
-                : `Checkout · ${cardCount(items)} card${cardCount(items) > 1 ? 's' : ''}`}
+              {busy ? 'Loading…' : `Checkout · ${count} card${count > 1 ? 's' : ''}`}
             </button>
             <a className="acc__link" href="/#postcards">
               Add more
@@ -296,8 +271,11 @@ export default function Cart({ initialAddId, user, onCount }) {
               Empty cart
             </button>
           </div>
+          {!shipping.recipient && (
+            <p className="acc__error">Set the recipient before checkout.</p>
+          )}
           <p className="acc__muted acc__fine">
-            No charge yet — payment is coming. For now we print and mail on request.
+            We print and mail every card in this order to the recipient above.
           </p>
         </>
       )}

@@ -90,6 +90,19 @@ export default function Orders() {
               </select>
             </div>
 
+            {(() => {
+              const rec = o.recipient || o.items[0]?.recipient
+              return (
+                <div className="adm__ship">
+                  <strong>{rec?.name}</strong>
+                  {addrLines(rec?.address).map((l, j) => (
+                    <div key={j}>{l}</div>
+                  ))}
+                  {o.message && <div className="adm__msg">“{o.message}”</div>}
+                </div>
+              )
+            })()}
+
             <ul className="adm__order-items">
               {o.items.map((it, i) => (
                 <li key={i} className="adm__order-item">
@@ -98,13 +111,6 @@ export default function Orders() {
                     <strong>{it.title}</strong>{' '}
                     {(it.qty || 1) > 1 && <strong className="adm__qty-badge">×{it.qty}</strong>}{' '}
                     <span className="adm__muted">({it.category})</span>
-                    <div className="adm__ship">
-                      {it.recipient?.name}
-                      {addrLines(it.recipient?.address).map((l, j) => (
-                        <div key={j}>{l}</div>
-                      ))}
-                    </div>
-                    {it.message && <div className="adm__msg">“{it.message}”</div>}
                   </div>
                 </li>
               ))}
