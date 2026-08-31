@@ -12,6 +12,12 @@ runConfig:
   memoryMiB: 1024 # image buffers + the OpenAI SDK need more headroom than 512
 
 env:
+  # Canonical public origin — payment return URLs, etc.
+  - variable: PUBLIC_URL
+    value: https://mailinglove.com
+    availability:
+      - RUNTIME
+
   # --- OpenAI (image redesign) ---
   # Set with: firebase apphosting:secrets:set OPENAI_API_KEY
   - variable: OPENAI_API_KEY

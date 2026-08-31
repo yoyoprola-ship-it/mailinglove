@@ -545,7 +545,7 @@ function baseUrl(req) {
   if (origin && /^https?:\/\//.test(origin)) return origin
   const host = req?.get?.('host')
   if (host) return `${req.protocol}://${host}`
-  return 'https://mailinglove--mailinglove-eb540.us-central1.hosted.app'
+  return 'https://mailinglove.com'
 }
 
 app.get('/api/pay/config', requireUser, async (req, res) => {
