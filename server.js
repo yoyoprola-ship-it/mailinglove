@@ -149,7 +149,10 @@ const authLimiter = rateLimit({
 app.get('/api/site-config', async (req, res) => {
   const cfg = await getConfig()
   res.setHeader('Cache-Control', 'no-store')
-  res.json({ generateEnabled: cfg.generateEnabled })
+  res.json({
+    photoRedesignEnabled: cfg.photoRedesignEnabled,
+    postcardDesignEnabled: cfg.postcardDesignEnabled,
+  })
 })
 
 // --- image redesign -------------------------------------------------------
@@ -175,8 +178,8 @@ app.post('/api/generate', generateLimiter, (req, res) => {
     }
 
     const cfg = await getConfig()
-    if (!cfg.generateEnabled) {
-      return res.status(503).json({ error: 'Image generation is paused right now.' })
+    if (!cfg.photoRedesignEnabled) {
+      return res.status(503).json({ error: 'Photo redesign is paused right now.' })
     }
 
     try {
@@ -225,7 +228,7 @@ app.post('/api/postcard-generate', generateLimiter, async (req, res) => {
   }
 
   const cfg = await getConfig()
-  if (!cfg.generateEnabled) {
+  if (!cfg.postcardDesignEnabled) {
     return res.status(503).json({ error: 'Postcard generation is paused right now.' })
   }
 

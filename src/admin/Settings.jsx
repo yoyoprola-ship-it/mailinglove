@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react'
 import { api } from './api'
 
 const LABELS = {
-  generateEnabled: 'AI photo generation',
+  photoRedesignEnabled: 'Photo redesign — "Try it now" + old photos',
+  postcardDesignEnabled: 'Custom postcard generator',
   imageModel: 'OpenAI image model',
   imageQuality: 'Image quality',
   imageSize: 'Image size (occasions)',
@@ -12,8 +13,10 @@ const LABELS = {
 }
 
 const HINTS = {
-  generateEnabled:
-    'Off = /api/generate is disabled AND the "Try it now" and "old photos" sections are hidden from the public site. Use it to stop spend.',
+  photoRedesignEnabled:
+    'Off = /api/generate is disabled AND the "Try it now" + "old photos" sections are hidden. For the upload-a-photo redesign.',
+  postcardDesignEnabled:
+    'Off = /api/postcard-generate is disabled AND the "Generate a personalized postcard" section is hidden. For the name + category generator.',
   imageModel: 'gpt-image-1.5 / gpt-image-1 keep faces faithful; -mini is cheapest but drifts.',
   inputFidelity: '"high" preserves the uploaded face; "off" gives the model free rein.',
   rateLimitWindowMin: 'Takes effect after the next deploy/restart.',

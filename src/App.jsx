@@ -14,9 +14,10 @@ import AuthModal from './components/AuthModal'
 import './App.css'
 
 export default function App() {
-  // The AI photo-redesign sections (Studio, Restore) are shown only while
-  // the admin has generation enabled. Fail open if the check errors.
-  const [aiEnabled, setAiEnabled] = useState(null)
+  // The AI sections are shown only while the admin has each one enabled.
+  // Fail open if the check errors.
+  const [photoEnabled, setPhotoEnabled] = useState(null)
+  const [postcardEnabled, setPostcardEnabled] = useState(null)
   const [pcFilter, setPcFilter] = useState({ type: 'birthday', sub: null })
   const [signedIn, setSignedIn] = useState(false)
   const [authCtx, setAuthCtx] = useState(null) // null | {mode:'account'} | {mode:'add',postcard}
@@ -24,8 +25,14 @@ export default function App() {
   useEffect(() => {
     fetch('/api/site-config')
       .then((r) => r.json())
-      .then((c) => setAiEnabled(Boolean(c.generateEnabled)))
-      .catch(() => setAiEnabled(true))
+      .then((c) => {
+        setPhotoEnabled(Boolean(c.photoRedesignEnabled))
+        setPostcardEnabled(Boolean(c.postcardDesignEnabled))
+      })
+      .catch(() => {
+        setPhotoEnabled(true)
+        setPostcardEnabled(true)
+      })
     fetch('/api/me', { credentials: 'same-origin' })
       .then((r) => setSignedIn(r.ok))
       .catch(() => {})
@@ -52,11 +59,11 @@ export default function App() {
     <div className="page">
       <Nav onNavigate={goToPostcards} onAccount={openAccount} />
       <Postcards filter={pcFilter} onFilter={setPcFilter} onAdd={addPostcard} />
-      {aiEnabled && <CustomPostcard />}
+      {postcardEnabled && <CustomPostcard />}
       <Hero />
       <Categories />
       <HowItWorks />
-      {aiEnabled && (
+      {photoEnabled && (
         <>
           <Studio />
           <Restore />

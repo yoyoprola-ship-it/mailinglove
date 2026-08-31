@@ -5,7 +5,8 @@ import { getDb } from './firebaseAdmin.js'
 // Firestore on every request.
 
 const DEFAULTS = {
-  generateEnabled: true,
+  photoRedesignEnabled: true, // "Try it now" + "old photos" sections + /api/generate
+  postcardDesignEnabled: true, // custom postcard generator + /api/postcard-generate
   imageModel: process.env.OPENAI_IMAGE_MODEL || 'gpt-image-1.5',
   imageQuality: process.env.OPENAI_IMAGE_QUALITY || 'medium',
   imageSize: process.env.OPENAI_IMAGE_SIZE || '1024x1536',
@@ -16,7 +17,8 @@ const DEFAULTS = {
 
 // What the admin form is allowed to set, with validation.
 export const CONFIG_FIELDS = {
-  generateEnabled: { type: 'bool' },
+  photoRedesignEnabled: { type: 'bool' },
+  postcardDesignEnabled: { type: 'bool' },
   imageModel: {
     type: 'enum',
     values: ['gpt-image-1-mini', 'gpt-image-1', 'gpt-image-1.5', 'gpt-image-2'],
@@ -47,7 +49,14 @@ export async function getConfig() {
       console.warn('[config] read failed, using defaults:', err?.message || err)
     }
   }
-  cache = { ...DEFAULTS, ...pickValid(stored) }
+  const valid = pickValid(stored)
+  // Legacy: a single generateEnabled toggle became two. Honor an old stored
+  // value for whichever new flag hasn't been set explicitly yet.
+  if (typeof stored.generateEnabled === 'boolean') {
+    if (valid.photoRedesignEnabled === undefined) valid.photoRedesignEnabled = stored.generateEnabled
+    if (valid.postcardDesignEnabled === undefined) valid.postcardDesignEnabled = stored.generateEnabled
+  }
+  cache = { ...DEFAULTS, ...valid }
   cacheAt = Date.now()
   return cache
 }

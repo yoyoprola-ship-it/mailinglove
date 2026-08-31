@@ -17,9 +17,11 @@ the redesigned image as a data URL. Prompts are fixed templates per category
 
 - Set `OPENAI_API_KEY` (see `.env.example`). Without it the endpoint returns
   503 and the rest of the site works normally.
-- The model, quality, size, `input_fidelity`, the per-IP rate limit, and an
-  on/off switch are **runtime config** edited in the admin (Firestore
-  `config/app`), with the `OPENAI_IMAGE_*` env vars as the defaults. Env
+- The model, quality, size, `input_fidelity`, the per-IP rate limit, and two
+  independent on/off switches (`photoRedesignEnabled` for this + the old-photo
+  section, `postcardDesignEnabled` for the custom-postcard generator) are
+  **runtime config** edited in the admin (Firestore `config/app`), with the
+  `OPENAI_IMAGE_*` env vars as the defaults. Env
   default model is `gpt-image-1.5` (keeps faces faithful, supports
   `input_fidelity`); `runEdit()` drops `input_fidelity` and retries if a
   model rejects it.
