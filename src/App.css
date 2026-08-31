@@ -430,6 +430,18 @@
   color: var(--rose);
 }
 
+/* On dark sections the dark ghost button is invisible — make it light. */
+.section--dark .btn--ghost {
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.55);
+}
+
+.section--dark .btn--ghost:hover {
+  color: #fff;
+  border-color: #fff;
+  background: rgba(255, 255, 255, 0.12);
+}
+
 /* ---------- hero ---------- */
 
 .hero {
