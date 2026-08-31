@@ -582,6 +582,7 @@ app.post('/api/pay/stripe/session', requireUser, async (req, res) => {
   try {
     const session = await stripe.checkout.sessions.create({
       mode: 'payment',
+      locale: 'en',
       client_reference_id: order.id,
       metadata: { orderId: order.id },
       customer_email: order.userEmail,

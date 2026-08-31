@@ -9,7 +9,7 @@ function loadPayPal(clientId) {
   if (paypalSdkPromise) return paypalSdkPromise
   paypalSdkPromise = new Promise((resolve, reject) => {
     const s = document.createElement('script')
-    s.src = `https://www.paypal.com/sdk/js?client-id=${encodeURIComponent(clientId)}&currency=USD`
+    s.src = `https://www.paypal.com/sdk/js?client-id=${encodeURIComponent(clientId)}&currency=USD&locale=en_US`
     s.onload = () => resolve(window.paypal)
     s.onerror = () => reject(new Error('PayPal SDK failed to load'))
     document.head.appendChild(s)
