@@ -248,6 +248,15 @@
   margin: 4px 0 14px;
 }
 
+.acc__eta {
+  font-size: 0.88rem;
+  color: var(--rose-900);
+  background: var(--blush);
+  border-radius: 10px;
+  padding: 10px 14px;
+  margin-bottom: 16px;
+}
+
 .acc__cart-total strong {
   color: var(--rose-900);
 }

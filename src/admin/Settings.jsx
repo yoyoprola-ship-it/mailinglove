@@ -129,6 +129,18 @@ function Panel({ id, group, config, onSaved }) {
             />
           )}
 
+          {rule.type === 'zip' && (
+            <input
+              id={`${id}-${key}`}
+              className="adm__input adm__input--sm"
+              inputMode="numeric"
+              maxLength={5}
+              placeholder="90210"
+              value={form[key] ?? ''}
+              onChange={(e) => set(key, e.target.value.replace(/\D/g, '').slice(0, 5))}
+            />
+          )}
+
           {rule.type === 'sizes' && (
             <SizesEditor
               value={form[key]}

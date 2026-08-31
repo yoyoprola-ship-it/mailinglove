@@ -58,6 +58,7 @@ import {
   paypalCaptureOrder,
   paypalVerifyWebhook,
 } from './server/payments.js'
+import { uspsConfigured, firstClassDays } from './server/usps.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const PORT = process.env.PORT || 8080
@@ -547,6 +548,41 @@ app.get('/api/pay/config', requireUser, async (req, res) => {
     stripe: stripeConfigured(),
     paypal: paypalConfigured() ? { clientId: paypalClientId(), env: paypalEnv() } : null,
   })
+})
+
+// USPS First-Class delivery estimate from the mail-from ZIP to a destination.
+function addBusinessDays(from, n) {
+  const d = new Date(from)
+  let left = n
+  while (left > 0) {
+    d.setDate(d.getDate() + 1)
+    const day = d.getDay()
+    if (day !== 0 && day !== 6) left--
+  }
+  return d
+}
+
+app.get('/api/delivery-estimate', requireUser, async (req, res) => {
+  const cfg = await getConfig()
+  const origin = cfg.postcard.originZip
+  const dest = String(req.query.zip || '').replace(/\D/g, '').slice(0, 5)
+  const generic = { precise: false, text: 'about 2–5 business days in the mail' }
+
+  if (!origin || dest.length !== 5 || !uspsConfigured()) return res.json(generic)
+  try {
+    const r = await firstClassDays(origin, dest)
+    if (!r) return res.json(generic)
+    const arriveBy = addBusinessDays(Date.now(), r.days).toISOString().slice(0, 10)
+    res.json({
+      precise: true,
+      days: r.days,
+      text: `about ${r.days} business day${r.days === 1 ? '' : 's'} in the mail`,
+      arriveBy,
+    })
+  } catch (err) {
+    console.error('[usps] estimate failed:', err?.message || err)
+    res.json(generic)
+  }
 })
 
 // Turn the cart into an unpaid order (cart stays until payment lands).

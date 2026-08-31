@@ -19,6 +19,7 @@ function loadPayPal(clientId) {
 
 export default function Checkout({ order, onBack }) {
   const [cfg, setCfg] = useState(null)
+  const [eta, setEta] = useState(null)
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
   const ppRef = useRef(null)
@@ -29,7 +30,15 @@ export default function Checkout({ order, onBack }) {
       .get('/api/pay/config')
       .then(setCfg)
       .catch((e) => setError(e.message))
-  }, [])
+
+    const zip = order.recipient?.address?.zip
+    if (zip) {
+      api
+        .get(`/api/delivery-estimate?zip=${encodeURIComponent(zip)}`)
+        .then(setEta)
+        .catch(() => {})
+    }
+  }, [order.recipient])
 
   useEffect(() => {
     if (!cfg?.paypal || ppRendered.current || !ppRef.current) return
@@ -77,6 +86,17 @@ export default function Checkout({ order, onBack }) {
         {order.cardCount} card{order.cardCount > 1 ? 's' : ''} printed &amp; mailed — total{' '}
         <strong>{money(order.amountCents, order.currency)}</strong>
       </p>
+
+      {eta && (
+        <p className="acc__eta">
+          🕓 USPS delivery: {eta.text}
+          {eta.arriveBy &&
+            ` — around ${new Date(eta.arriveBy + 'T00:00:00').toLocaleDateString('en-US', {
+              month: 'short',
+              day: 'numeric',
+            })}`}
+        </p>
+      )}
 
       {!cfg && !error && <p className="acc__muted">Loading payment options…</p>}
       {error && <p className="acc__error">{error}</p>}
