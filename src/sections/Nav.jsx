@@ -2,7 +2,7 @@ import { useState } from 'react'
 import Icon from '../components/Icon'
 import MenuDrawer from './MenuDrawer'
 
-export default function Nav({ onNavigate }) {
+export default function Nav({ onNavigate, onAccount }) {
   const [menuOpen, setMenuOpen] = useState(false)
 
   return (
@@ -26,9 +26,9 @@ export default function Nav({ onNavigate }) {
           </a>
         </div>
         <span className="site-nav__actions">
-          <a className="site-nav__link" href="/account">
+          <button className="site-nav__link" type="button" onClick={onAccount}>
             Account
-          </a>
+          </button>
           <a className="btn btn--primary btn--sm" href="#waitlist">
             Join the waitlist
           </a>

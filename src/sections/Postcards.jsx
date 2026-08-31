@@ -25,7 +25,7 @@ function Pager({ current, pageCount, onGo }) {
   )
 }
 
-export default function Postcards({ filter, onFilter }) {
+export default function Postcards({ filter, onFilter, onAdd }) {
   const [page, setPage] = useState(1)
   const [preview, setPreview] = useState(null)
 
@@ -132,9 +132,13 @@ export default function Postcards({ filter, onFilter }) {
                 </button>
                 <div className="pc-card__body">
                   <h3 className="pc-card__title">{p.title}</h3>
-                  <a className="btn btn--primary btn--sm" href={`/account?add=${p.id}`}>
+                  <button
+                    className="btn btn--primary btn--sm"
+                    type="button"
+                    onClick={() => onAdd(p)}
+                  >
                     Add
-                  </a>
+                  </button>
                 </div>
               </article>
             </Reveal>
@@ -164,9 +168,16 @@ export default function Postcards({ filter, onFilter }) {
             <img className="pc-modal__img" src={preview.image} alt={preview.title} />
             <div className="pc-modal__foot">
               <span className="pc-modal__title">{preview.title}</span>
-              <a className="btn btn--primary btn--sm" href={`/account?add=${preview.id}`}>
+              <button
+                className="btn btn--primary btn--sm"
+                type="button"
+                onClick={() => {
+                  onAdd(preview)
+                  setPreview(null)
+                }}
+              >
                 Add
-              </a>
+              </button>
             </div>
           </div>
         </div>

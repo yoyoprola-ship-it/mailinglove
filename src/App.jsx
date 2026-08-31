@@ -10,6 +10,7 @@ import CustomPostcard from './sections/CustomPostcard'
 import Products from './sections/Products'
 import Waitlist from './sections/Waitlist'
 import Footer from './sections/Footer'
+import AuthModal from './components/AuthModal'
 import './App.css'
 
 export default function App() {
@@ -17,12 +18,17 @@ export default function App() {
   // the admin has generation enabled. Fail open if the check errors.
   const [aiEnabled, setAiEnabled] = useState(null)
   const [pcFilter, setPcFilter] = useState({ type: 'birthday', sub: null })
+  const [signedIn, setSignedIn] = useState(false)
+  const [authCtx, setAuthCtx] = useState(null) // null | {mode:'account'} | {mode:'add',postcard}
 
   useEffect(() => {
     fetch('/api/site-config')
       .then((r) => r.json())
       .then((c) => setAiEnabled(Boolean(c.generateEnabled)))
       .catch(() => setAiEnabled(true))
+    fetch('/api/me', { credentials: 'same-origin' })
+      .then((r) => setSignedIn(r.ok))
+      .catch(() => {})
   }, [])
 
   function goToPostcards(type, sub = null) {
@@ -32,10 +38,20 @@ export default function App() {
     )
   }
 
+  function openAccount() {
+    if (signedIn) window.location.href = '/account'
+    else setAuthCtx({ mode: 'account' })
+  }
+
+  function addPostcard(postcard) {
+    if (signedIn) window.location.href = `/account?add=${postcard.id}`
+    else setAuthCtx({ mode: 'add', postcard })
+  }
+
   return (
     <div className="page">
-      <Nav onNavigate={goToPostcards} />
-      <Postcards filter={pcFilter} onFilter={setPcFilter} />
+      <Nav onNavigate={goToPostcards} onAccount={openAccount} />
+      <Postcards filter={pcFilter} onFilter={setPcFilter} onAdd={addPostcard} />
       {aiEnabled && <CustomPostcard />}
       <Hero />
       <Categories />
@@ -49,6 +65,14 @@ export default function App() {
       <Products />
       <Waitlist />
       <Footer />
+
+      {authCtx && (
+        <AuthModal
+          context={authCtx}
+          onClose={() => setAuthCtx(null)}
+          onSignedIn={() => setSignedIn(true)}
+        />
+      )}
     </div>
   )
 }
