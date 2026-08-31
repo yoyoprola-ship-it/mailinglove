@@ -1,6 +1,37 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import Reveal from '../components/Reveal'
 import catalog from '../data/postcards.json'
+
+// Deterministic shuffle: same order all day for every visitor, a fresh
+// order tomorrow — so the catalog feels like it's restocked daily. Stable
+// within the day so paging back and forth never repeats or skips a design.
+function hashStr(s) {
+  let h = 2166136261
+  for (let i = 0; i < s.length; i++) {
+    h ^= s.charCodeAt(i)
+    h = Math.imul(h, 16777619)
+  }
+  return h >>> 0
+}
+
+function mulberry32(a) {
+  return function () {
+    a = (a + 0x6d2b79f5) | 0
+    let t = Math.imul(a ^ (a >>> 15), 1 | a)
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296
+  }
+}
+
+function seededShuffle(arr, seedStr) {
+  const rng = mulberry32(hashStr(seedStr))
+  const a = arr.slice()
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1))
+    ;[a[i], a[j]] = [a[j], a[i]]
+  }
+  return a
+}
 
 function Pager({ current, pageCount, onGo }) {
   if (pageCount <= 1) return null
@@ -44,9 +75,13 @@ export default function Postcards({ filter, onFilter, onAdd, perPage = 25 }) {
   const activeType = catalog.types.find((t) => t.id === filter.type) || catalog.types[0]
   const subs = activeType.subcategories
 
-  const cards = catalog.postcards.filter(
-    (p) => p.type === activeType.id && (!filter.sub || p.subcategory === filter.sub)
-  )
+  const cards = useMemo(() => {
+    const filtered = catalog.postcards.filter(
+      (p) => p.type === activeType.id && (!filter.sub || p.subcategory === filter.sub)
+    )
+    const day = new Date().toISOString().slice(0, 10) // YYYY-MM-DD
+    return seededShuffle(filtered, `${day}|${activeType.id}|${filter.sub || 'all'}`)
+  }, [activeType.id, filter.sub])
 
   const pageCount = Math.max(1, Math.ceil(cards.length / size))
   const current = Math.min(page, pageCount)
