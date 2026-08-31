@@ -38,6 +38,10 @@ import {
   listAllOrders,
   setOrderStatus,
 } from './server/cart.js'
+import {
+  validateCustomPostcard,
+  generateCustomPostcard,
+} from './server/customPostcard.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const PORT = process.env.PORT || 8080
@@ -193,6 +197,39 @@ app.post('/api/generate', generateLimiter, (req, res) => {
       res.status(status).json({ error: 'Could not redesign the photo right now. Try again.' })
     }
   })
+})
+
+// --- custom postcard (text-to-image) ----------------------------------
+
+app.post('/api/postcard-generate', generateLimiter, async (req, res) => {
+  const { errors, value } = validateCustomPostcard(req.body || {})
+  if (errors.length) return res.status(400).json({ error: errors[0], errors })
+
+  if (!openai) {
+    return res
+      .status(503)
+      .json({ error: 'Image generation is not configured yet. Set OPENAI_API_KEY.' })
+  }
+
+  const cfg = await getConfig()
+  if (!cfg.generateEnabled) {
+    return res.status(503).json({ error: 'Postcard generation is paused right now.' })
+  }
+
+  try {
+    const { b64, usage } = await generateCustomPostcard(openai, cfg, value)
+    if (!b64) return res.status(502).json({ error: 'The model returned no image. Try again.' })
+    console.log(
+      `[postcard-generate] type=${value.typeLabel} sub=${value.subLabel || '-'} ` +
+        `size=${value.sizeApi} model=${cfg.imageModel} quality=${cfg.imageQuality} ` +
+        `usage=${JSON.stringify(usage)}`
+    )
+    res.json({ image: `data:image/png;base64,${b64}` })
+  } catch (err) {
+    console.error('[postcard-generate] failed:', err?.message || err)
+    const status = err?.status && err.status >= 400 && err.status < 600 ? err.status : 500
+    res.status(status).json({ error: 'Could not generate the postcard right now. Try again.' })
+  }
 })
 
 // --- visit tracking -----------------------------------------------------

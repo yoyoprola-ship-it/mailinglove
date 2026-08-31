@@ -6,6 +6,7 @@ import HowItWorks from './sections/HowItWorks'
 import Studio from './sections/Studio'
 import Restore from './sections/Restore'
 import Postcards from './sections/Postcards'
+import CustomPostcard from './sections/CustomPostcard'
 import Products from './sections/Products'
 import Waitlist from './sections/Waitlist'
 import Footer from './sections/Footer'
@@ -35,6 +36,7 @@ export default function App() {
     <div className="page">
       <Nav onNavigate={goToPostcards} />
       <Postcards filter={pcFilter} onFilter={setPcFilter} />
+      {aiEnabled && <CustomPostcard />}
       <Hero />
       <Categories />
       <HowItWorks />

@@ -775,6 +775,64 @@
   border-color: rgba(255, 255, 255, 0.22);
 }
 
+/* ---------- custom postcard form ---------- */
+
+.cpc__form {
+  gap: 12px;
+}
+
+.cpc__row {
+  display: flex;
+  gap: 12px;
+}
+
+.cpc__row > div {
+  flex: 1;
+}
+
+.cpc__input {
+  width: 100%;
+  padding: 11px 14px;
+  border-radius: 10px;
+  border: 1px solid rgba(74, 22, 38, 0.25);
+  font-size: 0.92rem;
+  font-family: inherit;
+  background: #fff;
+  color: var(--text-dark);
+}
+
+.cpc__textarea {
+  resize: vertical;
+}
+
+.cpc__opt {
+  font-weight: 400;
+  color: var(--muted);
+}
+
+.cpc__sizes {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.cpc__size {
+  border: 1px solid rgba(74, 22, 38, 0.2);
+  background: #fff;
+  color: var(--rose-900);
+  padding: 8px 14px;
+  border-radius: 999px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.cpc__size.is-active {
+  background: var(--rose);
+  border-color: var(--rose);
+  color: #fff;
+}
+
 .section--dark .studio__placeholder,
 .section--dark .studio__note {
   color: rgba(255, 255, 255, 0.7);
