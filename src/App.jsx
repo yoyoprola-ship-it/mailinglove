@@ -34,10 +34,10 @@ export default function App() {
   return (
     <div className="page">
       <Nav onNavigate={goToPostcards} />
+      <Postcards filter={pcFilter} onFilter={setPcFilter} />
       <Hero />
       <Categories />
       <HowItWorks />
-      <Postcards filter={pcFilter} onFilter={setPcFilter} />
       {aiEnabled && (
         <>
           <Studio />

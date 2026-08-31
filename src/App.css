@@ -2,6 +2,13 @@
   overflow-x: hidden;
 }
 
+/* Postcards is the first section now — clear the fixed nav, and keep its
+   top visible when the hamburger menu scrolls to it. */
+#postcards {
+  padding-top: 116px;
+  scroll-margin-top: 76px;
+}
+
 /* ---------- layout helpers ---------- */
 
 .section-inner {
