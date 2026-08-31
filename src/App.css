@@ -720,12 +720,6 @@
   color: #fff;
 }
 
-.pc-count {
-  margin-top: 18px;
-  font-size: 0.82rem;
-  color: var(--muted);
-}
-
 .pc-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);

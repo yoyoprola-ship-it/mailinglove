@@ -109,13 +109,6 @@ export default function Postcards({ filter, onFilter, onAdd }) {
           </div>
         )}
 
-        {cards.length > 0 && (
-          <p className="pc-count">
-            {cards.length} design{cards.length > 1 ? 's' : ''}
-            {pageCount > 1 && ` · page ${current} of ${pageCount}`}
-          </p>
-        )}
-
         <Pager current={current} pageCount={pageCount} onGo={goPage} />
 
         <div className="pc-grid">
