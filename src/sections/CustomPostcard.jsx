@@ -190,7 +190,7 @@ export default function CustomPostcard() {
                     <a
                       className="btn btn--ghost btn--sm"
                       href={result}
-                      download="mailinglove-postcard.jpg"
+                      download="mailinglove-postcard.png"
                     >
                       Download
                     </a>

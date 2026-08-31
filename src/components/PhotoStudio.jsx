@@ -108,7 +108,7 @@ export default function PhotoStudio({
           <>
             <img src={result} alt="Result" className="studio__img" />
             <div className="studio__result-actions">
-              <a className="btn btn--ghost btn--sm" href={result} download="mailinglove.jpg">
+              <a className="btn btn--ghost btn--sm" href={result} download="mailinglove.png">
                 Download
               </a>
               <a className="btn btn--primary btn--sm" href="#waitlist">

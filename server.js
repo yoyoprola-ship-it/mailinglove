@@ -82,14 +82,13 @@ const openai = process.env.OPENAI_API_KEY
   ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
   : null
 
-// Some params (input_fidelity, output_format, output_compression) aren't
-// supported by every gpt-image model. If the configured model 400s on one,
-// drop the named params and retry once so a model swap can't break us.
-const OPTIONAL_PARAMS = ['input_fidelity', 'output_format', 'output_compression']
+// input_fidelity isn't supported by every gpt-image model. If the configured
+// model 400s on it, drop the param and retry once so a model swap can't break
+// us. (Add more optional params here if we start passing them.)
+const OPTIONAL_PARAMS = ['input_fidelity']
 
-// We ask gpt-image for JPEG to keep payloads small (~200-500 KB vs a 3-4 MB
-// PNG), but the retry above can strip that on an unknown model — so read the
-// real format from the base64 magic bytes.
+// gpt-image returns PNG; read the format from the base64 magic bytes anyway so
+// this stays correct if we ever request jpeg/webp.
 function imageDataUrl(b64) {
   const mime = b64.startsWith('/9j/') ? 'image/jpeg' : b64.startsWith('UklGR') ? 'image/webp' : 'image/png'
   return `data:${mime};base64,${b64}`
@@ -190,8 +189,6 @@ app.post('/api/generate', generateLimiter, (req, res) => {
         prompt,
         size: CATEGORY_SIZE[category] || cfg.imageSize,
         quality: cfg.imageQuality,
-        output_format: 'jpeg',
-        output_compression: 82,
         ...(cfg.inputFidelity ? { input_fidelity: cfg.inputFidelity } : {}),
       })
 
