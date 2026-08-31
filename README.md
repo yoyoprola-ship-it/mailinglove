@@ -82,14 +82,18 @@ Needs `RESEND_*` and firebase-admin, same as the admin; no new secrets.
   `postcards` (`{ id, type, subcategory, title, image }`). Birthday has 18
   recipient subcategories (mom, dad, son, daughter, brother, sister,
   grandma, grandpa, grandson, granddaughter, uncle, aunt, nephew, niece,
-  for-her, for-him, girls, boys). Images in
-  [public/postcards/](public/postcards/); the server reads the same JSON
-  ([server/catalog.js](server/catalog.js)) to validate a `postcardId` and
-  snapshot title/image into an order.
-  - **The birthday `.jpg`s are low-res crops** (~270 px wide) from listing
-    mockups — fine as web thumbnails, **not for print**. Replace each with
-    the real 4×6 / 300 DPI file at the same path. The love/family/christmas
-    `.svg`s are placeholders too.
+  for-her, for-him, girls, boys); Love has `for-her` / `for-him` (cards
+  that suit either recipient are in both). Images in
+  [public/postcards/](public/postcards/) under `<type>/<subcategory>/`; the
+  server reads the same JSON ([server/catalog.js](server/catalog.js)) to
+  validate a `postcardId` and snapshot title/image into an order. Rebuild
+  the JSON from the folder tree with the script in that file's history.
+  - **The birthday + love `.jpg`s are low-res crops** (~300 px wide) from
+    listing mockups — fine as web thumbnails, **not for print**. Replace
+    each with the real 4×6 / 300 DPI file at the same path. The
+    family/christmas `.svg`s are placeholders too. The love split is a
+    brightness heuristic (pink → her, dark/cosmic → him) — move files
+    between folders to rebalance.
 - **Public section** ([src/sections/Postcards.jsx](src/sections/Postcards.jsx)):
   type tabs + subcategory chips; "Send this postcard" → `/account?add=<id>`.
 - **Hamburger menu** ([src/sections/MenuDrawer.jsx](src/sections/MenuDrawer.jsx),
