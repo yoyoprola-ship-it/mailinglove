@@ -73,14 +73,25 @@ Needs `RESEND_*` and firebase-admin, same as the admin; no new secrets.
 
 ## Ready-made postcards, cart & orders
 
-- **Catalog**: [src/data/postcards.json](src/data/postcards.json) (categories +
-  postcards, each `{ id, category, title, image }`). Images live in
-  [public/postcards/](public/postcards/) — the committed `.svg` files are
-  **placeholders**; drop in real art at the same paths (or edit the JSON).
-  The server reads the same JSON ([server/catalog.js](server/catalog.js)) to
-  validate a `postcardId` and snapshot title/image into an order.
+- **Catalog**: [src/data/postcards.json](src/data/postcards.json) — `types`
+  (Birthday / Love / Family / Christmas), each with `subcategories`, and
+  `postcards` (`{ id, type, subcategory, title, image }`). Birthday has 18
+  recipient subcategories (mom, dad, son, daughter, brother, sister,
+  grandma, grandpa, grandson, granddaughter, uncle, aunt, nephew, niece,
+  for-her, for-him, girls, boys). Images in
+  [public/postcards/](public/postcards/); the server reads the same JSON
+  ([server/catalog.js](server/catalog.js)) to validate a `postcardId` and
+  snapshot title/image into an order.
+  - **The birthday `.jpg`s are low-res crops** (~270 px wide) from listing
+    mockups — fine as web thumbnails, **not for print**. Replace each with
+    the real 4×6 / 300 DPI file at the same path. The love/family/christmas
+    `.svg`s are placeholders too.
 - **Public section** ([src/sections/Postcards.jsx](src/sections/Postcards.jsx)):
-  browse by category; "Send this postcard" → `/account?add=<id>`.
+  type tabs + subcategory chips; "Send this postcard" → `/account?add=<id>`.
+- **Hamburger menu** ([src/sections/MenuDrawer.jsx](src/sections/MenuDrawer.jsx),
+  opened from [Nav.jsx](src/sections/Nav.jsx)): types, with Birthday
+  expanding to its subcategories; a pick filters the gallery and scrolls to
+  it (filter state lives in [App.jsx](src/App.jsx)).
 - **Cart** (`/api/cart`, stored as `users/{email}.cart`): each item is a
   postcard + optional 300-char message + recipient. Recipient is either
   `self` (resolved to the account address at order time) or `other`

@@ -1,11 +1,13 @@
-import { useState } from 'react'
 import Reveal from '../components/Reveal'
 import catalog from '../data/postcards.json'
 
-export default function Postcards() {
-  const [cat, setCat] = useState('all')
-  const cards =
-    cat === 'all' ? catalog.postcards : catalog.postcards.filter((p) => p.category === cat)
+export default function Postcards({ filter, onFilter }) {
+  const activeType = catalog.types.find((t) => t.id === filter.type) || catalog.types[0]
+  const subs = activeType.subcategories
+
+  const cards = catalog.postcards.filter(
+    (p) => p.type === activeType.id && (!filter.sub || p.subcategory === filter.sub)
+  )
 
   return (
     <section className="section" id="postcards">
@@ -22,26 +24,40 @@ export default function Postcards() {
         </Reveal>
 
         <div className="pc-filter">
-          <button
-            className={`pc-chip${cat === 'all' ? ' is-active' : ''}`}
-            onClick={() => setCat('all')}
-          >
-            All
-          </button>
-          {catalog.categories.map((c) => (
+          {catalog.types.map((t) => (
             <button
-              key={c.id}
-              className={`pc-chip${cat === c.id ? ' is-active' : ''}`}
-              onClick={() => setCat(c.id)}
+              key={t.id}
+              className={`pc-chip${t.id === activeType.id ? ' is-active' : ''}`}
+              onClick={() => onFilter({ type: t.id, sub: null })}
             >
-              {c.label}
+              {t.label}
             </button>
           ))}
         </div>
 
+        {subs.length > 0 && (
+          <div className="pc-subfilter">
+            <button
+              className={`pc-subchip${!filter.sub ? ' is-active' : ''}`}
+              onClick={() => onFilter({ type: activeType.id, sub: null })}
+            >
+              All
+            </button>
+            {subs.map((s) => (
+              <button
+                key={s.id}
+                className={`pc-subchip${filter.sub === s.id ? ' is-active' : ''}`}
+                onClick={() => onFilter({ type: activeType.id, sub: s.id })}
+              >
+                {s.label}
+              </button>
+            ))}
+          </div>
+        )}
+
         <div className="pc-grid">
           {cards.map((p, i) => (
-            <Reveal key={p.id} delay={(i % 4) * 60}>
+            <Reveal key={p.id} delay={(i % 4) * 50}>
               <article className="pc-card">
                 <img className="pc-card__img" src={p.image} alt={p.title} loading="lazy" />
                 <div className="pc-card__body">
@@ -53,6 +69,7 @@ export default function Postcards() {
               </article>
             </Reveal>
           ))}
+          {!cards.length && <p className="section__lead">No designs here yet.</p>}
         </div>
       </div>
     </section>

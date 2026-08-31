@@ -1,15 +1,30 @@
+import { useState } from 'react'
 import Icon from '../components/Icon'
+import MenuDrawer from './MenuDrawer'
 
-export default function Nav() {
+export default function Nav({ onNavigate }) {
+  const [menuOpen, setMenuOpen] = useState(false)
+
   return (
     <header className="site-nav">
       <div className="section-inner site-nav__inner">
-        <a className="brand" href="#top">
-          <span className="brand__mark">
-            <Icon name="heart" size={16} />
-          </span>
-          <span>MailingLove</span>
-        </a>
+        <div className="site-nav__left">
+          <button
+            className="site-nav__burger"
+            onClick={() => setMenuOpen(true)}
+            aria-label="Open postcard menu"
+          >
+            <span />
+            <span />
+            <span />
+          </button>
+          <a className="brand" href="#top">
+            <span className="brand__mark">
+              <Icon name="heart" size={16} />
+            </span>
+            <span>MailingLove</span>
+          </a>
+        </div>
         <span className="site-nav__actions">
           <a className="site-nav__link" href="/account">
             Account
@@ -19,6 +34,12 @@ export default function Nav() {
           </a>
         </span>
       </div>
+
+      <MenuDrawer
+        open={menuOpen}
+        onClose={() => setMenuOpen(false)}
+        onNavigate={onNavigate}
+      />
     </header>
   )
 }
