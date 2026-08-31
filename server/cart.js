@@ -34,8 +34,8 @@ export function validateRecipient(r) {
   return { errors: ['Choose who to send it to.'], value: null }
 }
 
-function cartLine(postcardId, qty) {
-  const card = getPostcard(postcardId)
+async function cartLine(postcardId, qty) {
+  const card = await getPostcard(postcardId)
   if (!card) return null
   return {
     id: crypto.randomBytes(8).toString('hex'),
@@ -61,7 +61,7 @@ export async function getCart(email) {
 }
 
 export async function addItem(email, input) {
-  const line = cartLine((input || {}).postcardId, 1)
+  const line = await cartLine((input || {}).postcardId, 1)
   if (!line) return { ok: false, errors: ['That postcard is no longer available.'] }
   const ref = await userRef(email)
   const { items } = await getCart(email)

@@ -502,6 +502,10 @@ input.adm__input[type='checkbox'] {
   box-shadow: 0 0 0 3px rgba(184, 53, 95, 0.25);
 }
 
+.adm__gcard.is-hidden {
+  opacity: 0.55;
+}
+
 .adm__gimg {
   width: 100%;
   display: block;
@@ -521,9 +525,15 @@ input.adm__input[type='checkbox'] {
   line-height: 1.25;
 }
 
+.adm__gtags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 4px 0 8px;
+}
+
 .adm__gtag {
   display: inline-block;
-  margin: 4px 0 8px;
   font-size: 0.66rem;
   font-weight: 700;
   text-transform: uppercase;
@@ -553,4 +563,27 @@ input.adm__input[type='checkbox'] {
 .adm__chip--file {
   position: relative;
   overflow: hidden;
+}
+
+.adm__chip--danger {
+  border-color: rgba(168, 59, 59, 0.4);
+  color: #a83b3b;
+}
+
+.adm__chip--danger:hover:not(:disabled) {
+  background: #a83b3b;
+  border-color: #a83b3b;
+  color: #fff;
+}
+
+.adm__addcard {
+  margin: 14px 0 4px;
+  padding: 16px;
+  border: 1px solid rgba(74, 22, 38, 0.15);
+  border-radius: 10px;
+  background: #faf7f8;
+}
+
+.adm__addcard .adm__field:last-of-type {
+  margin-bottom: 14px;
 }

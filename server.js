@@ -49,6 +49,12 @@ import {
 } from './server/customPostcard.js'
 import { streamImage, adminCatalog, uploadHiRes, removeHiRes } from './server/assets.js'
 import {
+  getMergedCatalog,
+  addPostcard,
+  deletePostcard,
+  restorePostcard,
+} from './server/catalog.js'
+import {
   stripe,
   stripeConfigured,
   STRIPE_WEBHOOK_SECRET,
@@ -227,6 +233,17 @@ app.get('/api/site-config', async (req, res) => {
     postcardsPerPage: cfg.postcard.perPage,
     postcardSizes: cfg.postcard.sizes.map((s) => ({ id: s.id, label: s.label })),
   })
+})
+
+// Storefront postcard catalog (base cards + admin edits, merged at runtime).
+app.get('/api/catalog', async (req, res) => {
+  try {
+    res.setHeader('Cache-Control', 'public, max-age=60')
+    res.json(await getMergedCatalog())
+  } catch (err) {
+    console.error('[catalog] merged read failed:', err?.message || err)
+    res.status(500).json({ error: 'Could not load the catalog.' })
+  }
 })
 
 // --- image redesign -------------------------------------------------------
@@ -413,6 +430,29 @@ app.get('/api/admin/catalog', requireAdmin, async (req, res) => {
   }
 })
 
+// Add a brand-new card to the catalog (image + category + title).
+app.post('/api/admin/catalog', requireAdmin, (req, res) => {
+  hiresUpload.single('image')(req, res, async (uploadErr) => {
+    if (uploadErr) return res.status(400).json({ error: uploadErr.message })
+    if (!req.file) return res.status(400).json({ error: 'Attach an image.' })
+    try {
+      const r = await addPostcard({
+        type: req.body.type,
+        subcategory: req.body.subcategory || null,
+        title: req.body.title,
+        buffer: req.file.buffer,
+        contentType: req.file.mimetype,
+      })
+      if (!r.ok) return res.status(400).json({ error: r.error })
+      console.log(`[admin] ${req.adminEmail} added postcard ${r.card.id}`)
+      res.json({ card: r.card })
+    } catch (err) {
+      console.error('[admin] add postcard failed:', err?.message || err)
+      res.status(500).json({ error: 'Could not add the postcard.' })
+    }
+  })
+})
+
 app.post('/api/admin/catalog/:id/image', requireAdmin, (req, res) => {
   hiresUpload.single('image')(req, res, async (uploadErr) => {
     if (uploadErr) return res.status(400).json({ error: uploadErr.message })
@@ -427,6 +467,33 @@ app.post('/api/admin/catalog/:id/image', requireAdmin, (req, res) => {
       res.status(500).json({ error: 'Upload failed.' })
     }
   })
+})
+
+// Remove a card from the storefront: hide a base card, or delete an
+// admin-created one outright.
+app.delete('/api/admin/catalog/:id', requireAdmin, async (req, res) => {
+  try {
+    const r = await deletePostcard(req.params.id)
+    if (!r.ok) return res.status(400).json({ error: r.error })
+    console.log(`[admin] ${req.adminEmail} deleted postcard ${req.params.id}`)
+    res.json({ ok: true })
+  } catch (err) {
+    console.error('[admin] delete postcard failed:', err?.message || err)
+    res.status(500).json({ error: 'Could not delete the postcard.' })
+  }
+})
+
+// Bring a hidden base card back.
+app.post('/api/admin/catalog/:id/restore', requireAdmin, async (req, res) => {
+  try {
+    const r = await restorePostcard(req.params.id)
+    if (!r.ok) return res.status(400).json({ error: r.error })
+    console.log(`[admin] ${req.adminEmail} restored postcard ${req.params.id}`)
+    res.json({ ok: true })
+  } catch (err) {
+    console.error('[admin] restore postcard failed:', err?.message || err)
+    res.status(500).json({ error: 'Could not restore the postcard.' })
+  }
 })
 
 app.delete('/api/admin/catalog/:id/image', requireAdmin, async (req, res) => {

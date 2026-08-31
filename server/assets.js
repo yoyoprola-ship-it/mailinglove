@@ -1,17 +1,13 @@
-import { getStorage } from 'firebase-admin/storage'
 import { getDb } from './firebaseAdmin.js'
-import { catalog, getPostcard } from './catalog.js'
+import { saveFile, downloadFile, deleteFile, EXT } from './bucket.js'
+import { getPostcard, adminList, catalog } from './catalog.js'
 
-// Hi-res print files the admin uploads for catalog postcards. Stored in
-// Cloud Storage under postcards-hires/<id>.<ext>; an override map in
-// Firestore (config/overrides) points each postcardId at its stored file.
-// Images are streamed through /api/postcard-image/:id so the bucket can
-// stay private.
-
-const BUCKET = process.env.STORAGE_BUCKET || 'mailinglove-eb540-hires'
-const bucket = () => getStorage().bucket(BUCKET)
-
-const EXT = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp', 'application/pdf': 'pdf' }
+// Hi-res print files the admin uploads to replace a catalog card's image.
+// Stored in Cloud Storage under postcards-hires/<id>.<ext>; an override map
+// in Firestore (config/overrides) points each postcardId at its stored file.
+// Images are streamed through /api/postcard-image/:id so the bucket can stay
+// private. Admin-created ("custom") cards keep their own image in the bucket
+// too — that path lives on the card itself (see catalog.js).
 
 let cache = null
 let cacheAt = 0
@@ -38,11 +34,11 @@ export async function hasHiRes(postcardId) {
 }
 
 export async function uploadHiRes(postcardId, buffer, contentType) {
-  if (!getPostcard(postcardId)) return { ok: false, error: 'Unknown postcard.' }
+  if (!(await getPostcard(postcardId))) return { ok: false, error: 'Unknown postcard.' }
   const ext = EXT[contentType]
   if (!ext) return { ok: false, error: 'Use JPEG, PNG, WebP, or PDF.' }
   const path = `postcards-hires/${postcardId}.${ext}`
-  await bucket().file(path).save(buffer, { contentType, resumable: false, metadata: { cacheControl: 'no-cache' } })
+  await saveFile(path, buffer, contentType)
 
   const db = getDb()
   await db
@@ -57,10 +53,7 @@ export async function removeHiRes(postcardId) {
   const map = await overrides()
   const entry = map[postcardId]
   if (!entry) return { ok: true }
-  await bucket()
-    .file(entry.path)
-    .delete()
-    .catch(() => {})
+  await deleteFile(entry.path)
   const db = getDb()
   const { FieldValue } = await import('firebase-admin/firestore')
   await db
@@ -71,40 +64,50 @@ export async function removeHiRes(postcardId) {
   return { ok: true }
 }
 
-// Stream the current best image for a postcard: the uploaded hi-res file if
-// there is one, otherwise redirect to the static placeholder.
+// Stream the current best image for a postcard: an uploaded hi-res file if
+// there is one, then the card's own stored file (admin-created cards),
+// otherwise redirect to the static placeholder.
 export async function streamImage(postcardId, res) {
-  const card = getPostcard(postcardId)
+  const card = await getPostcard(postcardId)
   if (!card) return res.status(404).end()
+
   const entry = (await overrides())[postcardId]
-  if (!entry) {
+  const src =
+    entry ||
+    (card.storagePath ? { path: card.storagePath, contentType: card.contentType } : null)
+
+  if (!src) {
     res.setHeader('Cache-Control', 'public, max-age=300')
     return res.redirect(302, card.image)
   }
   try {
-    const [buf] = await bucket().file(entry.path).download()
-    res.setHeader('Content-Type', entry.contentType || 'application/octet-stream')
+    const buf = await downloadFile(src.path)
+    res.setHeader('Content-Type', src.contentType || 'application/octet-stream')
     res.setHeader('Cache-Control', 'private, max-age=60')
     res.end(buf)
   } catch (err) {
     console.error('[assets] stream failed:', err?.message || err)
+    if (card.storagePath && !entry) return res.status(404).end()
     res.redirect(302, card.image)
   }
 }
 
-// Catalog for the admin gallery: every postcard with its proxy image URL
-// and whether a hi-res file is on file.
+// Catalog for the admin gallery: every card with its proxy image URL, whether
+// a hi-res file is on file, and whether it is a custom / hidden card.
 export async function adminCatalog() {
   const map = await overrides()
+  const list = await adminList()
   return {
     types: catalog.types,
-    postcards: catalog.postcards.map((p) => ({
+    postcards: list.map((p) => ({
       id: p.id,
       type: p.type,
       subcategory: p.subcategory || null,
       title: p.title,
       image: `/api/postcard-image/${p.id}`,
       hires: Boolean(map[p.id]),
+      custom: p.custom,
+      hidden: p.hidden,
     })),
   }
 }

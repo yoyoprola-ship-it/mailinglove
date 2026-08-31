@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import Reveal from '../components/Reveal'
-import catalog from '../data/postcards.json'
+import bundledCatalog from '../data/postcards.json'
 
 // Deterministic shuffle: same order all day for every visitor, a fresh
 // order tomorrow — so the catalog feels like it's restocked daily. Stable
@@ -87,6 +87,18 @@ export default function Postcards({
   const size = perPage > 0 ? perPage : 25
   const [preview, setPreview] = useState(null)
 
+  // Catalog is editable from the admin panel, so pull the live version;
+  // fall back to the copy bundled at build time if the request fails.
+  const [catalog, setCatalog] = useState(bundledCatalog)
+  useEffect(() => {
+    fetch('/api/catalog')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((c) => {
+        if (c && Array.isArray(c.postcards) && Array.isArray(c.types)) setCatalog(c)
+      })
+      .catch(() => {})
+  }, [])
+
   useEffect(() => {
     if (!preview) return
     function onKey(e) {
@@ -109,7 +121,7 @@ export default function Postcards({
     )
     const day = new Date().toISOString().slice(0, 10) // YYYY-MM-DD
     return seededShuffle(filtered, `${day}|${activeType.id}|${filter.sub || 'all'}`)
-  }, [activeType.id, filter.sub])
+  }, [catalog, activeType.id, filter.sub])
 
   const pageCount = Math.max(1, Math.ceil(cards.length / size))
   const current = Math.min(page, pageCount)
