@@ -30,6 +30,9 @@ service cloud.firestore {
     match /authChallenges/{doc} {
       allow read, write: if false;
     }
+    match /orders/{doc} {
+      allow read, write: if false;
+    }
 
     match /{document=**} {
       allow read, write: if false;

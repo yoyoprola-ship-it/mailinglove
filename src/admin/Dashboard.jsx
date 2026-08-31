@@ -42,6 +42,10 @@ export default function Dashboard() {
             <span className="adm__kpi-n">{stats.last30}</span>
             <span className="adm__kpi-l">last 30 days</span>
           </div>
+          <div className="adm__kpi">
+            <span className="adm__kpi-n">{stats.ordersPending || 0}</span>
+            <span className="adm__kpi-l">orders to fulfill</span>
+          </div>
         </div>
 
         <div className="adm__bars">

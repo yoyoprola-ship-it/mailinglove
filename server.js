@@ -28,6 +28,16 @@ import {
   userSessionCookie,
   clearUserCookie,
 } from './server/userAuth.js'
+import {
+  getCart,
+  addItem,
+  updateItem,
+  removeItem,
+  placeOrder,
+  listOrders,
+  listAllOrders,
+  setOrderStatus,
+} from './server/cart.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const PORT = process.env.PORT || 8080
@@ -309,6 +319,95 @@ app.put('/api/me', requireUser, async (req, res) => {
   } catch (err) {
     console.error('[auth] profile save failed:', err?.message || err)
     res.status(500).json({ error: 'Could not save.' })
+  }
+})
+
+// --- cart & orders (customer) --------------------------------------
+
+const cartErr = (res, result) =>
+  res.status(400).json({ error: result.errors[0], errors: result.errors })
+
+app.get('/api/cart', requireUser, async (req, res) => {
+  try {
+    res.json({ items: await getCart(req.userEmail) })
+  } catch (err) {
+    console.error('[cart] get failed:', err?.message || err)
+    res.status(500).json({ error: 'Could not load your cart.' })
+  }
+})
+
+app.post('/api/cart', requireUser, async (req, res) => {
+  try {
+    const result = await addItem(req.userEmail, req.body || {})
+    if (!result.ok) return cartErr(res, result)
+    res.json({ items: result.cart })
+  } catch (err) {
+    console.error('[cart] add failed:', err?.message || err)
+    res.status(500).json({ error: 'Could not add to cart.' })
+  }
+})
+
+app.put('/api/cart/:itemId', requireUser, async (req, res) => {
+  try {
+    const result = await updateItem(req.userEmail, req.params.itemId, req.body || {})
+    if (!result.ok) return cartErr(res, result)
+    res.json({ items: result.cart })
+  } catch (err) {
+    console.error('[cart] update failed:', err?.message || err)
+    res.status(500).json({ error: 'Could not update the item.' })
+  }
+})
+
+app.delete('/api/cart/:itemId', requireUser, async (req, res) => {
+  try {
+    const result = await removeItem(req.userEmail, req.params.itemId)
+    res.json({ items: result.cart })
+  } catch (err) {
+    console.error('[cart] remove failed:', err?.message || err)
+    res.status(500).json({ error: 'Could not remove the item.' })
+  }
+})
+
+app.post('/api/orders', requireUser, async (req, res) => {
+  try {
+    const result = await placeOrder(req.userEmail)
+    if (!result.ok) return cartErr(res, result)
+    res.json({ order: result.order })
+  } catch (err) {
+    console.error('[orders] place failed:', err?.message || err)
+    res.status(500).json({ error: 'Could not place the order.' })
+  }
+})
+
+app.get('/api/orders', requireUser, async (req, res) => {
+  try {
+    res.json({ orders: await listOrders(req.userEmail) })
+  } catch (err) {
+    console.error('[orders] list failed:', err?.message || err)
+    res.status(500).json({ error: 'Could not load your orders.' })
+  }
+})
+
+// --- orders (admin) ----------------------------------------------
+
+app.get('/api/admin/orders', requireAdmin, async (req, res) => {
+  try {
+    res.json({ orders: await listAllOrders({ status: req.query.status }) })
+  } catch (err) {
+    console.error('[admin] orders list failed:', err?.message || err)
+    res.status(500).json({ error: 'Could not load orders.' })
+  }
+})
+
+app.put('/api/admin/orders/:id', requireAdmin, async (req, res) => {
+  try {
+    const result = await setOrderStatus(req.params.id, (req.body || {}).status)
+    if (!result.ok) return res.status(400).json({ error: result.error })
+    console.log(`[admin] ${req.adminEmail} set order ${req.params.id} -> ${req.body.status}`)
+    res.json({ order: result.order })
+  } catch (err) {
+    console.error('[admin] order update failed:', err?.message || err)
+    res.status(500).json({ error: 'Could not update the order.' })
   }
 })
 

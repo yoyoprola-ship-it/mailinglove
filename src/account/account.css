@@ -129,3 +129,156 @@
   font-size: 0.85rem;
   margin-top: 12px;
 }
+
+/* tabs */
+.acc__tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 18px;
+}
+
+.acc__tab {
+  border: none;
+  background: none;
+  padding: 8px 14px;
+  font-size: 0.9rem;
+  color: var(--muted);
+  cursor: pointer;
+  border-radius: 999px;
+}
+
+.acc__tab.is-active {
+  background: #fff;
+  color: var(--rose-900);
+  font-weight: 600;
+  box-shadow: 0 6px 18px rgba(74, 22, 38, 0.08);
+}
+
+/* add-to-cart form */
+.acc__pc-preview {
+  width: 160px;
+  border-radius: 10px;
+  display: block;
+  margin: 8px 0 18px;
+  box-shadow: 0 10px 24px rgba(74, 22, 38, 0.12);
+}
+
+.acc__radio {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9rem;
+  margin-bottom: 8px;
+}
+
+.acc__sub {
+  margin: 10px 0 4px;
+  padding: 16px;
+  border: 1px solid rgba(74, 22, 38, 0.12);
+  border-radius: 10px;
+}
+
+.acc__textarea {
+  resize: vertical;
+  font-family: inherit;
+}
+
+.acc__actions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-top: 8px;
+}
+
+.acc__actions .acc__link {
+  margin-top: 0;
+}
+
+.acc__fine {
+  margin-top: 12px;
+  font-size: 0.78rem;
+}
+
+/* cart list */
+.acc__list {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 18px;
+}
+
+.acc__item {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 12px 0;
+  border-bottom: 1px solid rgba(74, 22, 38, 0.08);
+}
+
+.acc__item-img {
+  width: 54px;
+  border-radius: 6px;
+  flex-shrink: 0;
+}
+
+.acc__item-body {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  flex: 1;
+  font-size: 0.88rem;
+}
+
+.acc__msg {
+  font-style: italic;
+  color: var(--muted);
+}
+
+/* orders */
+.acc__order {
+  border: 1px solid rgba(74, 22, 38, 0.1);
+  border-radius: 10px;
+  padding: 14px;
+  margin-bottom: 12px;
+}
+
+.acc__order-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.acc__order-items {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 0.85rem;
+  color: var(--text-dark);
+}
+
+.acc__badge {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: #eee;
+  color: #555;
+}
+
+.acc__badge--pending {
+  background: #fdeede;
+  color: #a8651a;
+}
+.acc__badge--printed {
+  background: #e6eefb;
+  color: #2b5ba8;
+}
+.acc__badge--mailed {
+  background: #e4f4ea;
+  color: #2e7d5b;
+}
+.acc__badge--cancelled {
+  background: #f4e4e4;
+  color: #a83b3b;
+}

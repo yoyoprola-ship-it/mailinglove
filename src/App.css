@@ -421,6 +421,86 @@
   font-size: 0.9rem;
 }
 
+/* ---------- ready-made postcards ---------- */
+
+.pc-filter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 36px;
+}
+
+.pc-chip {
+  border: 1px solid rgba(74, 22, 38, 0.2);
+  background: #fff;
+  color: var(--rose-900);
+  padding: 8px 18px;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+}
+
+.pc-chip:hover {
+  border-color: var(--rose);
+}
+
+.pc-chip.is-active {
+  background: var(--rose);
+  border-color: var(--rose);
+  color: #fff;
+}
+
+.pc-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 24px;
+  margin-top: 28px;
+}
+
+@media (max-width: 900px) {
+  .pc-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 520px) {
+  .pc-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.pc-card {
+  background: #fff;
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: 0 14px 36px rgba(74, 22, 38, 0.08);
+  display: flex;
+  flex-direction: column;
+}
+
+.pc-card__img {
+  width: 100%;
+  aspect-ratio: 5 / 7;
+  object-fit: cover;
+  display: block;
+  background: var(--blush);
+}
+
+.pc-card__body {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.pc-card__title {
+  font-size: 1rem;
+  color: var(--rose-900);
+}
+
 /* ---------- studio (try it) ---------- */
 
 .studio {

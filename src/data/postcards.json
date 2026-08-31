@@ -1,0 +1,22 @@
+{
+  "categories": [
+    { "id": "love", "label": "Love" },
+    { "id": "family", "label": "Family" },
+    { "id": "birthday", "label": "Birthday" },
+    { "id": "christmas", "label": "Christmas" }
+  ],
+  "postcards": [
+    { "id": "love-golden-hour", "category": "love", "title": "Golden Hour", "image": "/postcards/love-golden-hour.svg" },
+    { "id": "love-with-all-my-heart", "category": "love", "title": "With All My Heart", "image": "/postcards/love-with-all-my-heart.svg" },
+    { "id": "love-just-because", "category": "love", "title": "Just Because", "image": "/postcards/love-just-because.svg" },
+    { "id": "family-all-together", "category": "family", "title": "All Together", "image": "/postcards/family-all-together.svg" },
+    { "id": "family-home-is-you", "category": "family", "title": "Home Is You", "image": "/postcards/family-home-is-you.svg" },
+    { "id": "family-sunday-light", "category": "family", "title": "Sunday Light", "image": "/postcards/family-sunday-light.svg" },
+    { "id": "birthday-confetti-day", "category": "birthday", "title": "Confetti Day", "image": "/postcards/birthday-confetti-day.svg" },
+    { "id": "birthday-another-trip", "category": "birthday", "title": "Another Trip Around the Sun", "image": "/postcards/birthday-another-trip.svg" },
+    { "id": "birthday-make-a-wish", "category": "birthday", "title": "Make a Wish", "image": "/postcards/birthday-make-a-wish.svg" },
+    { "id": "christmas-first-snow", "category": "christmas", "title": "First Snow", "image": "/postcards/christmas-first-snow.svg" },
+    { "id": "christmas-warm-and-bright", "category": "christmas", "title": "Warm & Bright", "image": "/postcards/christmas-warm-and-bright.svg" },
+    { "id": "christmas-seasons-greetings", "category": "christmas", "title": "Season's Greetings", "image": "/postcards/christmas-seasons-greetings.svg" }
+  ]
+}

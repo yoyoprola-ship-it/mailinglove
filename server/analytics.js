@@ -70,6 +70,14 @@ export async function getStats() {
     console.warn('[analytics] waitlist read failed:', err?.message || err)
   }
 
+  let ordersPending = 0
+  try {
+    const snap = await db.collection('orders').where('status', '==', 'pending').count().get()
+    ordersPending = snap.data().count
+  } catch (err) {
+    console.warn('[analytics] orders count failed:', err?.message || err)
+  }
+
   let usersTotal = 0
   let usersRecent = []
   try {
@@ -101,6 +109,7 @@ export async function getStats() {
     waitlistRecent,
     usersTotal,
     usersRecent,
+    ordersPending,
   }
 }
 

@@ -273,3 +273,85 @@ input.adm__input[type='checkbox'] {
   font-size: 0.8rem;
   color: var(--muted);
 }
+
+/* orders */
+.adm__chips {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.adm__chip {
+  border: 1px solid rgba(74, 22, 38, 0.2);
+  background: #fff;
+  color: var(--muted);
+  padding: 5px 12px;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  text-transform: capitalize;
+  cursor: pointer;
+}
+
+.adm__chip.is-active {
+  background: var(--rose);
+  border-color: var(--rose);
+  color: #fff;
+}
+
+.adm__input--sm {
+  width: auto;
+  padding: 6px 10px;
+  font-size: 0.82rem;
+  text-transform: capitalize;
+}
+
+.adm__order {
+  border: 1px solid rgba(74, 22, 38, 0.12);
+  border-radius: 10px;
+  padding: 14px;
+  margin-bottom: 12px;
+}
+
+.adm__order-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.adm__order-items {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.adm__order-item {
+  display: flex;
+  gap: 12px;
+  font-size: 0.85rem;
+}
+
+.adm__order-thumb {
+  width: 44px;
+  height: 60px;
+  object-fit: cover;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+
+.adm__ship {
+  margin-top: 4px;
+  font-size: 0.82rem;
+  color: var(--text-dark);
+}
+
+.adm__msg {
+  margin-top: 4px;
+  font-style: italic;
+  color: var(--muted);
+}

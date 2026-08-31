@@ -2,8 +2,15 @@ import { useEffect, useState } from 'react'
 import { api } from './api'
 import Login from './Login'
 import Dashboard from './Dashboard'
+import Orders from './Orders'
 import Settings from './Settings'
 import './admin.css'
+
+const TABS = [
+  ['overview', 'Overview'],
+  ['orders', 'Orders'],
+  ['settings', 'Settings'],
+]
 
 export default function AdminApp() {
   const [state, setState] = useState('loading') // loading | out | in
@@ -49,21 +56,22 @@ export default function AdminApp() {
       </header>
 
       <nav className="adm__tabs">
-        <button
-          className={`adm__tab${tab === 'overview' ? ' is-active' : ''}`}
-          onClick={() => setTab('overview')}
-        >
-          Overview
-        </button>
-        <button
-          className={`adm__tab${tab === 'settings' ? ' is-active' : ''}`}
-          onClick={() => setTab('settings')}
-        >
-          Settings
-        </button>
+        {TABS.map(([id, label]) => (
+          <button
+            key={id}
+            className={`adm__tab${tab === id ? ' is-active' : ''}`}
+            onClick={() => setTab(id)}
+          >
+            {label}
+          </button>
+        ))}
       </nav>
 
-      <main className="adm__main">{tab === 'overview' ? <Dashboard /> : <Settings />}</main>
+      <main className="adm__main">
+        {tab === 'overview' && <Dashboard />}
+        {tab === 'orders' && <Orders />}
+        {tab === 'settings' && <Settings />}
+      </main>
     </div>
   )
 }

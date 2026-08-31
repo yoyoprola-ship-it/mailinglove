@@ -122,27 +122,30 @@ function str(v, max) {
   return typeof v === 'string' ? v.trim().slice(0, max) : ''
 }
 
-export function validateProfile(input = {}) {
+// Validate + normalize a US address. Returns { errors, value }. `label`
+// prefixes error messages ("Recipient street address is required").
+export function validateAddress(a = {}, label = '') {
   const errors = []
-  const a = input.address || {}
-
-  const name = str(input.name, 120)
+  const p = label ? `${label} ` : ''
   const line1 = str(a.line1, 200)
   const line2 = str(a.line2, 200)
   const city = str(a.city, 100)
   const state = str(a.state, 2).toUpperCase()
   const zip = str(a.zip, 10)
 
-  if (!name) errors.push('Name is required.')
-  if (!line1) errors.push('Street address is required.')
-  if (!city) errors.push('City is required.')
-  if (!US_STATES.has(state)) errors.push('Pick a US state.')
-  if (!/^\d{5}(-\d{4})?$/.test(zip)) errors.push('ZIP must be 5 digits (or ZIP+4).')
+  if (!line1) errors.push(`${p}street address is required.`)
+  if (!city) errors.push(`${p}city is required.`)
+  if (!US_STATES.has(state)) errors.push(`Pick a valid ${p ? p.toLowerCase() : ''}US state.`)
+  if (!/^\d{5}(-\d{4})?$/.test(zip)) errors.push(`${p}ZIP must be 5 digits (or ZIP+4).`)
 
-  return {
-    errors,
-    value: { name, address: { line1, line2, city, state, zip, country: 'US' } },
-  }
+  return { errors, value: { line1, line2, city, state, zip, country: 'US' } }
+}
+
+export function validateProfile(input = {}) {
+  const name = str(input.name, 120)
+  const { errors, value: address } = validateAddress(input.address || {})
+  if (!name) errors.unshift('Name is required.')
+  return { errors, value: { name, address } }
 }
 
 // --- session / middleware --------------------------------------------

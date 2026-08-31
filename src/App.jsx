@@ -4,6 +4,7 @@ import Categories from './sections/Categories'
 import HowItWorks from './sections/HowItWorks'
 import Studio from './sections/Studio'
 import Restore from './sections/Restore'
+import Postcards from './sections/Postcards'
 import Products from './sections/Products'
 import Waitlist from './sections/Waitlist'
 import Footer from './sections/Footer'
@@ -16,6 +17,7 @@ export default function App() {
       <Hero />
       <Categories />
       <HowItWorks />
+      <Postcards />
       <Studio />
       <Restore />
       <Products />

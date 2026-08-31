@@ -71,6 +71,27 @@ and `/api/me` in [server.js](server.js); logic in [server/userAuth.js](server/us
 
 Needs `RESEND_*` and firebase-admin, same as the admin; no new secrets.
 
+## Ready-made postcards, cart & orders
+
+- **Catalog**: [src/data/postcards.json](src/data/postcards.json) (categories +
+  postcards, each `{ id, category, title, image }`). Images live in
+  [public/postcards/](public/postcards/) — the committed `.svg` files are
+  **placeholders**; drop in real art at the same paths (or edit the JSON).
+  The server reads the same JSON ([server/catalog.js](server/catalog.js)) to
+  validate a `postcardId` and snapshot title/image into an order.
+- **Public section** ([src/sections/Postcards.jsx](src/sections/Postcards.jsx)):
+  browse by category; "Send this postcard" → `/account?add=<id>`.
+- **Cart** (`/api/cart`, stored as `users/{email}.cart`): each item is a
+  postcard + optional 300-char message + recipient. Recipient is either
+  `self` (resolved to the account address at order time) or `other`
+  (name + US address, validated server-side).
+- **Orders** (`orders/` collection): "Place order" moves the cart into an
+  order with status `pending` → `printed` → `mailed` (`cancelled` too).
+  No payment yet — fulfilment is manual.
+- **Admin → Orders**: filter by status, see each recipient's full address
+  and message to print + mail, and advance the status. Overview shows an
+  "orders to fulfill" count.
+
 ## Roadmap (not built yet)
 - **Payment**: Stripe checkout once generation is real.
 - **Physical mail fulfillment**: an actual print-and-mail API (e.g. Lob,
