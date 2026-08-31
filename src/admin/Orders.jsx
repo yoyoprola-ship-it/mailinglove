@@ -88,7 +88,9 @@ export default function Orders() {
                 <li key={i} className="adm__order-item">
                   <img className="adm__order-thumb" src={it.image} alt={it.title} />
                   <div>
-                    <strong>{it.title}</strong> <span className="adm__muted">({it.category})</span>
+                    <strong>{it.title}</strong>{' '}
+                    {(it.qty || 1) > 1 && <strong className="adm__qty-badge">×{it.qty}</strong>}{' '}
+                    <span className="adm__muted">({it.category})</span>
                     <div className="adm__ship">
                       {it.recipient?.name}
                       {addrLines(it.recipient?.address).map((l, j) => (

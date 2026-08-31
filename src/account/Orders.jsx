@@ -38,14 +38,17 @@ export default function Orders() {
               {STATUS_LABEL[o.status] || o.status}
             </span>
             <span className="acc__muted">
-              {fmt(o.createdAt)} · {o.items.length} card{o.items.length > 1 ? 's' : ''}
+              {fmt(o.createdAt)} ·{' '}
+              {o.items.reduce((n, it) => n + (it.qty || 1), 0)} card
+              {o.items.reduce((n, it) => n + (it.qty || 1), 0) > 1 ? 's' : ''}
             </span>
           </div>
           <ul className="acc__order-items">
             {o.items.map((it, i) => (
               <li key={i}>
-                {it.title} → {it.recipient?.name || '—'} ({it.recipient?.address?.city},{' '}
-                {it.recipient?.address?.state})
+                {it.title}
+                {(it.qty || 1) > 1 && ` ×${it.qty}`} → {it.recipient?.name || '—'} (
+                {it.recipient?.address?.city}, {it.recipient?.address?.state})
               </li>
             ))}
           </ul>

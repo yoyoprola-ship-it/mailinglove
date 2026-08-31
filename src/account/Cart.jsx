@@ -13,11 +13,29 @@ function recipientSummary(r) {
   return `To ${r.name} — ${a.city}, ${a.state}`
 }
 
-function AddForm({ postcard, hasAccountAddress, onAdded, onCancel }) {
-  const [mode, setMode] = useState(hasAccountAddress ? 'self' : 'other')
-  const [name, setName] = useState('')
-  const [addr, setAddr] = useState(emptyAddr)
-  const [message, setMessage] = useState('')
+const cardCount = (items) => items.reduce((n, i) => n + (i.qty || 1), 0)
+
+function QtyStepper({ value, onChange, disabled }) {
+  return (
+    <span className="acc__qty">
+      <button type="button" onClick={() => onChange(value - 1)} disabled={disabled || value <= 1}>
+        −
+      </button>
+      <span className="acc__qty-n">{value}</span>
+      <button type="button" onClick={() => onChange(value + 1)} disabled={disabled || value >= 20}>
+        +
+      </button>
+    </span>
+  )
+}
+
+function ItemForm({ postcard, editItem, hasAccountAddress, onDone, onCancel }) {
+  const r = editItem?.recipient
+  const [mode, setMode] = useState(r ? r.type : hasAccountAddress ? 'self' : 'other')
+  const [name, setName] = useState(r?.type === 'other' ? r.name : '')
+  const [addr, setAddr] = useState(r?.type === 'other' ? { ...emptyAddr, ...r.address } : emptyAddr)
+  const [message, setMessage] = useState(editItem?.message || '')
+  const [qty, setQty] = useState(editItem?.qty || 1)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
 
@@ -28,12 +46,11 @@ function AddForm({ postcard, hasAccountAddress, onAdded, onCancel }) {
     try {
       const recipient =
         mode === 'self' ? { type: 'self' } : { type: 'other', name, address: addr }
-      const { items } = await api.post('/api/cart', {
-        postcardId: postcard.id,
-        message,
-        recipient,
-      })
-      onAdded(items)
+      const body = { message, recipient, qty }
+      const { items } = editItem
+        ? await api.put(`/api/cart/${editItem.id}`, body)
+        : await api.post('/api/cart', { ...body, postcardId: postcard.id })
+      onDone(items)
     } catch (err) {
       setError(err.message)
     } finally {
@@ -43,7 +60,9 @@ function AddForm({ postcard, hasAccountAddress, onAdded, onCancel }) {
 
   return (
     <form className="acc__card acc__card--wide" onSubmit={submit}>
-      <h2 className="acc__title">Send “{postcard.title}”</h2>
+      <h2 className="acc__title">
+        {editItem ? 'Edit' : 'Send'} “{postcard.title}”
+      </h2>
       <img className="acc__pc-preview" src={postcard.image} alt={postcard.title} />
 
       <p className="acc__label">Send to</p>
@@ -87,9 +106,14 @@ function AddForm({ postcard, hasAccountAddress, onAdded, onCancel }) {
         />
       </label>
 
+      <div className="acc__field-inline">
+        <span className="acc__label">Quantity</span>
+        <QtyStepper value={qty} onChange={(v) => setQty(Math.min(20, Math.max(1, v)))} />
+      </div>
+
       <div className="acc__actions">
         <button className="acc__btn" type="submit" disabled={busy}>
-          {busy ? 'Adding…' : 'Add to cart'}
+          {busy ? 'Saving…' : editItem ? 'Save changes' : 'Add to cart'}
         </button>
         <button type="button" className="acc__link" onClick={onCancel}>
           Cancel
@@ -100,10 +124,11 @@ function AddForm({ postcard, hasAccountAddress, onAdded, onCancel }) {
   )
 }
 
-export default function Cart({ initialAddId, user }) {
+export default function Cart({ initialAddId, user, onCount }) {
   const [items, setItems] = useState(null)
   const [error, setError] = useState('')
   const [adding, setAdding] = useState(initialAddId || '')
+  const [editing, setEditing] = useState(null) // cart item being edited
   const [placed, setPlaced] = useState(false)
   const [busy, setBusy] = useState(false)
 
@@ -123,9 +148,32 @@ export default function Cart({ initialAddId, user }) {
     load()
   }, [])
 
+  useEffect(() => {
+    if (items) onCount?.(cardCount(items))
+  }, [items, onCount])
+
+  async function setQty(it, qty) {
+    try {
+      const { items } = await api.put(`/api/cart/${it.id}`, { qty })
+      setItems(items)
+    } catch (err) {
+      setError(err.message)
+    }
+  }
+
   async function remove(id) {
     try {
       const { items } = await api.delete(`/api/cart/${id}`)
+      setItems(items)
+    } catch (err) {
+      setError(err.message)
+    }
+  }
+
+  async function clearAll() {
+    if (!confirm('Empty the whole cart?')) return
+    try {
+      const { items } = await api.delete('/api/cart')
       setItems(items)
     } catch (err) {
       setError(err.message)
@@ -146,20 +194,21 @@ export default function Cart({ initialAddId, user }) {
     }
   }
 
-  if (addPostcard) {
+  function closeForm(freshItems) {
+    if (freshItems) setItems(freshItems)
+    setAdding('')
+    setEditing(null)
+    history.replaceState(null, '', '/account')
+  }
+
+  if (addPostcard || editing) {
     return (
-      <AddForm
-        postcard={addPostcard}
+      <ItemForm
+        postcard={editing ? cardById[editing.postcardId] || { title: editing.title, image: editing.image } : addPostcard}
+        editItem={editing}
         hasAccountAddress={hasAccountAddress}
-        onAdded={(items) => {
-          setItems(items)
-          setAdding('')
-          history.replaceState(null, '', '/account')
-        }}
-        onCancel={() => {
-          setAdding('')
-          history.replaceState(null, '', '/account')
-        }}
+        onDone={closeForm}
+        onCancel={() => closeForm()}
       />
     )
   }
@@ -169,9 +218,7 @@ export default function Cart({ initialAddId, user }) {
       <h2 className="acc__title">Your cart</h2>
 
       {placed && (
-        <p className="acc__ok">
-          Order placed — we'll print and mail it. Track it under Orders.
-        </p>
+        <p className="acc__ok">Order placed — we'll print and mail it. Track it under Orders.</p>
       )}
 
       {!items && !error && <p className="acc__muted">Loading…</p>}
@@ -185,6 +232,11 @@ export default function Cart({ initialAddId, user }) {
 
       {items && items.length > 0 && (
         <>
+          <p className="acc__muted acc__cart-sum">
+            {items.length} design{items.length > 1 ? 's' : ''} · {cardCount(items)} card
+            {cardCount(items) > 1 ? 's' : ''}
+          </p>
+
           <ul className="acc__list">
             {items.map((it) => (
               <li className="acc__item" key={it.id}>
@@ -193,20 +245,30 @@ export default function Cart({ initialAddId, user }) {
                   <strong>{it.title}</strong>
                   <span className="acc__muted">{recipientSummary(it.recipient)}</span>
                   {it.message && <span className="acc__msg">“{it.message}”</span>}
+                  <span className="acc__item-actions">
+                    <button className="acc__link" onClick={() => setEditing(it)}>
+                      Edit
+                    </button>
+                    <button className="acc__link" onClick={() => remove(it.id)}>
+                      Remove
+                    </button>
+                  </span>
                 </div>
-                <button className="acc__link" onClick={() => remove(it.id)}>
-                  Remove
-                </button>
+                <QtyStepper value={it.qty || 1} onChange={(v) => setQty(it, v)} />
               </li>
             ))}
           </ul>
+
           <div className="acc__actions">
             <button className="acc__btn" onClick={placeOrder} disabled={busy}>
-              {busy ? 'Placing…' : `Place order (${items.length})`}
+              {busy ? 'Placing…' : `Place order · ${cardCount(items)} card${cardCount(items) > 1 ? 's' : ''}`}
             </button>
             <a className="acc__link" href="/#postcards">
               Add more
             </a>
+            <button type="button" className="acc__link" onClick={clearAll}>
+              Empty cart
+            </button>
           </div>
           <p className="acc__muted acc__fine">
             No charge yet — payment is coming. For now we print and mail on request.

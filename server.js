@@ -33,6 +33,7 @@ import {
   addItem,
   updateItem,
   removeItem,
+  clearCart,
   placeOrder,
   listOrders,
   listAllOrders,
@@ -436,6 +437,16 @@ app.delete('/api/cart/:itemId', requireUser, async (req, res) => {
   } catch (err) {
     console.error('[cart] remove failed:', err?.message || err)
     res.status(500).json({ error: 'Could not remove the item.' })
+  }
+})
+
+app.delete('/api/cart', requireUser, async (req, res) => {
+  try {
+    const result = await clearCart(req.userEmail)
+    res.json({ items: result.cart })
+  } catch (err) {
+    console.error('[cart] clear failed:', err?.message || err)
+    res.status(500).json({ error: 'Could not clear the cart.' })
   }
 })
 

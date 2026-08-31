@@ -100,10 +100,15 @@ Needs `RESEND_*` and firebase-admin, same as the admin; no new secrets.
   opened from [Nav.jsx](src/sections/Nav.jsx)): types, with Birthday
   expanding to its subcategories; a pick filters the gallery and scrolls to
   it (filter state lives in [App.jsx](src/App.jsx)).
-- **Cart** (`/api/cart`, stored as `users/{email}.cart`): each item is a
-  postcard + optional 300-char message + recipient. Recipient is either
-  `self` (resolved to the account address at order time) or `other`
-  (name + US address, validated server-side).
+- **Cart** (`/api/cart`, stored as `users/{email}.cart`): multi-line like a
+  normal e-commerce cart. Each line is a postcard + optional 300-char
+  message + recipient + `qty` (1–20). Recipient is `self` (resolved to the
+  account address at order time) or `other` (name + US address, validated
+  server-side). Adding a design that matches an existing line (same
+  recipient + message) bumps that line's qty instead of duplicating;
+  editing that collides with another line merges them. `POST` to add,
+  `PUT /:id` to edit (message / recipient / qty), `DELETE /:id` to remove
+  a line, `DELETE /api/cart` to empty. Max 50 distinct lines.
 - **Orders** (`orders/` collection): "Place order" moves the cart into an
   order with status `pending` → `printed` → `mailed` (`cancelled` too).
   No payment yet — fulfilment is manual.

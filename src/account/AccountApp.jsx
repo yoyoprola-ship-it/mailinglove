@@ -12,6 +12,7 @@ export default function AccountApp() {
   const [state, setState] = useState('loading') // loading | out | in
   const [user, setUser] = useState(null)
   const [tab, setTab] = useState(addParam ? 'cart' : 'profile')
+  const [cartCount, setCartCount] = useState(0)
 
   async function refresh() {
     try {
@@ -58,13 +59,19 @@ export default function AccountApp() {
                   className={`acc__tab${tab === t ? ' is-active' : ''}`}
                   onClick={() => setTab(t)}
                 >
-                  {t === 'profile' ? 'Your details' : t[0].toUpperCase() + t.slice(1)}
+                  {t === 'profile'
+                    ? 'Your details'
+                    : t === 'cart'
+                      ? `Cart${cartCount ? ` (${cartCount})` : ''}`
+                      : 'Orders'}
                 </button>
               ))}
             </nav>
 
             {tab === 'profile' && <Profile user={user} onSaved={setUser} />}
-            {tab === 'cart' && <Cart initialAddId={addParam} user={user} />}
+            {tab === 'cart' && (
+              <Cart initialAddId={addParam} user={user} onCount={setCartCount} />
+            )}
             {tab === 'orders' && <Orders />}
           </>
         )}

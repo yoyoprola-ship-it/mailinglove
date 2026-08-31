@@ -387,3 +387,11 @@ input.adm__input[type='checkbox'] {
   font-style: italic;
   color: var(--muted);
 }
+
+.adm__qty-badge {
+  background: var(--rose);
+  color: #fff;
+  border-radius: 6px;
+  padding: 1px 7px;
+  font-size: 0.8rem;
+}

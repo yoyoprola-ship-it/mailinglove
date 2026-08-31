@@ -3,11 +3,20 @@ import { getDb } from './firebaseAdmin.js'
 import { getPostcard } from './catalog.js'
 import { validateAddress } from './userAuth.js'
 
-const MAX_ITEMS = 50
+const MAX_LINES = 50 // distinct cart lines
+const MAX_QTY = 20 // copies of one line
 const MAX_MESSAGE = 300
 export const ORDER_STATUSES = ['pending', 'printed', 'mailed', 'cancelled']
 
 const clip = (v, n) => (typeof v === 'string' ? v.trim().slice(0, n) : '')
+const clampQty = (v) => {
+  const n = Math.trunc(Number(v))
+  return Number.isFinite(n) ? Math.min(MAX_QTY, Math.max(1, n)) : 1
+}
+
+// Two lines are "the same product" when the design, recipient and message
+// all match — adding it again just bumps the quantity.
+const lineKey = (i) => `${i.postcardId}|${JSON.stringify(i.recipient)}|${i.message || ''}`
 
 // Validate an incoming cart-item recipient. `self` means "use my account
 // address" (resolved at order time); `other` carries a name + US address.
@@ -22,7 +31,7 @@ function validateRecipient(r = {}) {
   return { errors: ['Choose who to send it to.'], value: null }
 }
 
-function buildItem({ postcardId, message, recipient }) {
+function buildItem({ postcardId, message, recipient, qty }) {
   const card = getPostcard(postcardId)
   if (!card) return { errors: ['That postcard is no longer available.'], value: null }
   const rec = validateRecipient(recipient)
@@ -38,6 +47,7 @@ function buildItem({ postcardId, message, recipient }) {
       subcategory: card.subcategory || null,
       message: clip(message, MAX_MESSAGE),
       recipient: rec.value,
+      qty: clampQty(qty),
       addedAt: Date.now(),
     },
   }
@@ -57,8 +67,14 @@ export async function addItem(email, input) {
   if (errors.length) return { ok: false, errors }
   const ref = await userRef(email)
   const cart = await getCart(email)
-  if (cart.length >= MAX_ITEMS) return { ok: false, errors: ['Your cart is full.'] }
-  cart.push(value)
+
+  const existing = cart.find((i) => lineKey(i) === lineKey(value))
+  if (existing) {
+    existing.qty = clampQty((existing.qty || 1) + value.qty)
+  } else {
+    if (cart.length >= MAX_LINES) return { ok: false, errors: ['Your cart is full.'] }
+    cart.push(value)
+  }
   await ref.set({ cart, updatedAt: Date.now() }, { merge: true })
   return { ok: true, cart }
 }
@@ -70,13 +86,28 @@ export async function updateItem(email, itemId, patch) {
   if (!item) return { ok: false, errors: ['Item not found.'] }
 
   if (patch.message !== undefined) item.message = clip(patch.message, MAX_MESSAGE)
+  if (patch.qty !== undefined) item.qty = clampQty(patch.qty)
   if (patch.recipient !== undefined) {
     const rec = validateRecipient(patch.recipient)
     if (rec.errors.length) return { ok: false, errors: rec.errors }
     item.recipient = rec.value
   }
-  await ref.set({ cart, updatedAt: Date.now() }, { merge: true })
-  return { ok: true, cart }
+
+  // Editing may have made this line identical to another — merge them.
+  const dup = cart.find((i) => i.id !== item.id && lineKey(i) === lineKey(item))
+  let next = cart
+  if (dup) {
+    dup.qty = clampQty((dup.qty || 1) + (item.qty || 1))
+    next = cart.filter((i) => i.id !== item.id)
+  }
+
+  await ref.set({ cart: next, updatedAt: Date.now() }, { merge: true })
+  return { ok: true, cart: next }
+}
+
+export async function clearCart(email) {
+  await (await userRef(email)).set({ cart: [], updatedAt: Date.now() }, { merge: true })
+  return { ok: true, cart: [] }
 }
 
 export async function removeItem(email, itemId) {
@@ -105,6 +136,7 @@ export async function placeOrder(email) {
     image: i.image,
     category: i.category,
     message: i.message || '',
+    qty: clampQty(i.qty),
     recipient:
       i.recipient.type === 'self'
         ? { name: user.name, address: user.address }
