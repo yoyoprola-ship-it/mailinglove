@@ -249,12 +249,16 @@
 }
 
 .acc__eta {
-  font-size: 0.88rem;
+  font-size: 0.85rem;
   color: var(--rose-900);
   background: var(--blush);
   border-radius: 10px;
-  padding: 10px 14px;
-  margin-bottom: 16px;
+  padding: 9px 13px;
+  margin: 10px 0;
+}
+
+.acc__ship .acc__eta {
+  margin: 8px 0 0;
 }
 
 .acc__cart-total strong {

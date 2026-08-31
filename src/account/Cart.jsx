@@ -198,12 +198,31 @@ export default function Cart({ user, onCount }) {
   const [items, setItems] = useState(null)
   const [recipient, setRecipient] = useState(null)
   const [price, setPrice] = useState({ priceCents: 0, currency: 'usd' })
+  const [eta, setEta] = useState(null)
   const [error, setError] = useState('')
   const [editRcpt, setEditRcpt] = useState(false)
   const [checkoutOrder, setCheckoutOrder] = useState(null)
   const [busy, setBusy] = useState(false)
 
   const hasAccountAddress = Boolean(user?.address?.line1 && user?.name)
+
+  const destZip =
+    recipient?.type === 'other'
+      ? recipient.address?.zip
+      : recipient?.type === 'self'
+        ? user?.address?.zip
+        : null
+
+  useEffect(() => {
+    if (!destZip) {
+      setEta(null)
+      return
+    }
+    api
+      .get(`/api/delivery-estimate?zip=${encodeURIComponent(destZip)}`)
+      .then(setEta)
+      .catch(() => setEta(null))
+  }, [destZip])
 
   async function load() {
     try {
@@ -348,6 +367,16 @@ export default function Cart({ user, onCount }) {
                 <p className="acc__muted">{recipientSummary(recipient)}</p>
               ) : (
                 <p className="acc__muted">Not set yet — every card ships to one person.</p>
+              )}
+              {recipient && eta && (
+                <p className="acc__eta">
+                  🕓 USPS delivery: {eta.text}
+                  {eta.arriveBy &&
+                    ` — around ${new Date(eta.arriveBy + 'T00:00:00').toLocaleDateString('en-US', {
+                      month: 'short',
+                      day: 'numeric',
+                    })}`}
+                </p>
               )}
             </div>
             <button className="acc__btn acc__btn--soft" onClick={() => setEditRcpt(true)}>
