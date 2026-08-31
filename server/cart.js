@@ -239,7 +239,7 @@ function sendReceipt(order) {
       `${cards} card${cards === 1 ? '' : 's'} printed & mailed to:\n` +
       `${rec?.name || ''}\n${shipLine(rec?.address)}\n\n` +
       `Designs:\n${designs}\n\n` +
-      `Delivery: about 2–5 business days after your cards are handed to USPS ` +
+      `Delivery: about 3–9 business days after your cards are handed to USPS ` +
       `(we mail them within ~1–2 business days). We'll email you when they're printed and when they ship.\n\n` +
       `— MailingLove`
   ).catch((err) => console.error('[order] receipt email failed:', err?.message || err))
@@ -266,7 +266,7 @@ const STATUS_EMAIL = {
   },
   mailed: {
     subject: 'Your MailingLove cards are on their way',
-    line: 'Your cards have been handed to USPS. First-Class Mail usually arrives 2–5 business days after that.',
+    line: 'Your cards have been handed to USPS. First-Class Mail usually arrives 3–9 business days after that.',
   },
   cancelled: {
     subject: 'Your MailingLove order was cancelled',

@@ -700,7 +700,7 @@ app.get('/api/delivery-estimate', requireUser, async (req, res) => {
   const cfg = await getConfig()
   const origin = cfg.postcard.originZip
   const dest = String(req.query.zip || '').replace(/\D/g, '').slice(0, 5)
-  const generic = { precise: false, text: 'about 2–5 business days in the mail' }
+  const generic = { precise: false, text: 'about 3–9 business days in the mail' }
 
   if (!origin || dest.length !== 5 || !uspsConfigured()) return res.json(generic)
   try {

@@ -380,7 +380,7 @@ export default function Cart({ user, onCount }) {
               )}
               {recipient && (
                 <p className="acc__eta-note">
-                  ⚠ Delivery is ~2–5 business days <strong>after your cards are handed to USPS</strong>.
+                  ⚠ Delivery is ~3–9 business days <strong>after your cards are handed to USPS</strong>.
                   We mail them within ~1–2 business days of your order.
                 </p>
               )}
