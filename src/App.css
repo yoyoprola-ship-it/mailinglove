@@ -938,6 +938,42 @@
   color: var(--rose-900);
 }
 
+.pc-stepper {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--rose);
+  border-radius: 999px;
+  overflow: hidden;
+  height: 34px;
+}
+
+.pc-stepper button {
+  width: 34px;
+  height: 32px;
+  border: none;
+  background: var(--rose);
+  color: #fff;
+  font-size: 1.15rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.pc-stepper button:hover {
+  background: var(--rose-900);
+}
+
+.pc-stepper__n {
+  min-width: 30px;
+  text-align: center;
+  font-weight: 700;
+  font-size: 0.9rem;
+  color: var(--rose-900);
+}
+
+.pc-modal__foot .pc-stepper {
+  flex-shrink: 0;
+}
+
 /* ---------- studio (try it) ---------- */
 
 .studio {

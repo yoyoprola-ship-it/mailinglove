@@ -16,14 +16,14 @@ function recipientSummary(r) {
 const cardCount = (items) => items.reduce((n, i) => n + (i.qty || 1), 0)
 const pendingCount = (items) => items.filter((i) => !i.recipient).length
 
-function QtyStepper({ value, onChange, disabled }) {
+function QtyStepper({ value, onChange, min = 1 }) {
   return (
     <span className="acc__qty">
-      <button type="button" onClick={() => onChange(value - 1)} disabled={disabled || value <= 1}>
+      <button type="button" onClick={() => onChange(value - 1)} disabled={value <= min}>
         −
       </button>
       <span className="acc__qty-n">{value}</span>
-      <button type="button" onClick={() => onChange(value + 1)} disabled={disabled || value >= 20}>
+      <button type="button" onClick={() => onChange(value + 1)} disabled={value >= 20}>
         +
       </button>
     </span>
@@ -264,7 +264,11 @@ export default function Cart({ initialAddId, user, onCount }) {
                     </button>
                   </span>
                 </div>
-                <QtyStepper value={it.qty || 1} onChange={(v) => setQty(it, v)} />
+                <QtyStepper
+                  value={it.qty || 1}
+                  min={0}
+                  onChange={(v) => (v <= 0 ? remove(it.id) : setQty(it, v))}
+                />
               </li>
             ))}
           </ul>

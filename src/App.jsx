@@ -24,7 +24,7 @@ export default function App() {
   const [postcardSizes, setPostcardSizes] = useState(null)
   const [pcFilter, setPcFilter] = useState({ type: 'birthday', sub: null })
   const [signedIn, setSignedIn] = useState(false)
-  const [cartCount, setCartCount] = useState(0)
+  const [cartItems, setCartItems] = useState([])
   const [toast, setToast] = useState('')
   const [authCtx, setAuthCtx] = useState(null) // null | {mode:'account'} | {mode:'add',postcard}
   const toastTimer = useRef(null)
@@ -47,11 +47,21 @@ export default function App() {
       .then((d) => {
         if (d) {
           setSignedIn(true)
-          setCartCount(countCards(d.items || []))
+          setCartItems(d.items || [])
         }
       })
       .catch(() => {})
   }, [])
+
+  const cartCount = countCards(cartItems)
+
+  // qty of the unconfigured quick-add line for a design (the one the gallery
+  // stepper controls); 0 if it isn't in the cart that way.
+  function pendingQty(postcardId) {
+    return cartItems
+      .filter((i) => i.postcardId === postcardId && !i.recipient)
+      .reduce((n, i) => n + (i.qty || 1), 0)
+  }
 
   function flash(msg) {
     setToast(msg)
@@ -59,22 +69,30 @@ export default function App() {
     toastTimer.current = setTimeout(() => setToast(''), 2200)
   }
 
+  async function cartPost(url, postcard) {
+    const res = await fetch(url, {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ postcardId: postcard.id }),
+    })
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) throw new Error(data.error || 'Could not update the cart.')
+    setCartItems(data.items || [])
+    return data
+  }
+
   async function addToCart(postcard) {
     try {
-      const res = await fetch('/api/cart', {
-        method: 'POST',
-        credentials: 'same-origin',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ postcardId: postcard.id }),
-      })
-      const data = await res.json().catch(() => ({}))
-      if (!res.ok) throw new Error(data.error || 'Could not add to cart.')
-      setCartCount(countCards(data.items || []))
-      flash(
-        data.merged
-          ? `“${postcard.title}” is already in your cart — quantity +1`
-          : `Added “${postcard.title}” to cart`
-      )
+      await cartPost('/api/cart', postcard)
+    } catch (err) {
+      flash(err.message)
+    }
+  }
+
+  async function decFromCart(postcard) {
+    try {
+      await cartPost('/api/cart/dec', postcard)
     } catch (err) {
       flash(err.message)
     }
@@ -122,6 +140,8 @@ export default function App() {
         filter={pcFilter}
         onFilter={setPcFilter}
         onAdd={addPostcard}
+        onDec={decFromCart}
+        cartQtyFor={pendingQty}
         perPage={perPage}
       />
       {postcardEnabled && <CustomPostcard sizes={postcardSizes} />}

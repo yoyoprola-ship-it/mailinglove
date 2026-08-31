@@ -34,6 +34,7 @@ import {
   updateItem,
   removeItem,
   clearCart,
+  decItem,
   placeOrder,
   listOrders,
   listAllOrders,
@@ -416,6 +417,16 @@ app.post('/api/cart', requireUser, async (req, res) => {
   } catch (err) {
     console.error('[cart] add failed:', err?.message || err)
     res.status(500).json({ error: 'Could not add to cart.' })
+  }
+})
+
+app.post('/api/cart/dec', requireUser, async (req, res) => {
+  try {
+    const result = await decItem(req.userEmail, String((req.body || {}).postcardId || ''))
+    res.json({ items: result.cart })
+  } catch (err) {
+    console.error('[cart] dec failed:', err?.message || err)
+    res.status(500).json({ error: 'Could not update the cart.' })
   }
 })
 

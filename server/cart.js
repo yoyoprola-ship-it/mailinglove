@@ -111,6 +111,19 @@ export async function clearCart(email) {
   return { ok: true, cart: [] }
 }
 
+// Gallery "−": step down the unconfigured quick-add line for this design,
+// removing it at zero. No-op if there's no such line.
+export async function decItem(email, postcardId) {
+  const ref = await userRef(email)
+  const cart = await getCart(email)
+  const idx = cart.findIndex((i) => i.postcardId === postcardId && !i.recipient && !i.message)
+  if (idx === -1) return { ok: true, cart }
+  if ((cart[idx].qty || 1) > 1) cart[idx].qty = (cart[idx].qty || 1) - 1
+  else cart.splice(idx, 1)
+  await ref.set({ cart, updatedAt: Date.now() }, { merge: true })
+  return { ok: true, cart }
+}
+
 export async function removeItem(email, itemId) {
   const ref = await userRef(email)
   const cart = (await getCart(email)).filter((i) => i.id !== itemId)

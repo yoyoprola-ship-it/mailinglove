@@ -54,7 +54,35 @@ function Pager({ current, pageCount, onGo }) {
   )
 }
 
-export default function Postcards({ filter, onFilter, onAdd, perPage = 25 }) {
+function CartControl({ qty, onAdd, onDec }) {
+  if (qty > 0) {
+    return (
+      <span className="pc-stepper">
+        <button type="button" onClick={onDec} aria-label="Remove one">
+          −
+        </button>
+        <span className="pc-stepper__n">{qty}</span>
+        <button type="button" onClick={onAdd} aria-label="Add one">
+          +
+        </button>
+      </span>
+    )
+  }
+  return (
+    <button className="btn btn--primary btn--sm" type="button" onClick={onAdd}>
+      Add
+    </button>
+  )
+}
+
+export default function Postcards({
+  filter,
+  onFilter,
+  onAdd,
+  onDec,
+  cartQtyFor = () => 0,
+  perPage = 25,
+}) {
   const [page, setPage] = useState(1)
   const size = perPage > 0 ? perPage : 25
   const [preview, setPreview] = useState(null)
@@ -159,13 +187,11 @@ export default function Postcards({ filter, onFilter, onAdd, perPage = 25 }) {
                 </button>
                 <div className="pc-card__body">
                   <h3 className="pc-card__title">{p.title}</h3>
-                  <button
-                    className="btn btn--primary btn--sm"
-                    type="button"
-                    onClick={() => onAdd(p)}
-                  >
-                    Add
-                  </button>
+                  <CartControl
+                    qty={cartQtyFor(p.id)}
+                    onAdd={() => onAdd(p)}
+                    onDec={() => onDec(p)}
+                  />
                 </div>
               </article>
             </Reveal>
@@ -195,16 +221,11 @@ export default function Postcards({ filter, onFilter, onAdd, perPage = 25 }) {
             <img className="pc-modal__img" src={preview.image} alt={preview.title} />
             <div className="pc-modal__foot">
               <span className="pc-modal__title">{preview.title}</span>
-              <button
-                className="btn btn--primary btn--sm"
-                type="button"
-                onClick={() => {
-                  onAdd(preview)
-                  setPreview(null)
-                }}
-              >
-                Add
-              </button>
+              <CartControl
+                qty={cartQtyFor(preview.id)}
+                onAdd={() => onAdd(preview)}
+                onDec={() => onDec(preview)}
+              />
             </div>
           </div>
         </div>

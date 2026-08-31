@@ -101,13 +101,15 @@ Needs `RESEND_*` and firebase-admin, same as the admin; no new secrets.
   expanding to its subcategories; a pick filters the gallery and scrolls to
   it (filter state lives in [App.jsx](src/App.jsx)).
 - **Cart** (`/api/cart`, stored as `users/{email}.cart`): multi-line
-  e-commerce cart. From the gallery, "Add" does a one-shot `POST` of just
-  `{ postcardId }` — no navigation, a toast, and the nav cart badge
-  bumps. Recipient + 300-char message + `qty` (1–20) are filled per line
-  **in the cart** (`PUT /:id`); a line with no recipient is "pending" and
-  blocks `Place order` until set. `DELETE /:id` removes a line,
-  `DELETE /api/cart` empties. Recipient is `self` (account address,
-  resolved at order time) or `other` (name + US address). Max 50 lines.
+  e-commerce cart. In the gallery the button is a live control: "Add"
+  (`POST { postcardId }`, no nav) turns into a `− qty +` stepper once the
+  design is an unconfigured line; `+` bumps it, `−` steps down and removes
+  at zero (`POST /api/cart/dec { postcardId }`). The nav cart badge tracks
+  the total. Recipient + 300-char message + `qty` (1–20) are set per line
+  **in the cart** (`PUT /:id`); the cart stepper also removes at zero. A
+  line with no recipient is "pending" and blocks `Place order` until set.
+  `DELETE /:id` removes a line, `DELETE /api/cart` empties. Recipient is
+  `self` (account address) or `other` (name + US address). Max 50 lines.
   Signed-out "Add" opens the auth modal, then adds on success.
 - **Orders** (`orders/` collection): "Place order" moves the cart into an
   order with status `pending` → `printed` → `mailed` (`cancelled` too).
