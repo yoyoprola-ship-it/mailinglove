@@ -735,6 +735,7 @@
 .pc-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
+  align-items: start;
   gap: 24px;
   margin-top: 14px;
 }
@@ -801,8 +802,7 @@
 
 .pc-card__img {
   width: 100%;
-  aspect-ratio: 5 / 8;
-  object-fit: contain;
+  height: auto;
   display: block;
   background: var(--blush);
 }
