@@ -2,6 +2,7 @@ import crypto from 'node:crypto'
 import { getDb } from './firebaseAdmin.js'
 import { getPostcard } from './catalog.js'
 import { validateAddress } from './userAuth.js'
+import { sendEmail, emailConfigured } from './notify.js'
 
 const MAX_LINES = 60 // distinct designs in the cart
 const MAX_QTY = 50 // copies of one design
@@ -222,11 +223,43 @@ export async function listAllOrders({ status } = {}) {
   return orders
 }
 
+const STATUS_EMAIL = {
+  printed: {
+    subject: 'Your MailingLove order is being printed',
+    line: 'Your cards have been printed and are being prepared for mailing.',
+  },
+  mailed: {
+    subject: 'Your MailingLove cards are on their way',
+    line: 'Your cards have been handed to USPS. First-Class Mail usually arrives 2–5 business days after that.',
+  },
+  cancelled: {
+    subject: 'Your MailingLove order was cancelled',
+    line: 'Your order has been cancelled. If you were charged, a refund follows to your original payment method.',
+  },
+}
+
 export async function setOrderStatus(orderId, status) {
   if (!ORDER_STATUSES.includes(status)) return { ok: false, error: 'Bad status.' }
   const ref = getDb().collection('orders').doc(String(orderId))
   const snap = await ref.get()
   if (!snap.exists) return { ok: false, error: 'Order not found.' }
+  const order = snap.data()
+  if (order.status === status) return { ok: true, order }
+
   await ref.set({ status, updatedAt: Date.now() }, { merge: true })
-  return { ok: true, order: { ...snap.data(), status } }
+
+  // Fire-and-forget customer notification for the meaningful transitions.
+  const tpl = STATUS_EMAIL[status]
+  if (tpl && emailConfigured() && order.userEmail) {
+    const cards = (order.items || []).reduce((n, i) => n + (i.qty || 1), 0)
+    sendEmail(
+      order.userEmail,
+      tpl.subject,
+      `Hi${order.userName ? ' ' + order.userName : ''},\n\n${tpl.line}\n\n` +
+        `Order: #${String(order.id).slice(0, 8)} · ${cards} card${cards === 1 ? '' : 's'}` +
+        `${order.recipient?.name ? ` to ${order.recipient.name}` : ''}.\n\n— MailingLove`
+    ).catch((err) => console.error('[order] status email failed:', err?.message || err))
+  }
+
+  return { ok: true, order: { ...order, status } }
 }

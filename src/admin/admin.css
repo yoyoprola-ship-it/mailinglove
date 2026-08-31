@@ -341,16 +341,82 @@ input.adm__input[type='checkbox'] {
 .adm__order {
   border: 1px solid rgba(74, 22, 38, 0.12);
   border-radius: 10px;
-  padding: 14px;
-  margin-bottom: 12px;
+  margin-bottom: 8px;
+  overflow: hidden;
 }
 
-.adm__order-top {
+.adm__order-summary {
+  width: 100%;
   display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 12px;
-  margin-bottom: 10px;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  text-align: left;
+  font-size: 0.88rem;
+}
+
+.adm__order-summary:hover {
+  background: rgba(74, 22, 38, 0.03);
+}
+
+.adm__chevron {
+  color: var(--muted);
+  flex-shrink: 0;
+}
+
+.adm__order-who {
+  color: var(--rose-900);
+}
+
+.adm__order-meta {
+  margin-left: auto;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.adm__order-body {
+  padding: 0 14px 14px 34px;
+  border-top: 1px solid rgba(74, 22, 38, 0.08);
+}
+
+.adm__order-body .adm__input--sm {
+  margin: 12px 0 8px;
+}
+
+.adm__badge {
+  flex-shrink: 0;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: capitalize;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: #eee;
+  color: #555;
+}
+
+.adm__badge--awaiting_payment {
+  background: #f2eef8;
+  color: #6b4aa0;
+}
+.adm__badge--paid {
+  background: #fdeede;
+  color: #a8651a;
+}
+.adm__badge--printed {
+  background: #e6eefb;
+  color: #2b5ba8;
+}
+.adm__badge--mailed {
+  background: #e4f4ea;
+  color: #2e7d5b;
+}
+.adm__badge--cancelled {
+  background: #f4e4e4;
+  color: #a83b3b;
 }
 
 .adm__order-items {

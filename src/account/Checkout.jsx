@@ -97,6 +97,10 @@ export default function Checkout({ order, onBack }) {
             })}`}
         </p>
       )}
+      <p className="acc__eta-note">
+        ⚠ Delivery is ~2–5 business days <strong>after your cards are handed to USPS</strong>. We mail
+        them within ~1–2 business days of your order.
+      </p>
 
       {!cfg && !error && <p className="acc__muted">Loading payment options…</p>}
       {error && <p className="acc__error">{error}</p>}
