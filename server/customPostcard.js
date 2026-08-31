@@ -73,12 +73,24 @@ export function buildPostcardPrompt({ name, typeLabel, subLabel, message, backgr
 }
 
 export async function generateCustomPostcard(openai, cfg, value) {
-  const result = await openai.images.generate({
+  const params = {
     model: cfg.imageModel,
     prompt: buildPostcardPrompt(value),
     size: value.sizeApi,
     quality: cfg.imageQuality,
-  })
+    output_format: 'jpeg', // ~200-500 KB instead of a 3-4 MB PNG
+    output_compression: 82,
+  }
+  let result
+  try {
+    result = await openai.images.generate(params)
+  } catch (err) {
+    if (/output_format|output_compression/i.test(err?.message || '')) {
+      delete params.output_format
+      delete params.output_compression
+      result = await openai.images.generate(params)
+    } else throw err
+  }
   const b64 = result.data?.[0]?.b64_json
   return { b64, usage: result.usage || {} }
 }

@@ -82,15 +82,29 @@ const openai = process.env.OPENAI_API_KEY
   ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
   : null
 
-// input_fidelity is only documented for gpt-image-1 / 1.5. If the configured
-// model rejects it, drop the param and retry once so a model swap can't 400 us.
+// Some params (input_fidelity, output_format, output_compression) aren't
+// supported by every gpt-image model. If the configured model 400s on one,
+// drop the named params and retry once so a model swap can't break us.
+const OPTIONAL_PARAMS = ['input_fidelity', 'output_format', 'output_compression']
+
+// We ask gpt-image for JPEG to keep payloads small (~200-500 KB vs a 3-4 MB
+// PNG), but the retry above can strip that on an unknown model — so read the
+// real format from the base64 magic bytes.
+function imageDataUrl(b64) {
+  const mime = b64.startsWith('/9j/') ? 'image/jpeg' : b64.startsWith('UklGR') ? 'image/webp' : 'image/png'
+  return `data:${mime};base64,${b64}`
+}
+
 async function runEdit(params) {
   try {
     return await openai.images.edit(params)
   } catch (err) {
-    if (params.input_fidelity && /input_fidelity/i.test(err?.message || '')) {
-      console.warn('[generate] model rejected input_fidelity; retrying without it')
-      const { input_fidelity, ...rest } = params
+    const msg = err?.message || ''
+    const drop = OPTIONAL_PARAMS.filter((p) => p in params && new RegExp(p, 'i').test(msg))
+    if (drop.length) {
+      console.warn(`[generate] model rejected ${drop.join(', ')}; retrying without`)
+      const rest = { ...params }
+      drop.forEach((p) => delete rest[p])
       return await openai.images.edit(rest)
     }
     throw err
@@ -176,6 +190,8 @@ app.post('/api/generate', generateLimiter, (req, res) => {
         prompt,
         size: CATEGORY_SIZE[category] || cfg.imageSize,
         quality: cfg.imageQuality,
+        output_format: 'jpeg',
+        output_compression: 82,
         ...(cfg.inputFidelity ? { input_fidelity: cfg.inputFidelity } : {}),
       })
 
@@ -190,7 +206,7 @@ app.post('/api/generate', generateLimiter, (req, res) => {
           `usage=${JSON.stringify(result.usage || {})}`
       )
 
-      res.json({ image: `data:image/png;base64,${b64}` })
+      res.json({ image: imageDataUrl(b64) })
     } catch (err) {
       console.error('[generate] failed:', err?.message || err)
       const status = err?.status && err.status >= 400 && err.status < 600 ? err.status : 500
@@ -224,7 +240,7 @@ app.post('/api/postcard-generate', generateLimiter, async (req, res) => {
         `size=${value.sizeApi} model=${cfg.imageModel} quality=${cfg.imageQuality} ` +
         `usage=${JSON.stringify(usage)}`
     )
-    res.json({ image: `data:image/png;base64,${b64}` })
+    res.json({ image: imageDataUrl(b64) })
   } catch (err) {
     console.error('[postcard-generate] failed:', err?.message || err)
     const status = err?.status && err.status >= 400 && err.status < 600 ? err.status : 500
