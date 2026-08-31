@@ -98,7 +98,6 @@ export default function Orders() {
                   {addrLines(rec?.address).map((l, j) => (
                     <div key={j}>{l}</div>
                   ))}
-                  {o.message && <div className="adm__msg">“{o.message}”</div>}
                 </div>
               )
             })()}
@@ -111,6 +110,7 @@ export default function Orders() {
                     <strong>{it.title}</strong>{' '}
                     {(it.qty || 1) > 1 && <strong className="adm__qty-badge">×{it.qty}</strong>}{' '}
                     <span className="adm__muted">({it.category})</span>
+                    {it.message && <div className="adm__msg">Note: “{it.message}”</div>}
                   </div>
                 </li>
               ))}

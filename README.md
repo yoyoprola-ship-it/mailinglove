@@ -102,13 +102,14 @@ Needs `RESEND_*` and firebase-admin, same as the admin; no new secrets.
   it (filter state lives in [App.jsx](src/App.jsx)).
 - **Cart** (`/api/cart` → `{ items, recipient, message }`, stored on
   `users/{email}` as `cart` / `cartRecipient` / `cartMessage`). One line
-  per design + `qty`. In the gallery the "Add" button becomes a `− qty +`
+  per design + `qty` + a per-card `note` (personal message printed on the
+  back, edited inline). In the gallery the "Add" button becomes a `− qty +`
   stepper for that design (`POST /api/cart`, `POST /api/cart/dec`; `−` at
-  zero removes it). The **whole cart ships to one recipient + one
-  message**, set once via `PUT /api/cart/shipping` (`recipient` `self` |
-  `other {name,address}`), shown above the Checkout button — Checkout is
-  blocked until it's set. `PUT /:id { qty }`, `DELETE /:id`,
-  `DELETE /api/cart`. Signed-out "Add" opens the auth modal, then adds.
+  zero removes it). The **whole cart ships to one recipient**, set once via
+  `PUT /api/cart/shipping` (`recipient` `self` | `other {name,address}`),
+  shown above the Checkout button — Checkout is blocked until it's set.
+  `PUT /:id { qty | note }`, `DELETE /:id`, `DELETE /api/cart`.
+  Signed-out "Add" opens the auth modal, then adds.
 - **Orders** (`orders/` collection): "Place order" moves the cart into an
   order with status `pending` → `printed` → `mailed` (`cancelled` too).
   No payment yet — fulfilment is manual.

@@ -459,13 +459,13 @@ app.get('/api/cart', requireUser, async (req, res) => {
   }
 })
 
-// One recipient + message for the whole cart. Registered before
-// /api/cart/:itemId so "shipping" isn't captured as an item id.
+// One recipient for the whole cart. Registered before /api/cart/:itemId
+// so "shipping" isn't captured as an item id.
 app.put('/api/cart/shipping', requireUser, async (req, res) => {
   try {
     const result = await setCartShipping(req.userEmail, req.body || {})
     if (!result.ok) return cartErr(res, result)
-    res.json({ recipient: result.recipient, message: result.message })
+    res.json({ recipient: result.recipient })
   } catch (err) {
     console.error('[cart] shipping failed:', err?.message || err)
     res.status(500).json({ error: 'Could not save.' })

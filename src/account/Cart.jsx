@@ -27,12 +27,12 @@ function QtyStepper({ value, onChange, min = 1 }) {
   )
 }
 
-function ShippingForm({ shipping, hasAccountAddress, onDone, onCancel }) {
-  const r = shipping?.recipient
-  const [mode, setMode] = useState(r ? r.type : hasAccountAddress ? 'self' : 'other')
-  const [name, setName] = useState(r?.type === 'other' ? r.name : '')
-  const [addr, setAddr] = useState(r?.type === 'other' ? { ...emptyAddr, ...r.address } : emptyAddr)
-  const [message, setMessage] = useState(shipping?.message || '')
+function RecipientForm({ recipient, hasAccountAddress, onDone, onCancel }) {
+  const [mode, setMode] = useState(recipient ? recipient.type : hasAccountAddress ? 'self' : 'other')
+  const [name, setName] = useState(recipient?.type === 'other' ? recipient.name : '')
+  const [addr, setAddr] = useState(
+    recipient?.type === 'other' ? { ...emptyAddr, ...recipient.address } : emptyAddr
+  )
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
 
@@ -41,10 +41,9 @@ function ShippingForm({ shipping, hasAccountAddress, onDone, onCancel }) {
     setBusy(true)
     setError('')
     try {
-      const recipient =
-        mode === 'self' ? { type: 'self' } : { type: 'other', name, address: addr }
-      const res = await api.put('/api/cart/shipping', { recipient, message })
-      onDone(res)
+      const rec = mode === 'self' ? { type: 'self' } : { type: 'other', name, address: addr }
+      const res = await api.put('/api/cart/shipping', { recipient: rec })
+      onDone(res.recipient)
     } catch (err) {
       setError(err.message)
     } finally {
@@ -54,10 +53,9 @@ function ShippingForm({ shipping, hasAccountAddress, onDone, onCancel }) {
 
   return (
     <form className="acc__card acc__card--wide" onSubmit={submit}>
-      <h2 className="acc__title">Recipient &amp; message</h2>
-      <p className="acc__muted">Every card in this cart is sent to this person.</p>
+      <h2 className="acc__title">Recipient</h2>
+      <p className="acc__muted">Every card in this cart is mailed to this person.</p>
 
-      <p className="acc__label">Send to</p>
       <label className="acc__radio">
         <input
           type="radio"
@@ -87,17 +85,6 @@ function ShippingForm({ shipping, hasAccountAddress, onDone, onCancel }) {
         </div>
       )}
 
-      <label className="acc__label">
-        Message on the card <span className="acc__opt">(optional, {300 - message.length} left)</span>
-        <textarea
-          className="acc__input acc__textarea"
-          maxLength={300}
-          rows={3}
-          value={message}
-          onChange={(e) => setMessage(e.target.value)}
-        />
-      </label>
-
       <div className="acc__actions">
         <button className="acc__btn" type="submit" disabled={busy}>
           {busy ? 'Saving…' : 'Save'}
@@ -113,9 +100,9 @@ function ShippingForm({ shipping, hasAccountAddress, onDone, onCancel }) {
 
 export default function Cart({ user, onCount }) {
   const [items, setItems] = useState(null)
-  const [shipping, setShipping] = useState({ recipient: null, message: '' })
+  const [recipient, setRecipient] = useState(null)
   const [error, setError] = useState('')
-  const [editShip, setEditShip] = useState(false)
+  const [editRcpt, setEditRcpt] = useState(false)
   const [checkoutOrder, setCheckoutOrder] = useState(null)
   const [busy, setBusy] = useState(false)
 
@@ -125,7 +112,7 @@ export default function Cart({ user, onCount }) {
     try {
       const d = await api.get('/api/cart')
       setItems(d.items)
-      setShipping({ recipient: d.recipient || null, message: d.message || '' })
+      setRecipient(d.recipient || null)
     } catch (err) {
       setError(err.message)
     }
@@ -142,9 +129,20 @@ export default function Cart({ user, onCount }) {
   async function setQty(it, qty) {
     setError('')
     try {
-      const { items } = qty <= 0
-        ? await api.delete(`/api/cart/${it.id}`)
-        : await api.put(`/api/cart/${it.id}`, { qty })
+      const { items } =
+        qty <= 0
+          ? await api.delete(`/api/cart/${it.id}`)
+          : await api.put(`/api/cart/${it.id}`, { qty })
+      setItems(items)
+    } catch (err) {
+      setError(err.message)
+    }
+  }
+
+  async function saveNote(it, note) {
+    if ((it.note || '') === note) return
+    try {
+      const { items } = await api.put(`/api/cart/${it.id}`, { note })
       setItems(items)
     } catch (err) {
       setError(err.message)
@@ -189,16 +187,16 @@ export default function Cart({ user, onCount }) {
     return <Checkout order={checkoutOrder} onBack={() => setCheckoutOrder(null)} />
   }
 
-  if (editShip) {
+  if (editRcpt) {
     return (
-      <ShippingForm
-        shipping={shipping}
+      <RecipientForm
+        recipient={recipient}
         hasAccountAddress={hasAccountAddress}
-        onDone={(res) => {
-          setShipping({ recipient: res.recipient, message: res.message })
-          setEditShip(false)
+        onDone={(r) => {
+          setRecipient(r)
+          setEditRcpt(false)
         }}
-        onCancel={() => setEditShip(false)}
+        onCancel={() => setEditRcpt(false)}
       />
     )
   }
@@ -226,33 +224,43 @@ export default function Cart({ user, onCount }) {
 
           <ul className="acc__list">
             {items.map((it) => (
-              <li className="acc__item" key={it.id}>
+              <li className="acc__item acc__item--note" key={it.id}>
                 <img className="acc__item-img" src={it.image} alt={it.title} />
                 <div className="acc__item-body">
-                  <strong>{it.title}</strong>
+                  <div className="acc__item-head">
+                    <strong>{it.title}</strong>
+                    <QtyStepper value={it.qty || 1} min={0} onChange={(v) => setQty(it, v)} />
+                  </div>
+                  <label className="acc__note-label">
+                    Your personal note <span className="acc__opt">(printed on the back)</span>
+                    <textarea
+                      className="acc__input acc__textarea"
+                      rows={2}
+                      maxLength={300}
+                      defaultValue={it.note || ''}
+                      onBlur={(e) => saveNote(it, e.target.value)}
+                      placeholder="Leave blank for no note"
+                    />
+                  </label>
                   <button className="acc__link" onClick={() => remove(it.id)}>
                     Remove
                   </button>
                 </div>
-                <QtyStepper value={it.qty || 1} min={0} onChange={(v) => setQty(it, v)} />
               </li>
             ))}
           </ul>
 
           <div className="acc__ship">
             <div>
-              <span className="acc__label">Recipient &amp; message</span>
-              {shipping.recipient ? (
-                <>
-                  <p className="acc__muted">{recipientSummary(shipping.recipient)}</p>
-                  {shipping.message && <p className="acc__msg">“{shipping.message}”</p>}
-                </>
+              <span className="acc__label">Recipient</span>
+              {recipient ? (
+                <p className="acc__muted">{recipientSummary(recipient)}</p>
               ) : (
                 <p className="acc__muted">Not set yet — every card ships to one person.</p>
               )}
             </div>
-            <button className="acc__btn acc__btn--soft" onClick={() => setEditShip(true)}>
-              {shipping.recipient ? 'Change' : 'Set recipient & message'}
+            <button className="acc__btn acc__btn--soft" onClick={() => setEditRcpt(true)}>
+              {recipient ? 'Change' : 'Set recipient'}
             </button>
           </div>
 
@@ -260,7 +268,7 @@ export default function Cart({ user, onCount }) {
             <button
               className="acc__btn"
               onClick={startCheckout}
-              disabled={busy || !shipping.recipient}
+              disabled={busy || !recipient}
             >
               {busy ? 'Loading…' : `Checkout · ${count} card${count > 1 ? 's' : ''}`}
             </button>
@@ -271,11 +279,9 @@ export default function Cart({ user, onCount }) {
               Empty cart
             </button>
           </div>
-          {!shipping.recipient && (
-            <p className="acc__error">Set the recipient before checkout.</p>
-          )}
+          {!recipient && <p className="acc__error">Set the recipient before checkout.</p>}
           <p className="acc__muted acc__fine">
-            We print and mail every card in this order to the recipient above.
+            We print each card with its note and mail them all to the recipient above.
           </p>
         </>
       )}

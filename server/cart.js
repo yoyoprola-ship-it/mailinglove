@@ -14,8 +14,9 @@ const clampQty = (v) => {
   return Number.isFinite(n) ? Math.min(MAX_QTY, Math.max(1, n)) : 1
 }
 
-// The whole cart ships to one recipient with one message. `self` = the
-// account address (resolved at order time); `other` = a name + US address.
+// The whole cart ships to one recipient (each card carries its own note).
+// `self` = the account address (resolved at order time); `other` = a name +
+// US address.
 export function validateRecipient(r) {
   if (r == null || r.type === 'pending') return { errors: [], value: null }
   if (r.type === 'self') return { errors: [], value: { type: 'self' } }
@@ -39,6 +40,7 @@ function cartLine(postcardId, qty) {
     category: card.type,
     subcategory: card.subcategory || null,
     qty: clampQty(qty),
+    note: '', // personal note printed on the back of this card
     addedAt: Date.now(),
   }
 }
@@ -50,7 +52,7 @@ async function userRef(email) {
 export async function getCart(email) {
   const snap = await (await userRef(email)).get()
   const d = snap.exists ? snap.data() : {}
-  return { items: d.cart || [], recipient: d.cartRecipient || null, message: d.cartMessage || '' }
+  return { items: d.cart || [], recipient: d.cartRecipient || null }
 }
 
 export async function addItem(email, input) {
@@ -78,6 +80,7 @@ export async function updateItem(email, itemId, patch) {
   const item = items.find((i) => i.id === itemId)
   if (!item) return { ok: false, errors: ['Item not found.'] }
   if (patch.qty !== undefined) item.qty = clampQty(patch.qty)
+  if (patch.note !== undefined) item.note = clip(patch.note, MAX_MESSAGE)
   await ref.set({ cart: items, updatedAt: Date.now() }, { merge: true })
   return { ok: true, cart: items }
 }
@@ -106,17 +109,16 @@ export async function clearCart(email) {
   return { ok: true, cart: [] }
 }
 
-// Set the one recipient + message for the whole cart.
+// The whole cart ships to one recipient; each card carries its own note.
 export async function setCartShipping(email, input = {}) {
   const rec = validateRecipient(input.recipient)
   if (rec.errors.length) return { ok: false, errors: rec.errors }
   if (!rec.value) return { ok: false, errors: ['Choose who to send it to.'] }
-  const message = clip(input.message, MAX_MESSAGE)
   await (await userRef(email)).set(
-    { cartRecipient: rec.value, cartMessage: message, updatedAt: Date.now() },
+    { cartRecipient: rec.value, updatedAt: Date.now() },
     { merge: true }
   )
-  return { ok: true, recipient: rec.value, message }
+  return { ok: true, recipient: rec.value }
 }
 
 // Build an unpaid order from the cart + its shipping. Does NOT clear the
@@ -138,7 +140,6 @@ export async function createPendingOrder(email, priceCents) {
     rec.type === 'self'
       ? { name: user.name, address: user.address }
       : { name: rec.name, address: rec.address }
-  const message = user.cartMessage || ''
 
   const items = cart.map((i) => ({
     postcardId: i.postcardId,
@@ -146,7 +147,7 @@ export async function createPendingOrder(email, priceCents) {
     image: i.image,
     category: i.category,
     qty: clampQty(i.qty),
-    message,
+    message: i.note || '',
     recipient,
   }))
 
@@ -160,7 +161,6 @@ export async function createPendingOrder(email, priceCents) {
     userEmail: email,
     userName: user.name || '',
     recipient,
-    message,
     items,
     cardCount,
     unitPriceCents: priceCents,
@@ -204,7 +204,7 @@ export async function markOrderPaid(orderId, { provider, ref, amountCents }) {
   await db
     .collection('users')
     .doc(order.userEmail)
-    .set({ cart: [], cartMessage: '', updatedAt: Date.now() }, { merge: true })
+    .set({ cart: [], updatedAt: Date.now() }, { merge: true })
   return { ok: true, order: { ...order, ...patch } }
 }
 

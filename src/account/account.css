@@ -238,6 +238,33 @@
   font-weight: 600;
 }
 
+.acc__item--note {
+  align-items: flex-start;
+}
+
+.acc__item--note .acc__item-body {
+  gap: 8px;
+}
+
+.acc__item-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.acc__note-label {
+  display: block;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--rose-900);
+}
+
+.acc__note-label .acc__textarea {
+  margin-top: 4px;
+  font-weight: 400;
+}
+
 .acc__ship {
   display: flex;
   align-items: flex-start;
