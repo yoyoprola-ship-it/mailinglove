@@ -63,7 +63,7 @@ export default function Postcards({ filter, onFilter }) {
                 <div className="pc-card__body">
                   <h3 className="pc-card__title">{p.title}</h3>
                   <a className="btn btn--primary btn--sm" href={`/account?add=${p.id}`}>
-                    Send this postcard
+                    Add
                   </a>
                 </div>
               </article>
