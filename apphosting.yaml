@@ -81,17 +81,14 @@ env:
     secret: STRIPE_WEBHOOK_SECRET
     availability:
       - RUNTIME
-  # PayPal stays off until these two secrets exist. Create them
-  # (firebase apphosting:secrets:set PAYPAL_CLIENT_ID / PAYPAL_CLIENT_SECRET),
-  # then uncomment and redeploy.
-  # - variable: PAYPAL_CLIENT_ID
-  #   secret: PAYPAL_CLIENT_ID
-  #   availability:
-  #     - RUNTIME
-  # - variable: PAYPAL_CLIENT_SECRET
-  #   secret: PAYPAL_CLIENT_SECRET
-  #   availability:
-  #     - RUNTIME
+  - variable: PAYPAL_CLIENT_ID
+    secret: PAYPAL_CLIENT_ID
+    availability:
+      - RUNTIME
+  - variable: PAYPAL_CLIENT_SECRET
+    secret: PAYPAL_CLIENT_SECRET
+    availability:
+      - RUNTIME
   - variable: PAYPAL_WEBHOOK_ID
     secret: PAYPAL_WEBHOOK_ID
     availability:
