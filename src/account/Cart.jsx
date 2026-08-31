@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { api } from './api'
+import Icon from '../components/Icon'
 import AddressFields from './AddressFields'
 import Checkout from './Checkout'
 
@@ -44,7 +45,17 @@ function CartLine({ item, priceCents, currency, onQty, onRemove, onSaveNote }) {
       <div className="acc__item-body">
         <div className="acc__item-head">
           <strong>{item.title}</strong>
-          <QtyStepper value={item.qty || 1} min={0} onChange={(v) => onQty(item, v)} />
+          <span className="acc__item-controls">
+            <button
+              type="button"
+              className="acc__trash"
+              onClick={() => onRemove(item.id)}
+              aria-label={`Remove ${item.title}`}
+            >
+              <Icon name="trash" size={16} />
+            </button>
+            <QtyStepper value={item.qty || 1} min={0} onChange={(v) => onQty(item, v)} />
+          </span>
         </div>
 
         {priceCents > 0 && (
@@ -107,9 +118,6 @@ function CartLine({ item, priceCents, currency, onQty, onRemove, onSaveNote }) {
           </button>
         )}
 
-        <button className="acc__link" onClick={() => onRemove(item.id)}>
-          Remove
-        </button>
       </div>
     </li>
   )

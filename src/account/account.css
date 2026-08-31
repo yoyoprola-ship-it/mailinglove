@@ -267,6 +267,27 @@
   gap: 12px;
 }
 
+.acc__item-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.acc__trash {
+  border: none;
+  background: none;
+  padding: 4px;
+  color: var(--muted);
+  cursor: pointer;
+  display: inline-flex;
+  line-height: 0;
+}
+
+.acc__trash:hover {
+  color: #b8355f;
+}
+
 .acc__note-toggle {
   align-self: flex-start;
   border: none;
