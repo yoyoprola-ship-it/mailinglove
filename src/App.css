@@ -634,7 +634,7 @@
   align-items: center;
   justify-content: center;
   gap: 18px;
-  margin-top: 36px;
+  margin: 20px 0;
 }
 
 .pc-pager__btn {

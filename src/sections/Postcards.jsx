@@ -4,6 +4,27 @@ import catalog from '../data/postcards.json'
 
 const PER_PAGE = 25
 
+function Pager({ current, pageCount, onGo }) {
+  if (pageCount <= 1) return null
+  return (
+    <div className="pc-pager">
+      <button className="pc-pager__btn" onClick={() => onGo(current - 1)} disabled={current === 1}>
+        ‹ Prev
+      </button>
+      <span className="pc-pager__status">
+        Page {current} / {pageCount}
+      </span>
+      <button
+        className="pc-pager__btn"
+        onClick={() => onGo(current + 1)}
+        disabled={current === pageCount}
+      >
+        Next ›
+      </button>
+    </div>
+  )
+}
+
 export default function Postcards({ filter, onFilter }) {
   const [page, setPage] = useState(1)
 
@@ -81,6 +102,8 @@ export default function Postcards({ filter, onFilter }) {
           </p>
         )}
 
+        <Pager current={current} pageCount={pageCount} onGo={goPage} />
+
         <div className="pc-grid">
           {shown.map((p, i) => (
             <Reveal key={p.id} delay={(i % 4) * 50}>
@@ -98,27 +121,7 @@ export default function Postcards({ filter, onFilter }) {
           {!cards.length && <p className="section__lead">No designs here yet.</p>}
         </div>
 
-        {pageCount > 1 && (
-          <div className="pc-pager">
-            <button
-              className="pc-pager__btn"
-              onClick={() => goPage(current - 1)}
-              disabled={current === 1}
-            >
-              ‹ Prev
-            </button>
-            <span className="pc-pager__status">
-              Page {current} / {pageCount}
-            </span>
-            <button
-              className="pc-pager__btn"
-              onClick={() => goPage(current + 1)}
-              disabled={current === pageCount}
-            >
-              Next ›
-            </button>
-          </div>
-        )}
+        <Pager current={current} pageCount={pageCount} onGo={goPage} />
       </div>
     </section>
   )
