@@ -6,7 +6,7 @@ import { validateAddress } from './userAuth.js'
 const MAX_LINES = 50 // distinct cart lines
 const MAX_QTY = 20 // copies of one line
 const MAX_MESSAGE = 300
-export const ORDER_STATUSES = ['pending', 'printed', 'mailed', 'cancelled']
+export const ORDER_STATUSES = ['awaiting_payment', 'paid', 'printed', 'mailed', 'cancelled']
 
 const clip = (v, n) => (typeof v === 'string' ? v.trim().slice(0, n) : '')
 const clampQty = (v) => {
@@ -131,7 +131,10 @@ export async function removeItem(email, itemId) {
   return { ok: true, cart }
 }
 
-export async function placeOrder(email) {
+// Build an unpaid order from the current cart. Does NOT clear the cart —
+// that happens when payment succeeds (markOrderPaid). `priceCents` is the
+// admin-set price per card.
+export async function createPendingOrder(email, priceCents) {
   const db = getDb()
   const ref = await userRef(email)
   const snap = await ref.get()
@@ -143,13 +146,13 @@ export async function placeOrder(email) {
   if (pending) {
     return {
       ok: false,
-      errors: [`Set who ${pending === 1 ? 'a card goes' : `${pending} cards go`} to before ordering.`],
+      errors: [`Set who ${pending === 1 ? 'a card goes' : `${pending} cards go`} to before checkout.`],
     }
   }
 
   const needsAccountAddr = cart.some((i) => i.recipient?.type === 'self')
   if (needsAccountAddr && !(user.address && user.address.line1 && user.name)) {
-    return { ok: false, errors: ['Add your name and address before ordering to yourself.'] }
+    return { ok: false, errors: ['Add your name and address before checkout.'] }
   }
 
   const items = cart.map((i) => ({
@@ -165,19 +168,58 @@ export async function placeOrder(email) {
         : { name: i.recipient.name, address: i.recipient.address },
   }))
 
+  const cardCount = items.reduce((n, i) => n + i.qty, 0)
+  const amountCents = cardCount * Math.max(0, Math.trunc(priceCents))
+  if (amountCents <= 0) return { ok: false, errors: ['Pricing is not set up yet.'] }
+
   const orderId = crypto.randomBytes(10).toString('hex')
   const order = {
     id: orderId,
     userEmail: email,
     userName: user.name || '',
     items,
-    status: 'pending',
+    cardCount,
+    unitPriceCents: priceCents,
+    amountCents,
+    currency: 'usd',
+    paid: false,
+    status: 'awaiting_payment',
     createdAt: Date.now(),
     updatedAt: Date.now(),
   }
   await db.collection('orders').doc(orderId).set(order)
-  await ref.set({ cart: [], updatedAt: Date.now() }, { merge: true })
   return { ok: true, order }
+}
+
+export async function getOrder(orderId) {
+  const snap = await getDb().collection('orders').doc(String(orderId)).get()
+  return snap.exists ? snap.data() : null
+}
+
+// Idempotent: mark an order paid (webhook + client-verify may both call it),
+// then clear that user's cart.
+export async function markOrderPaid(orderId, { provider, ref, amountCents }) {
+  const db = getDb()
+  const oref = db.collection('orders').doc(String(orderId))
+  const snap = await oref.get()
+  if (!snap.exists) return { ok: false, error: 'Order not found.' }
+  const order = snap.data()
+  if (order.paid) return { ok: true, order, already: true }
+  if (amountCents != null && amountCents !== order.amountCents) {
+    console.warn(`[pay] amount mismatch on ${orderId}: got ${amountCents}, expected ${order.amountCents}`)
+    return { ok: false, error: 'Amount mismatch.' }
+  }
+  const patch = {
+    paid: true,
+    status: 'paid',
+    paidAt: Date.now(),
+    paymentProvider: provider,
+    paymentRef: ref || null,
+    updatedAt: Date.now(),
+  }
+  await oref.set(patch, { merge: true })
+  await db.collection('users').doc(order.userEmail).set({ cart: [], updatedAt: Date.now() }, { merge: true })
+  return { ok: true, order: { ...order, ...patch } }
 }
 
 export async function listOrders(email) {

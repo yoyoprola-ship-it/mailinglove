@@ -70,3 +70,30 @@ env:
     secret: RESEND_FROM
     availability:
       - RUNTIME
+
+  # --- Payments (Stripe + PayPal) ---
+  # Create the secrets first (firebase apphosting:secrets:set NAME), then deploy.
+  - variable: STRIPE_SECRET_KEY
+    secret: STRIPE_SECRET_KEY
+    availability:
+      - RUNTIME
+  - variable: STRIPE_WEBHOOK_SECRET
+    secret: STRIPE_WEBHOOK_SECRET
+    availability:
+      - RUNTIME
+  - variable: PAYPAL_CLIENT_ID
+    secret: PAYPAL_CLIENT_ID
+    availability:
+      - RUNTIME
+  - variable: PAYPAL_CLIENT_SECRET
+    secret: PAYPAL_CLIENT_SECRET
+    availability:
+      - RUNTIME
+  - variable: PAYPAL_WEBHOOK_ID
+    secret: PAYPAL_WEBHOOK_ID
+    availability:
+      - RUNTIME
+  - variable: PAYPAL_ENV
+    value: sandbox # switch to "live" for real payments
+    availability:
+      - RUNTIME

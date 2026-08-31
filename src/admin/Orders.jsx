@@ -1,11 +1,14 @@
 import { useCallback, useEffect, useState } from 'react'
 import { api } from './api'
 
-const STATUSES = ['pending', 'printed', 'mailed', 'cancelled']
+const STATUSES = ['awaiting_payment', 'paid', 'printed', 'mailed', 'cancelled']
 
 function fmt(ms) {
   return ms ? new Date(ms).toLocaleString() : '—'
 }
+
+const money = (c, ccy = 'usd') =>
+  c == null ? '' : new Intl.NumberFormat('en-US', { style: 'currency', currency: ccy }).format(c / 100)
 
 function addrLines(a) {
   if (!a) return []
@@ -14,7 +17,7 @@ function addrLines(a) {
 
 export default function Orders() {
   const [orders, setOrders] = useState(null)
-  const [filter, setFilter] = useState('pending')
+  const [filter, setFilter] = useState('paid')
   const [error, setError] = useState('')
 
   const load = useCallback(async () => {
@@ -68,7 +71,11 @@ export default function Orders() {
               <div>
                 <strong>{o.userName || o.userEmail}</strong>{' '}
                 <span className="adm__muted">{o.userEmail}</span>
-                <div className="adm__muted">{fmt(o.createdAt)}</div>
+                <div className="adm__muted">
+                  {fmt(o.createdAt)}
+                  {o.amountCents != null && ` · ${money(o.amountCents, o.currency)}`}
+                  {o.paid ? ` · paid (${o.paymentProvider || '—'})` : ' · unpaid'}
+                </div>
               </div>
               <select
                 className="adm__input adm__input--sm"

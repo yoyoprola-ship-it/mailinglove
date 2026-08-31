@@ -72,7 +72,7 @@ export async function getStats() {
 
   let ordersPending = 0
   try {
-    const snap = await db.collection('orders').where('status', '==', 'pending').count().get()
+    const snap = await db.collection('orders').where('status', '==', 'paid').count().get()
     ordersPending = snap.data().count
   } catch (err) {
     console.warn('[analytics] orders count failed:', err?.message || err)

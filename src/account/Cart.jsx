@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { api } from './api'
 import AddressFields from './AddressFields'
+import Checkout from './Checkout'
 import catalog from '../data/postcards.json'
 
 const emptyAddr = { line1: '', line2: '', city: '', state: '', zip: '' }
@@ -130,7 +131,7 @@ export default function Cart({ initialAddId, user, onCount }) {
   const [error, setError] = useState('')
   const [adding, setAdding] = useState(initialAddId || '')
   const [editing, setEditing] = useState(null) // cart item being edited
-  const [placed, setPlaced] = useState(false)
+  const [checkoutOrder, setCheckoutOrder] = useState(null)
   const [busy, setBusy] = useState(false)
 
   const hasAccountAddress = Boolean(user?.address?.line1 && user?.name)
@@ -184,13 +185,12 @@ export default function Cart({ initialAddId, user, onCount }) {
     }
   }
 
-  async function placeOrder() {
+  async function startCheckout() {
     setBusy(true)
     setError('')
     try {
-      await api.post('/api/orders')
-      setItems([])
-      setPlaced(true)
+      const { order } = await api.post('/api/checkout')
+      setCheckoutOrder(order)
     } catch (err) {
       setError(err.message)
     } finally {
@@ -203,6 +203,10 @@ export default function Cart({ initialAddId, user, onCount }) {
     setAdding('')
     setEditing(null)
     history.replaceState(null, '', '/account')
+  }
+
+  if (checkoutOrder) {
+    return <Checkout order={checkoutOrder} onBack={() => setCheckoutOrder(null)} />
   }
 
   if (addPostcard || editing) {
@@ -221,14 +225,10 @@ export default function Cart({ initialAddId, user, onCount }) {
     <div className="acc__card acc__card--wide">
       <h2 className="acc__title">Your cart</h2>
 
-      {placed && (
-        <p className="acc__ok">Order placed — we'll print and mail it. Track it under Orders.</p>
-      )}
-
       {!items && !error && <p className="acc__muted">Loading…</p>}
       {error && <p className="acc__error">{error}</p>}
 
-      {items && items.length === 0 && !placed && (
+      {items && items.length === 0 && (
         <p className="acc__muted">
           Nothing here yet. <a href="/#postcards">Browse postcards</a>.
         </p>
@@ -282,10 +282,12 @@ export default function Cart({ initialAddId, user, onCount }) {
           <div className="acc__actions">
             <button
               className="acc__btn"
-              onClick={placeOrder}
+              onClick={startCheckout}
               disabled={busy || pendingCount(items) > 0}
             >
-              {busy ? 'Placing…' : `Place order · ${cardCount(items)} card${cardCount(items) > 1 ? 's' : ''}`}
+              {busy
+                ? 'Loading…'
+                : `Checkout · ${cardCount(items)} card${cardCount(items) > 1 ? 's' : ''}`}
             </button>
             <a className="acc__link" href="/#postcards">
               Add more

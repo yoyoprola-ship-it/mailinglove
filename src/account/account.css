@@ -336,6 +336,14 @@
   color: #555;
 }
 
+.acc__badge--awaiting_payment {
+  background: #f2eef8;
+  color: #6b4aa0;
+}
+.acc__badge--paid {
+  background: #e4f4ea;
+  color: #2e7d5b;
+}
 .acc__badge--pending {
   background: #fdeede;
   color: #a8651a;
@@ -351,4 +359,17 @@
 .acc__badge--cancelled {
   background: #f4e4e4;
   color: #a83b3b;
+}
+
+/* checkout */
+.acc__pay {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin: 8px 0 16px;
+  max-width: 320px;
+}
+
+.acc__paypal {
+  min-height: 44px;
 }

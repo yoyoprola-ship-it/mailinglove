@@ -36,9 +36,12 @@ const DEFAULTS = {
     quality: envQuality,
     rateLimitMax: 5,
     perPage: 25, // ready-made gallery page size
+    priceCents: 500, // USD price per printed+mailed card — set the real value in the admin
     sizes: DEFAULT_POSTCARD_SIZES,
   },
 }
+
+export const CURRENCY = 'usd'
 
 // Drives the admin form and validation. `general`-less: every field lives
 // under one of the two panels.
@@ -64,6 +67,7 @@ export const CONFIG_SCHEMA = {
       quality: { type: 'enum', values: QUALITIES, label: 'Image quality' },
       rateLimitMax: { type: 'int', min: 1, max: 100, label: 'Rate limit — requests / 15 min per IP' },
       perPage: { type: 'int', min: 4, max: 100, label: 'Ready-made gallery — designs per page' },
+      priceCents: { type: 'int', min: 0, max: 100000, label: 'Price per card (USD cents, e.g. 499 = $4.99)' },
       sizes: { type: 'sizes', apiValues: API_SIZES, label: 'Selectable formats (add more as needed)' },
     },
   },
@@ -158,6 +162,7 @@ function migrate(s = {}) {
         DEFAULTS.postcard.rateLimitMax
       ),
       perPage: pick(intv(pc.perPage, 4, 100), intv(s.postcardsPerPage, 4, 100), DEFAULTS.postcard.perPage),
+      priceCents: pick(intv(pc.priceCents, 0, 100000), DEFAULTS.postcard.priceCents),
       sizes: validSizes(pc.sizes) || DEFAULTS.postcard.sizes,
     },
   }

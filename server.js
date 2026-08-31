@@ -35,7 +35,9 @@ import {
   removeItem,
   clearCart,
   decItem,
-  placeOrder,
+  createPendingOrder,
+  getOrder,
+  markOrderPaid,
   listOrders,
   listAllOrders,
   setOrderStatus,
@@ -44,6 +46,17 @@ import {
   validateCustomPostcard,
   generateCustomPostcard,
 } from './server/customPostcard.js'
+import {
+  stripe,
+  stripeConfigured,
+  STRIPE_WEBHOOK_SECRET,
+  paypalConfigured,
+  paypalClientId,
+  paypalEnv,
+  paypalCreateOrder,
+  paypalCaptureOrder,
+  paypalVerifyWebhook,
+} from './server/payments.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const PORT = process.env.PORT || 8080
@@ -78,6 +91,42 @@ const CATEGORY_PROMPTS = {
 const app = express()
 app.set('trust proxy', 1) // Firebase App Hosting terminates TLS in front of us
 app.use(compression())
+
+// Stripe needs the raw request body to verify the signature — must be
+// registered before express.json().
+app.post('/api/stripe/webhook', express.raw({ type: '*/*' }), async (req, res) => {
+  if (!stripe || !STRIPE_WEBHOOK_SECRET) return res.status(503).end()
+  let event
+  try {
+    event = stripe.webhooks.constructEvent(
+      req.body,
+      req.headers['stripe-signature'],
+      STRIPE_WEBHOOK_SECRET
+    )
+  } catch (err) {
+    console.error('[stripe] webhook signature failed:', err?.message || err)
+    return res.status(400).send('bad signature')
+  }
+  try {
+    if (
+      event.type === 'checkout.session.completed' ||
+      event.type === 'checkout.session.async_payment_succeeded'
+    ) {
+      const s = event.data.object
+      if (s.payment_status === 'paid' && s.metadata?.orderId) {
+        await markOrderPaid(s.metadata.orderId, {
+          provider: 'stripe',
+          ref: s.payment_intent || s.id,
+          amountCents: s.amount_total,
+        })
+      }
+    }
+  } catch (err) {
+    console.error('[stripe] webhook handler:', err?.message || err)
+  }
+  res.json({ received: true })
+})
+
 app.use(express.json({ limit: '256kb' }))
 
 const openai = process.env.OPENAI_API_KEY
@@ -461,17 +510,6 @@ app.delete('/api/cart', requireUser, async (req, res) => {
   }
 })
 
-app.post('/api/orders', requireUser, async (req, res) => {
-  try {
-    const result = await placeOrder(req.userEmail)
-    if (!result.ok) return cartErr(res, result)
-    res.json({ order: result.order })
-  } catch (err) {
-    console.error('[orders] place failed:', err?.message || err)
-    res.status(500).json({ error: 'Could not place the order.' })
-  }
-})
-
 app.get('/api/orders', requireUser, async (req, res) => {
   try {
     res.json({ orders: await listOrders(req.userEmail) })
@@ -479,6 +517,162 @@ app.get('/api/orders', requireUser, async (req, res) => {
     console.error('[orders] list failed:', err?.message || err)
     res.status(500).json({ error: 'Could not load your orders.' })
   }
+})
+
+// --- checkout & payments -------------------------------------------
+
+const BASE_URL = () =>
+  process.env.PUBLIC_URL || 'https://mailinglove--mailinglove-eb540.us-central1.hosted.app'
+
+app.get('/api/pay/config', requireUser, async (req, res) => {
+  const cfg = await getConfig()
+  res.json({
+    priceCents: cfg.postcard.priceCents,
+    currency: 'usd',
+    stripe: stripeConfigured(),
+    paypal: paypalConfigured() ? { clientId: paypalClientId(), env: paypalEnv() } : null,
+  })
+})
+
+// Turn the cart into an unpaid order (cart stays until payment lands).
+app.post('/api/checkout', requireUser, async (req, res) => {
+  try {
+    const cfg = await getConfig()
+    const result = await createPendingOrder(req.userEmail, cfg.postcard.priceCents)
+    if (!result.ok) return cartErr(res, result)
+    res.json({ order: result.order })
+  } catch (err) {
+    console.error('[checkout] failed:', err?.message || err)
+    res.status(500).json({ error: 'Could not start checkout.' })
+  }
+})
+
+async function ownedUnpaidOrder(req, res) {
+  const order = await getOrder((req.body || {}).orderId)
+  if (!order || order.userEmail !== req.userEmail) {
+    res.status(404).json({ error: 'Order not found.' })
+    return null
+  }
+  if (order.paid) {
+    res.status(409).json({ error: 'This order is already paid.' })
+    return null
+  }
+  return order
+}
+
+app.post('/api/pay/stripe/session', requireUser, async (req, res) => {
+  if (!stripeConfigured()) return res.status(503).json({ error: 'Card payment is not set up yet.' })
+  const order = await ownedUnpaidOrder(req, res)
+  if (!order) return
+  try {
+    const session = await stripe.checkout.sessions.create({
+      mode: 'payment',
+      client_reference_id: order.id,
+      metadata: { orderId: order.id },
+      customer_email: order.userEmail,
+      line_items: [
+        {
+          quantity: order.cardCount,
+          price_data: {
+            currency: order.currency,
+            unit_amount: order.unitPriceCents,
+            product_data: { name: 'MailingLove postcard (printed & mailed)' },
+          },
+        },
+      ],
+      success_url: `${BASE_URL()}/account?tab=orders&stripe_session={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${BASE_URL()}/account?tab=cart`,
+    })
+    res.json({ url: session.url })
+  } catch (err) {
+    console.error('[stripe] session failed:', err?.message || err)
+    res.status(502).json({ error: 'Could not reach Stripe. Try again.' })
+  }
+})
+
+// Confirm a Stripe redirect without waiting for the webhook.
+app.get('/api/pay/stripe/verify', requireUser, async (req, res) => {
+  if (!stripeConfigured()) return res.status(503).json({ error: 'Not set up.' })
+  try {
+    const session = await stripe.checkout.sessions.retrieve(String(req.query.session_id || ''))
+    if (session.payment_status !== 'paid' || !session.metadata?.orderId) {
+      return res.status(202).json({ paid: false })
+    }
+    const order = await getOrder(session.metadata.orderId)
+    if (!order || order.userEmail !== req.userEmail) return res.status(404).json({ error: 'Order not found.' })
+    await markOrderPaid(order.id, {
+      provider: 'stripe',
+      ref: session.payment_intent || session.id,
+      amountCents: session.amount_total,
+    })
+    res.json({ paid: true, orderId: order.id })
+  } catch (err) {
+    console.error('[stripe] verify failed:', err?.message || err)
+    res.status(502).json({ error: 'Could not verify with Stripe.' })
+  }
+})
+
+app.post('/api/pay/paypal/create', requireUser, async (req, res) => {
+  if (!paypalConfigured()) return res.status(503).json({ error: 'PayPal is not set up yet.' })
+  const order = await ownedUnpaidOrder(req, res)
+  if (!order) return
+  try {
+    const pp = await paypalCreateOrder({
+      orderId: order.id,
+      amountCents: order.amountCents,
+      currency: order.currency,
+    })
+    res.json({ id: pp.id })
+  } catch (err) {
+    console.error('[paypal] create failed:', err?.message || err)
+    res.status(502).json({ error: 'Could not reach PayPal. Try again.' })
+  }
+})
+
+app.post('/api/pay/paypal/capture', requireUser, async (req, res) => {
+  if (!paypalConfigured()) return res.status(503).json({ error: 'PayPal is not set up yet.' })
+  const order = await ownedUnpaidOrder(req, res)
+  if (!order) return
+  try {
+    const cap = await paypalCaptureOrder(String((req.body || {}).paypalOrderId || ''))
+    const capture = cap.purchase_units?.[0]?.payments?.captures?.[0]
+    if (cap.status !== 'COMPLETED' || !capture) {
+      return res.status(402).json({ error: 'Payment not completed.' })
+    }
+    const paidCents = Math.round(parseFloat(capture.amount.value) * 100)
+    const result = await markOrderPaid(order.id, {
+      provider: 'paypal',
+      ref: capture.id,
+      amountCents: paidCents,
+    })
+    if (!result.ok) return res.status(400).json({ error: result.error })
+    res.json({ paid: true, orderId: order.id })
+  } catch (err) {
+    console.error('[paypal] capture failed:', err?.message || err)
+    res.status(502).json({ error: 'Could not capture the PayPal payment.' })
+  }
+})
+
+app.post('/api/paypal/webhook', async (req, res) => {
+  const ok = await paypalVerifyWebhook(req.headers, JSON.stringify(req.body))
+  if (!ok) return res.status(400).send('unverified')
+  try {
+    const e = req.body
+    if (e.event_type === 'PAYMENT.CAPTURE.COMPLETED') {
+      const r = e.resource || {}
+      const orderId = r.custom_id
+      if (orderId) {
+        await markOrderPaid(orderId, {
+          provider: 'paypal',
+          ref: r.id,
+          amountCents: Math.round(parseFloat(r.amount?.value || '0') * 100),
+        })
+      }
+    }
+  } catch (err) {
+    console.error('[paypal] webhook handler:', err?.message || err)
+  }
+  res.json({ received: true })
 })
 
 // --- orders (admin) ----------------------------------------------
