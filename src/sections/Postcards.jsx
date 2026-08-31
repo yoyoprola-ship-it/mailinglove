@@ -27,6 +27,20 @@ function Pager({ current, pageCount, onGo }) {
 
 export default function Postcards({ filter, onFilter }) {
   const [page, setPage] = useState(1)
+  const [preview, setPreview] = useState(null)
+
+  useEffect(() => {
+    if (!preview) return
+    function onKey(e) {
+      if (e.key === 'Escape') setPreview(null)
+    }
+    document.addEventListener('keydown', onKey)
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.removeEventListener('keydown', onKey)
+      document.body.style.overflow = ''
+    }
+  }, [preview])
 
   const activeType = catalog.types.find((t) => t.id === filter.type) || catalog.types[0]
   const subs = activeType.subcategories
@@ -108,7 +122,14 @@ export default function Postcards({ filter, onFilter }) {
           {shown.map((p, i) => (
             <Reveal key={p.id} delay={(i % 4) * 50}>
               <article className="pc-card">
-                <img className="pc-card__img" src={p.image} alt={p.title} loading="lazy" />
+                <button
+                  type="button"
+                  className="pc-card__imgbtn"
+                  onClick={() => setPreview(p)}
+                  aria-label={`Preview ${p.title}`}
+                >
+                  <img className="pc-card__img" src={p.image} alt={p.title} loading="lazy" />
+                </button>
                 <div className="pc-card__body">
                   <h3 className="pc-card__title">{p.title}</h3>
                   <a className="btn btn--primary btn--sm" href={`/account?add=${p.id}`}>
@@ -123,6 +144,33 @@ export default function Postcards({ filter, onFilter }) {
 
         <Pager current={current} pageCount={pageCount} onGo={goPage} />
       </div>
+
+      {preview && (
+        <div
+          className="pc-modal"
+          onClick={() => setPreview(null)}
+          role="dialog"
+          aria-modal="true"
+          aria-label={preview.title}
+        >
+          <div className="pc-modal__box" onClick={(e) => e.stopPropagation()}>
+            <button
+              className="pc-modal__close"
+              onClick={() => setPreview(null)}
+              aria-label="Close preview"
+            >
+              ×
+            </button>
+            <img className="pc-modal__img" src={preview.image} alt={preview.title} />
+            <div className="pc-modal__foot">
+              <span className="pc-modal__title">{preview.title}</span>
+              <a className="btn btn--primary btn--sm" href={`/account?add=${preview.id}`}>
+                Add
+              </a>
+            </div>
+          </div>
+        </div>
+      )}
     </section>
   )
 }
