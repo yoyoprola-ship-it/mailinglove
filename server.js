@@ -537,8 +537,16 @@ app.get('/api/orders', requireUser, async (req, res) => {
 
 // --- checkout & payments -------------------------------------------
 
-const BASE_URL = () =>
-  process.env.PUBLIC_URL || 'https://mailinglove--mailinglove-eb540.us-central1.hosted.app'
+// The origin the shopper is actually on (custom domain included), so Stripe
+// sends them back to the same site. PUBLIC_URL can force it.
+function baseUrl(req) {
+  if (process.env.PUBLIC_URL) return process.env.PUBLIC_URL.replace(/\/+$/, '')
+  const origin = req?.headers?.origin
+  if (origin && /^https?:\/\//.test(origin)) return origin
+  const host = req?.get?.('host')
+  if (host) return `${req.protocol}://${host}`
+  return 'https://mailinglove--mailinglove-eb540.us-central1.hosted.app'
+}
 
 app.get('/api/pay/config', requireUser, async (req, res) => {
   const cfg = await getConfig()
@@ -632,8 +640,8 @@ app.post('/api/pay/stripe/session', requireUser, async (req, res) => {
           },
         },
       ],
-      success_url: `${BASE_URL()}/account?tab=orders&stripe_session={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${BASE_URL()}/account?tab=cart`,
+      success_url: `${baseUrl(req)}/account?tab=orders&stripe_session={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${baseUrl(req)}/account?tab=cart`,
     })
     res.json({ url: session.url })
   } catch (err) {
