@@ -452,7 +452,8 @@ const cartErr = (res, result) =>
 
 app.get('/api/cart', requireUser, async (req, res) => {
   try {
-    res.json(await getCart(req.userEmail))
+    const [cart, cfg] = await Promise.all([getCart(req.userEmail), getConfig()])
+    res.json({ ...cart, priceCents: cfg.postcard.priceCents, currency: 'usd' })
   } catch (err) {
     console.error('[cart] get failed:', err?.message || err)
     res.status(500).json({ error: 'Could not load your cart.' })

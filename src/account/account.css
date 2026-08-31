@@ -238,6 +238,20 @@
   font-weight: 600;
 }
 
+.acc__line-total {
+  font-weight: 600;
+  color: var(--rose-900);
+}
+
+.acc__cart-total {
+  font-size: 1.05rem;
+  margin: 4px 0 14px;
+}
+
+.acc__cart-total strong {
+  color: var(--rose-900);
+}
+
 .acc__item--note {
   align-items: flex-start;
 }

@@ -5,6 +5,8 @@ import Checkout from './Checkout'
 
 const emptyAddr = { line1: '', line2: '', city: '', state: '', zip: '' }
 const cardCount = (items) => items.reduce((n, i) => n + (i.qty || 1), 0)
+const money = (cents, ccy = 'usd') =>
+  new Intl.NumberFormat('en-US', { style: 'currency', currency: ccy }).format((cents || 0) / 100)
 
 function recipientSummary(r) {
   if (!r) return null
@@ -101,6 +103,7 @@ function RecipientForm({ recipient, hasAccountAddress, onDone, onCancel }) {
 export default function Cart({ user, onCount }) {
   const [items, setItems] = useState(null)
   const [recipient, setRecipient] = useState(null)
+  const [price, setPrice] = useState({ priceCents: 0, currency: 'usd' })
   const [error, setError] = useState('')
   const [editRcpt, setEditRcpt] = useState(false)
   const [checkoutOrder, setCheckoutOrder] = useState(null)
@@ -113,6 +116,7 @@ export default function Cart({ user, onCount }) {
       const d = await api.get('/api/cart')
       setItems(d.items)
       setRecipient(d.recipient || null)
+      setPrice({ priceCents: d.priceCents || 0, currency: d.currency || 'usd' })
     } catch (err) {
       setError(err.message)
     }
@@ -202,6 +206,7 @@ export default function Cart({ user, onCount }) {
   }
 
   const count = items ? cardCount(items) : 0
+  const total = count * price.priceCents
 
   return (
     <div className="acc__card acc__card--wide">
@@ -220,6 +225,12 @@ export default function Cart({ user, onCount }) {
         <>
           <p className="acc__muted acc__cart-sum">
             {items.length} design{items.length > 1 ? 's' : ''} · {count} card{count > 1 ? 's' : ''}
+            {price.priceCents > 0 && (
+              <>
+                {' '}
+                · {money(price.priceCents, price.currency)} each
+              </>
+            )}
           </p>
 
           <ul className="acc__list">
@@ -231,6 +242,11 @@ export default function Cart({ user, onCount }) {
                     <strong>{it.title}</strong>
                     <QtyStepper value={it.qty || 1} min={0} onChange={(v) => setQty(it, v)} />
                   </div>
+                  {price.priceCents > 0 && (
+                    <span className="acc__muted acc__line-total">
+                      {money((it.qty || 1) * price.priceCents, price.currency)}
+                    </span>
+                  )}
                   <label className="acc__note-label">
                     Your personal note <span className="acc__opt">(printed on the back)</span>
                     <textarea
@@ -264,13 +280,24 @@ export default function Cart({ user, onCount }) {
             </button>
           </div>
 
+          {total > 0 && (
+            <p className="acc__cart-total">
+              Total <strong>{money(total, price.currency)}</strong>
+              <span className="acc__muted"> · {count} card{count > 1 ? 's' : ''}</span>
+            </p>
+          )}
+
           <div className="acc__actions">
             <button
               className="acc__btn"
               onClick={startCheckout}
               disabled={busy || !recipient}
             >
-              {busy ? 'Loading…' : `Checkout · ${count} card${count > 1 ? 's' : ''}`}
+              {busy
+                ? 'Loading…'
+                : total > 0
+                  ? `Checkout · ${money(total, price.currency)}`
+                  : `Checkout · ${count} card${count > 1 ? 's' : ''}`}
             </button>
             <a className="acc__link" href="/#postcards">
               Add more
