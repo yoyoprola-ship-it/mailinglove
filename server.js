@@ -152,6 +152,7 @@ app.get('/api/site-config', async (req, res) => {
   res.json({
     photoRedesignEnabled: cfg.photoRedesignEnabled,
     postcardDesignEnabled: cfg.postcardDesignEnabled,
+    postcardsPerPage: cfg.postcardsPerPage,
   })
 })
 

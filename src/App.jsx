@@ -18,6 +18,7 @@ export default function App() {
   // Fail open if the check errors.
   const [photoEnabled, setPhotoEnabled] = useState(null)
   const [postcardEnabled, setPostcardEnabled] = useState(null)
+  const [perPage, setPerPage] = useState(25)
   const [pcFilter, setPcFilter] = useState({ type: 'birthday', sub: null })
   const [signedIn, setSignedIn] = useState(false)
   const [authCtx, setAuthCtx] = useState(null) // null | {mode:'account'} | {mode:'add',postcard}
@@ -28,6 +29,7 @@ export default function App() {
       .then((c) => {
         setPhotoEnabled(Boolean(c.photoRedesignEnabled))
         setPostcardEnabled(Boolean(c.postcardDesignEnabled))
+        if (Number.isFinite(c.postcardsPerPage)) setPerPage(c.postcardsPerPage)
       })
       .catch(() => {
         setPhotoEnabled(true)
@@ -58,7 +60,12 @@ export default function App() {
   return (
     <div className="page">
       <Nav onNavigate={goToPostcards} onAccount={openAccount} />
-      <Postcards filter={pcFilter} onFilter={setPcFilter} onAdd={addPostcard} />
+      <Postcards
+        filter={pcFilter}
+        onFilter={setPcFilter}
+        onAdd={addPostcard}
+        perPage={perPage}
+      />
       {postcardEnabled && <CustomPostcard />}
       <Hero />
       <Categories />

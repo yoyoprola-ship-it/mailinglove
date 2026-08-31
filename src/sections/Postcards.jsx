@@ -2,8 +2,6 @@ import { useEffect, useState } from 'react'
 import Reveal from '../components/Reveal'
 import catalog from '../data/postcards.json'
 
-const PER_PAGE = 25
-
 function Pager({ current, pageCount, onGo }) {
   if (pageCount <= 1) return null
   return (
@@ -25,8 +23,9 @@ function Pager({ current, pageCount, onGo }) {
   )
 }
 
-export default function Postcards({ filter, onFilter, onAdd }) {
+export default function Postcards({ filter, onFilter, onAdd, perPage = 25 }) {
   const [page, setPage] = useState(1)
+  const size = perPage > 0 ? perPage : 25
   const [preview, setPreview] = useState(null)
 
   useEffect(() => {
@@ -49,9 +48,9 @@ export default function Postcards({ filter, onFilter, onAdd }) {
     (p) => p.type === activeType.id && (!filter.sub || p.subcategory === filter.sub)
   )
 
-  const pageCount = Math.max(1, Math.ceil(cards.length / PER_PAGE))
+  const pageCount = Math.max(1, Math.ceil(cards.length / size))
   const current = Math.min(page, pageCount)
-  const shown = cards.slice((current - 1) * PER_PAGE, current * PER_PAGE)
+  const shown = cards.slice((current - 1) * size, current * size)
 
   // Back to page 1 whenever the filter changes.
   useEffect(() => {

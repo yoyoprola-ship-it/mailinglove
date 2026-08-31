@@ -13,6 +13,7 @@ const DEFAULTS = {
   inputFidelity: process.env.OPENAI_IMAGE_INPUT_FIDELITY ?? 'high',
   rateLimitMax: 5,
   rateLimitWindowMin: 15,
+  postcardsPerPage: 25,
 }
 
 // What the admin form is allowed to set, with validation.
@@ -31,6 +32,7 @@ export const CONFIG_FIELDS = {
   inputFidelity: { type: 'enum', values: ['high', 'low', ''] },
   rateLimitMax: { type: 'int', min: 1, max: 100 },
   rateLimitWindowMin: { type: 'int', min: 1, max: 1440 },
+  postcardsPerPage: { type: 'int', min: 4, max: 100 },
 }
 
 let cache = null

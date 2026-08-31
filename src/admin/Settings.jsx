@@ -10,6 +10,7 @@ const LABELS = {
   inputFidelity: 'Input fidelity (face preservation)',
   rateLimitMax: 'Rate limit — requests per window',
   rateLimitWindowMin: 'Rate limit — window (minutes)',
+  postcardsPerPage: 'Postcards per page (gallery)',
 }
 
 const HINTS = {
@@ -20,6 +21,7 @@ const HINTS = {
   imageModel: 'gpt-image-1.5 / gpt-image-1 keep faces faithful; -mini is cheapest but drifts.',
   inputFidelity: '"high" preserves the uploaded face; "off" gives the model free rein.',
   rateLimitWindowMin: 'Takes effect after the next deploy/restart.',
+  postcardsPerPage: 'How many designs show per page in the public gallery (4–100).',
 }
 
 const optLabel = (v) => (v === '' ? 'off (disabled)' : v)
