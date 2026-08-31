@@ -66,6 +66,22 @@ export async function addItem(email, input) {
   if (errors.length) return { ok: false, errors }
   const ref = await userRef(email)
   const cart = await getCart(email)
+
+  // Quick-add (no recipient, no message yet): if this exact design is
+  // already in the cart unconfigured, bump its quantity instead of adding
+  // a second identical pending line. Once a line has a recipient it's a
+  // deliberate copy, so a re-add then makes a fresh line.
+  if (!value.recipient && !value.message) {
+    const pending = cart.find(
+      (i) => i.postcardId === value.postcardId && !i.recipient && !i.message
+    )
+    if (pending) {
+      pending.qty = clampQty((pending.qty || 1) + 1)
+      await ref.set({ cart, updatedAt: Date.now() }, { merge: true })
+      return { ok: true, cart, merged: true }
+    }
+  }
+
   if (cart.length >= MAX_LINES) return { ok: false, errors: ['Your cart is full.'] }
   cart.push(value)
   await ref.set({ cart, updatedAt: Date.now() }, { merge: true })

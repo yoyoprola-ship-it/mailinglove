@@ -70,7 +70,11 @@ export default function App() {
       const data = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(data.error || 'Could not add to cart.')
       setCartCount(countCards(data.items || []))
-      flash(`Added “${postcard.title}” to cart`)
+      flash(
+        data.merged
+          ? `“${postcard.title}” is already in your cart — quantity +1`
+          : `Added “${postcard.title}” to cart`
+      )
     } catch (err) {
       flash(err.message)
     }

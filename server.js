@@ -412,7 +412,7 @@ app.post('/api/cart', requireUser, async (req, res) => {
   try {
     const result = await addItem(req.userEmail, req.body || {})
     if (!result.ok) return cartErr(res, result)
-    res.json({ items: result.cart })
+    res.json({ items: result.cart, merged: Boolean(result.merged) })
   } catch (err) {
     console.error('[cart] add failed:', err?.message || err)
     res.status(500).json({ error: 'Could not add to cart.' })
