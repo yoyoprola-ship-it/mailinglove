@@ -42,8 +42,8 @@ export default function AccountApp() {
   return (
     <div className="acc">
       <header className="acc__top">
-        <a className="acc__brand" href="/">
-          MailingLove
+        <a className="acc__brand" href="/" aria-label="MailingLove — home">
+          <img src="/logo.png" alt="MailingLove" width="631" height="200" />
         </a>
         {state === 'in' && (
           <button className="acc__link" onClick={logout}>

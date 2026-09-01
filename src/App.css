@@ -450,33 +450,27 @@
 }
 
 .brand {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 10px;
   text-decoration: none;
-  color: var(--rose-900);
-  font-family: var(--serif);
-  font-weight: 600;
-  font-size: 1.15rem;
 }
 
-.brand__mark {
-  width: 34px;
-  height: 34px;
-  border-radius: 50%;
-  background: linear-gradient(150deg, var(--rose-light), var(--rose));
-  color: #fff;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
+.brand__logo {
+  height: 36px;
+  width: auto;
+  display: block;
 }
 
-.brand__mark--lg {
-  width: 64px;
-  height: 64px;
-  margin: 0 auto 20px;
+.footer .brand__logo {
+  height: 40px;
 }
+
+@media (max-width: 480px) {
+  .brand__logo {
+    height: 30px;
+  }
+}
+
 
 /* ---------- buttons ---------- */
 

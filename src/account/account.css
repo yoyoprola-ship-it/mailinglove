@@ -15,11 +15,15 @@
 }
 
 .acc__brand {
-  font-family: var(--serif);
-  font-weight: 600;
-  font-size: 1.15rem;
-  color: var(--rose-900);
+  display: inline-flex;
+  align-items: center;
   text-decoration: none;
+}
+
+.acc__brand img {
+  height: 32px;
+  width: auto;
+  display: block;
 }
 
 .acc__main {

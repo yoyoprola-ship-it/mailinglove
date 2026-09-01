@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import Icon from '../components/Icon'
 import MenuDrawer from './MenuDrawer'
 
 export default function Nav({
@@ -27,11 +26,8 @@ export default function Nav({
             <span />
             <span />
           </button>
-          <a className="brand" href="#top">
-            <span className="brand__mark">
-              <Icon name="heart" size={16} />
-            </span>
-            <span>MailingLove</span>
+          <a className="brand" href="#top" aria-label="MailingLove — home">
+            <img className="brand__logo" src="/logo.png" alt="MailingLove" width="631" height="200" />
           </a>
         </div>
         <span className="site-nav__actions">
