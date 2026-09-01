@@ -1474,3 +1474,15 @@
   background: var(--blush);
   color: var(--rose-900);
 }
+
+.pp__stage-actions {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+}
+.pp__stage-actions .pp__replace {
+  border: none;
+  background: none;
+  padding: 0;
+  font: inherit;
+}

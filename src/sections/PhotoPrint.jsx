@@ -59,11 +59,13 @@ export default function PhotoPrint({ formats = [], signedIn, onAdded, onRequireA
   const [center, setCenter] = useState({ x: 0, y: 0 })
   const [texts, setTexts] = useState([])
   const [selId, setSelId] = useState(null)
-  const [status, setStatus] = useState('idle') // idle | adding | done | error
+  const [status, setStatus] = useState('idle') // idle | adding | error
   const [error, setError] = useState('')
+  const [justAdded, setJustAdded] = useState(false)
 
   const previewRef = useRef(null)
   const drag = useRef(null)
+  const addedTimer = useRef(null)
   const boundsRef = useRef({}) // { [textId]: {x0,y0,x1,y1} } in 0..1 of the canvas
   const clamp = (v, lo, hi) => Math.min(Math.max(v, lo), hi)
 
@@ -161,8 +163,6 @@ export default function PhotoPrint({ formats = [], signedIn, onAdded, onRequireA
         if (interactive && t.id === selId) {
           const bw = lx1 - lx0
           const bh = ly1 - ly0
-          ctx.fillStyle = 'rgba(184,53,95,0.10)'
-          ctx.fillRect(lx0, ly0, bw, bh)
           ctx.lineJoin = 'round'
           ctx.setLineDash([])
           ctx.strokeStyle = 'rgba(255,255,255,0.95)'
@@ -227,9 +227,26 @@ export default function PhotoPrint({ formats = [], signedIn, onAdded, onRequireA
     }
   }, [draw, img, ratio, texts])
 
+  // Wipe the editor so another photo can be started.
+  function reset() {
+    setImg(null)
+    setDims({ w: 0, h: 0 })
+    setZoom(1)
+    setCenter({ x: 0, y: 0 })
+    setTexts([])
+    setSelId(null)
+    setStatus('idle')
+    setError('')
+    boundsRef.current = {}
+    drag.current = null
+  }
+
   function pickFile(file) {
     if (!file) return
     setError('')
+    setJustAdded(false)
+    setTexts([])
+    setSelId(null)
     const url = URL.createObjectURL(file)
     const im = new Image()
     im.onload = () => {
@@ -351,13 +368,18 @@ export default function PhotoPrint({ formats = [], signedIn, onAdded, onRequireA
       })
       const d = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(d.error || 'Could not add to cart.')
-      setStatus('done')
       onAdded?.(d.items)
+      reset()
+      setJustAdded(true)
+      clearTimeout(addedTimer.current)
+      addedTimer.current = setTimeout(() => setJustAdded(false), 4000)
     } catch (err) {
       setError(err.message)
       setStatus('error')
     }
   }
+
+  useEffect(() => () => clearTimeout(addedTimer.current), [])
 
   if (!format) return null
 
@@ -392,7 +414,7 @@ export default function PhotoPrint({ formats = [], signedIn, onAdded, onRequireA
               ) : (
                 <label className="pp__drop">
                   <Icon name="upload" size={26} />
-                  <span>Choose a photo</span>
+                  <span>{justAdded ? 'Added to cart ✓ — choose another photo' : 'Choose a photo'}</span>
                   <input
                     type="file"
                     accept="image/jpeg,image/png,image/webp"
@@ -400,6 +422,9 @@ export default function PhotoPrint({ formats = [], signedIn, onAdded, onRequireA
                     onChange={(e) => pickFile(e.target.files?.[0])}
                   />
                 </label>
+              )}
+              {justAdded && img && (
+                <p className="pp__ok">Added to cart ✓</p>
               )}
 
               {img && (
@@ -424,15 +449,20 @@ export default function PhotoPrint({ formats = [], signedIn, onAdded, onRequireA
                       look soft in print.
                     </p>
                   )}
-                  <label className="pp__replace">
-                    Replace photo
-                    <input
-                      type="file"
-                      accept="image/jpeg,image/png,image/webp"
-                      hidden
-                      onChange={(e) => pickFile(e.target.files?.[0])}
-                    />
-                  </label>
+                  <div className="pp__stage-actions">
+                    <label className="pp__replace">
+                      Replace photo
+                      <input
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp"
+                        hidden
+                        onChange={(e) => pickFile(e.target.files?.[0])}
+                      />
+                    </label>
+                    <button type="button" className="pp__replace" onClick={reset}>
+                      Clear
+                    </button>
+                  </div>
                 </>
               )}
             </div>
@@ -653,10 +683,10 @@ export default function PhotoPrint({ formats = [], signedIn, onAdded, onRequireA
                       ? 'Sign in to add to cart'
                       : `Add to cart · ${money(format.priceCents)}`}
                 </button>
-                {status === 'done' && (
+                {justAdded && (
                   <p className="pp__ok">
-                    Added ✓ <a href="/account?tab=cart">Go to cart</a> or tweak it and add
-                    another.
+                    Added ✓ <a href="/account?tab=cart">Go to cart</a> — or upload another
+                    photo above.
                   </p>
                 )}
                 {error && <p className="pp__warn">{error}</p>}
