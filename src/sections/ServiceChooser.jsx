@@ -9,7 +9,7 @@ export default function ServiceChooser({ showPhotoPrint = true, showPostcards = 
     cards.push({
       id: 'photo-print',
       icon: 'image',
-      img: '/chooser-photos.jpg',
+      img: '/chooser-photos.webp',
       eyebrow: 'Your photos',
       title: 'Print your photos',
       text: 'Upload one photo or many, crop each to size, and we print them at full quality and mail them.',
@@ -20,7 +20,7 @@ export default function ServiceChooser({ showPhotoPrint = true, showPostcards = 
     cards.push({
       id: 'postcards',
       icon: 'mail',
-      img: '/chooser-postcards.jpg',
+      img: '/chooser-postcards.webp',
       eyebrow: 'Ready to send',
       title: 'Send a postcard',
       text: 'Choose from hundreds of designs or generate your own. We print it and mail it for you.',
