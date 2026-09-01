@@ -997,3 +997,45 @@ input.adm__input[type='checkbox'] {
 .adm__aud-none {
   color: var(--muted);
 }
+
+/* customers */
+.adm__cust-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.adm__cust {
+  border: 1px solid rgba(74, 22, 38, 0.12);
+  border-radius: 10px;
+  overflow: hidden;
+}
+.adm__cust-row {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  text-align: left;
+  font-size: 0.88rem;
+}
+.adm__cust-row:hover {
+  background: rgba(74, 22, 38, 0.03);
+}
+.adm__cust-main {
+  flex: 1;
+  min-width: 0;
+}
+.adm__cust-joined {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+.adm__cust-body {
+  padding: 0 14px 14px 34px;
+  border-top: 1px solid rgba(74, 22, 38, 0.08);
+}
+.adm__cust-body .adm__aud {
+  margin-top: 12px;
+}

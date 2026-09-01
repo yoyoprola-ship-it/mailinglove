@@ -5,6 +5,7 @@ import Dashboard from './Dashboard'
 import Orders from './Orders'
 import Gallery from './Gallery'
 import Support from './Support'
+import Customers from './Customers'
 import Settings from './Settings'
 import './admin.css'
 
@@ -12,6 +13,7 @@ const TABS = [
   ['overview', 'Overview'],
   ['orders', 'Orders'],
   ['gallery', 'Postcards'],
+  ['customers', 'Customers'],
   ['support', 'Support'],
   ['settings', 'Settings'],
 ]
@@ -99,6 +101,7 @@ export default function AdminApp() {
         {tab === 'gallery' && (
           <Gallery focusId={galleryFocus} onFocusHandled={() => setGalleryFocus(null)} />
         )}
+        {tab === 'customers' && <Customers />}
         {tab === 'support' && <Support />}
         {tab === 'settings' && <Settings />}
       </main>

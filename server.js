@@ -27,6 +27,7 @@ import {
   saveProfile,
   userSessionCookie,
   clearUserCookie,
+  listCustomers,
 } from './server/userAuth.js'
 import {
   getCart,
@@ -990,6 +991,18 @@ app.put('/api/admin/support/:email', requireAdmin, async (req, res) => {
   } catch (err) {
     console.error('[support] admin status failed:', err?.message || err)
     res.status(500).json({ error: 'Could not update.' })
+  }
+})
+
+// --- customers (admin) --------------------------------------------
+
+app.get('/api/admin/customers', requireAdmin, async (req, res) => {
+  try {
+    const customers = await listCustomers({ q: String(req.query.q || '') })
+    res.json({ customers })
+  } catch (err) {
+    console.error('[admin] customers list failed:', err?.message || err)
+    res.status(500).json({ error: 'Could not load customers.' })
   }
 })
 

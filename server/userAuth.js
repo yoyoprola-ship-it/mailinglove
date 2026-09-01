@@ -105,6 +105,56 @@ export async function getUser(email) {
   return snap.exists ? publicUser(snap.data()) : null
 }
 
+// Admin: every customer, filtered in memory by a free-text query against
+// email / name / address. Firestore has no text search; the customer base
+// is small enough to scan.
+export async function listCustomers({ q = '', limit = 3000 } = {}) {
+  const db = getDb()
+  if (!db) return []
+  const snap = await db.collection('users').limit(Math.min(limit, 5000)).get()
+  const rows = snap.docs.map((d) => {
+    const v = d.data() || {}
+    const a = v.address || null
+    return {
+      email: d.id,
+      name: v.name || '',
+      address: a
+        ? {
+            line1: a.line1 || '',
+            line2: a.line2 || '',
+            city: a.city || '',
+            state: a.state || '',
+            zip: a.zip || '',
+          }
+        : null,
+      hasAddress: Boolean(a && a.line1),
+      createdAt: v.createdAt || null,
+      updatedAt: v.updatedAt || null,
+    }
+  })
+
+  const tokens = String(q).toLowerCase().trim().split(/\s+/).filter(Boolean)
+  const matched = tokens.length
+    ? rows.filter((r) => {
+        const hay = [
+          r.email,
+          r.name,
+          r.address?.line1,
+          r.address?.line2,
+          r.address?.city,
+          r.address?.state,
+          r.address?.zip,
+        ]
+          .filter(Boolean)
+          .join(' ')
+          .toLowerCase()
+        return tokens.every((t) => hay.includes(t))
+      })
+    : rows
+
+  return matched.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))
+}
+
 export async function saveProfile(email, input, meta = {}) {
   const { value, errors } = validateProfile(input)
   if (errors.length) return { ok: false, errors }

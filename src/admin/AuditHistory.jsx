@@ -39,9 +39,9 @@ function Value({ v }) {
   )
 }
 
-export default function AuditHistory({ email }) {
+export default function AuditHistory({ email, defaultOpen = false }) {
   const [entries, setEntries] = useState(null)
-  const [open, setOpen] = useState(false)
+  const [open, setOpen] = useState(defaultOpen)
   const [error, setError] = useState('')
 
   useEffect(() => {
