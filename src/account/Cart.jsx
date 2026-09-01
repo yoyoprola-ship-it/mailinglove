@@ -30,7 +30,7 @@ function QtyStepper({ value, onChange, min = 1 }) {
   )
 }
 
-function CartLine({ item, currency, onQty, onRemove, onSaveNote }) {
+function CartLine({ item, currency, onQty, onRemove, onSaveNote, onPreview }) {
   const [open, setOpen] = useState(false)
   const [draft, setDraft] = useState(item.note || '')
   const isPhoto = item.kind === 'photo'
@@ -43,7 +43,14 @@ function CartLine({ item, currency, onQty, onRemove, onSaveNote }) {
 
   return (
     <li className="acc__item acc__item--note">
-      <img className="acc__item-img" src={item.image} alt={item.title} />
+      <button
+        type="button"
+        className="acc__item-imgbtn"
+        onClick={() => onPreview(item)}
+        aria-label={`Enlarge ${item.title}`}
+      >
+        <img className="acc__item-img" src={item.image} alt={item.title} />
+      </button>
       <div className="acc__item-body">
         <div className="acc__item-head">
           <strong>{item.title}</strong>
@@ -206,6 +213,20 @@ export default function Cart({ user, onCount }) {
   const [editRcpt, setEditRcpt] = useState(false)
   const [checkoutOrder, setCheckoutOrder] = useState(null)
   const [busy, setBusy] = useState(false)
+  const [preview, setPreview] = useState(null)
+
+  useEffect(() => {
+    if (!preview) return
+    function onKey(e) {
+      if (e.key === 'Escape') setPreview(null)
+    }
+    document.addEventListener('keydown', onKey)
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.removeEventListener('keydown', onKey)
+      document.body.style.overflow = ''
+    }
+  }, [preview])
 
   const hasAccountAddress = Boolean(user?.address?.line1 && user?.name)
 
@@ -358,6 +379,7 @@ export default function Cart({ user, onCount }) {
                 onQty={setQty}
                 onRemove={remove}
                 onSaveNote={saveNote}
+                onPreview={setPreview}
               />
             ))}
           </ul>
@@ -423,6 +445,28 @@ export default function Cart({ user, onCount }) {
             We print each card with its note and mail them all to the recipient above.
           </p>
         </>
+      )}
+
+      {preview && (
+        <div
+          className="acc__img-modal"
+          onClick={() => setPreview(null)}
+          role="dialog"
+          aria-modal="true"
+          aria-label={preview.title}
+        >
+          <div className="acc__img-modal__box" onClick={(e) => e.stopPropagation()}>
+            <button
+              className="acc__img-modal__close"
+              onClick={() => setPreview(null)}
+              aria-label="Close preview"
+            >
+              ×
+            </button>
+            <img className="acc__img-modal__img" src={preview.image} alt={preview.title} />
+            <span className="acc__img-modal__title">{preview.title}</span>
+          </div>
+        </div>
       )}
     </div>
   )

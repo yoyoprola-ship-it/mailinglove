@@ -63,6 +63,8 @@ export default function PhotoPrint({ formats = [], signedIn, onAdded, onRequireA
 
   const previewRef = useRef(null)
   const drag = useRef(null)
+  const boundsRef = useRef({}) // { [textId]: {x0,y0,x1,y1} } in 0..1 of the canvas
+  const clamp = (v, lo, hi) => Math.min(Math.max(v, lo), hi)
 
   const format = useMemo(
     () => formats.find((f) => f.id === formatId) || formats[0],
@@ -106,7 +108,7 @@ export default function PhotoPrint({ formats = [], signedIn, onAdded, onRequireA
   }, [dims, zoom, ratio, center])
 
   const draw = useCallback(
-    (canvas, outW, outH) => {
+    (canvas, outW, outH, interactive = false) => {
       if (!canvas || !img || !crop.w) return
       canvas.width = outW
       canvas.height = outH
@@ -123,21 +125,47 @@ export default function PhotoPrint({ formats = [], signedIn, onAdded, onRequireA
         ctx.fillStyle = t.color
         ctx.textAlign = t.align
         ctx.textBaseline = 'middle'
+
+        const lines = String(t.text).split('\n')
+        const widest = Math.max(1, ...lines.map((l) => ctx.measureText(l || ' ').width))
+        const blockH = (lines.length - 1) * fontPx * 1.2
+        const padX = fontPx * 0.18
+        const padY = fontPx * 0.7
+        const left = t.align === 'left' ? x : t.align === 'right' ? x - widest : x - widest / 2
+        const bx0 = left - padX
+        const bx1 = left + widest + padX
+        const by0 = y - blockH / 2 - padY
+        const by1 = y + blockH / 2 + padY
+        boundsRef.current[t.id] = {
+          x0: bx0 / outW,
+          y0: by0 / outH,
+          x1: bx1 / outW,
+          y1: by1 / outH,
+        }
+
         if (t.shadow) {
           ctx.shadowColor = 'rgba(0,0,0,0.45)'
           ctx.shadowBlur = fontPx * 0.14
           ctx.shadowOffsetY = fontPx * 0.06
         }
-        const lines = String(t.text).split('\n')
         lines.forEach((line, i) => {
           ctx.fillText(line, x, y + (i - (lines.length - 1) / 2) * fontPx * 1.2)
         })
         ctx.shadowColor = 'transparent'
         ctx.shadowBlur = 0
         ctx.shadowOffsetY = 0
+
+        if (interactive && t.id === selId) {
+          ctx.save()
+          ctx.strokeStyle = 'rgba(184,53,95,0.9)'
+          ctx.lineWidth = Math.max(1, outW / PREVIEW_W)
+          ctx.setLineDash([6, 4])
+          ctx.strokeRect(bx0, by0, bx1 - bx0, by1 - by0)
+          ctx.restore()
+        }
       }
     },
-    [img, crop, texts]
+    [img, crop, texts, selId]
   )
 
   // Redraw the on-screen preview.
@@ -146,10 +174,10 @@ export default function PhotoPrint({ formats = [], signedIn, onAdded, onRequireA
     if (!c || !img) return
     const outW = PREVIEW_W
     const outH = Math.round(PREVIEW_W / ratio)
-    draw(c, outW, outH)
+    draw(c, outW, outH, true)
     if (typeof document !== 'undefined' && document.fonts) {
       Promise.all(texts.map((t) => document.fonts.load(cssFont(t, 40)).catch(() => {})))
-        .then(() => draw(c, outW, outH))
+        .then(() => draw(c, outW, outH, true))
         .catch(() => {})
     }
   }, [draw, img, ratio, texts])
@@ -170,19 +198,62 @@ export default function PhotoPrint({ formats = [], signedIn, onAdded, onRequireA
     im.src = url
   }
 
-  // Drag the photo under the crop frame.
+  // Drag a text layer if the pointer landed on one, otherwise pan the photo.
   function onPointerDown(e) {
     if (!img) return
     e.currentTarget.setPointerCapture(e.pointerId)
     const rect = e.currentTarget.getBoundingClientRect()
-    drag.current = { px: e.clientX, py: e.clientY, cx: center.x, cy: center.y, w: rect.width || PREVIEW_W }
+    const w = rect.width || PREVIEW_W
+    const h = rect.height || Math.round(PREVIEW_W / ratio)
+    const u = (e.clientX - rect.left) / w
+    const v = (e.clientY - rect.top) / h
+
+    // topmost text first
+    const hit = [...texts].reverse().find((t) => {
+      const b = boundsRef.current[t.id]
+      return b && u >= b.x0 && u <= b.x1 && v >= b.y0 && v <= b.y1
+    })
+
+    if (hit) {
+      setSelId(hit.id)
+      drag.current = {
+        mode: 'text',
+        id: hit.id,
+        px: e.clientX,
+        py: e.clientY,
+        x0: hit.xPct,
+        y0: hit.yPct,
+        w,
+        h,
+      }
+    } else {
+      drag.current = {
+        mode: 'image',
+        px: e.clientX,
+        py: e.clientY,
+        cx: center.x,
+        cy: center.y,
+        w,
+      }
+    }
   }
   function onPointerMove(e) {
-    if (!drag.current) return
-    const scale = crop.w / drag.current.w // source px per rendered px
-    const nx = drag.current.cx - (e.clientX - drag.current.px) * scale
-    const ny = drag.current.cy - (e.clientY - drag.current.py) * scale
-    setCenter({ x: nx, y: ny })
+    const d = drag.current
+    if (!d) return
+    if (d.mode === 'text') {
+      const dx = ((e.clientX - d.px) / d.w) * 100
+      const dy = ((e.clientY - d.py) / d.h) * 100
+      patchText(d.id, {
+        xPct: clamp(d.x0 + dx, 0, 100),
+        yPct: clamp(d.y0 + dy, 0, 100),
+      })
+      return
+    }
+    const scale = crop.w / d.w // source px per rendered px
+    setCenter({
+      x: d.cx - (e.clientX - d.px) * scale,
+      y: d.cy - (e.clientY - d.py) * scale,
+    })
   }
   function onPointerUp() {
     drag.current = null
@@ -299,7 +370,9 @@ export default function PhotoPrint({ formats = [], signedIn, onAdded, onRequireA
                       onChange={(e) => setZoom(Number(e.target.value))}
                     />
                   </label>
-                  <p className="pp__hint">Drag the photo to reposition it in the frame.</p>
+                  <p className="pp__hint">
+                    Drag the photo to reposition it — or drag a text layer to place it.
+                  </p>
                   {lowRes && (
                     <p className="pp__warn">
                       ⚠ This photo is a little low-resolution for {format.label} — it may

@@ -509,3 +509,63 @@
 .acc__paypal {
   min-height: 44px;
 }
+
+.acc__item-imgbtn {
+  border: none;
+  padding: 0;
+  background: none;
+  cursor: zoom-in;
+  border-radius: 8px;
+  flex-shrink: 0;
+  line-height: 0;
+}
+
+.acc__img-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: rgba(30, 12, 18, 0.82);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.acc__img-modal__box {
+  position: relative;
+  max-width: min(92vw, 680px);
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.acc__img-modal__img {
+  max-width: 100%;
+  max-height: 82vh;
+  border-radius: 10px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+  background: #fff;
+}
+
+.acc__img-modal__title {
+  color: #fff;
+  font-size: 0.9rem;
+}
+
+.acc__img-modal__close {
+  position: absolute;
+  top: -14px;
+  right: -14px;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: none;
+  background: #fff;
+  color: var(--rose-900);
+  font-size: 1.3rem;
+  line-height: 1;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3);
+}
