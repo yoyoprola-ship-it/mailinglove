@@ -46,9 +46,11 @@ const DEFAULTS = {
     quality: envQuality,
     rateLimitMax: 5,
     perPage: 25, // ready-made gallery page size
-    priceCents: 500, // USD price per printed+mailed card — set the real value in the admin
-    originZip: '', // ZIP the cards are printed & mailed from (for delivery estimates)
     sizes: DEFAULT_POSTCARD_SIZES,
+  },
+  orders: {
+    postcardPriceCents: 500, // USD price per printed+mailed postcard — set the real value in the admin
+    originZip: '', // ZIP everything is printed & mailed from (for delivery estimates)
   },
   photoprint: {
     enabled: false, // off until the admin sets real prices
@@ -82,9 +84,20 @@ export const CONFIG_SCHEMA = {
       quality: { type: 'enum', values: QUALITIES, label: 'Image quality' },
       rateLimitMax: { type: 'int', min: 1, max: 100, label: 'Rate limit — requests / 15 min per IP' },
       perPage: { type: 'int', min: 4, max: 100, label: 'Ready-made gallery — designs per page' },
-      priceCents: { type: 'int', min: 0, max: 100000, label: 'Price per card (USD cents, e.g. 499 = $4.99)' },
-      originZip: { type: 'zip', label: 'Mail-from ZIP (for USPS delivery estimate)' },
       sizes: { type: 'sizes', apiValues: API_SIZES, label: 'Selectable formats (add more as needed)' },
+    },
+  },
+  orders: {
+    label: 'Pricing & shipping',
+    hint: 'Applies to every printed order — postcards and photo prints alike.',
+    fields: {
+      postcardPriceCents: {
+        type: 'int',
+        min: 0,
+        max: 100000,
+        label: 'Price per printed postcard (USD cents, e.g. 499 = $4.99)',
+      },
+      originZip: { type: 'zip', label: 'Mail-from ZIP (for USPS delivery estimate)' },
     },
   },
   photoprint: {
@@ -209,9 +222,18 @@ function migrate(s = {}) {
         DEFAULTS.postcard.rateLimitMax
       ),
       perPage: pick(intv(pc.perPage, 4, 100), intv(s.postcardsPerPage, 4, 100), DEFAULTS.postcard.perPage),
-      priceCents: pick(intv(pc.priceCents, 0, 100000), DEFAULTS.postcard.priceCents),
-      originZip: /^\d{5}$/.test(String(pc.originZip || '')) ? pc.originZip : DEFAULTS.postcard.originZip,
       sizes: validSizes(pc.sizes) || DEFAULTS.postcard.sizes,
+    },
+    orders: {
+      postcardPriceCents: pick(
+        intv((s.orders || {}).postcardPriceCents, 0, 100000),
+        intv(pc.priceCents, 0, 100000), // legacy: was under `postcard`
+        DEFAULTS.orders.postcardPriceCents
+      ),
+      originZip: [
+        String((s.orders || {}).originZip || ''),
+        String(pc.originZip || ''), // legacy: was under `postcard`
+      ].find((z) => /^\d{5}$/.test(z)) || DEFAULTS.orders.originZip,
     },
     photoprint: {
       enabled: pick(boolv((s.photoprint || {}).enabled), DEFAULTS.photoprint.enabled),

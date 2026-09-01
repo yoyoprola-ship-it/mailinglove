@@ -626,12 +626,12 @@ app.get('/api/cart', requireUser, async (req, res) => {
     // pricing, so the cart + checkout always have a number to work with.
     const items = (cart.items || []).map((i) => ({
       ...i,
-      unitPriceCents: i.unitPriceCents || (i.kind === 'photo' ? 0 : cfg.postcard.priceCents),
+      unitPriceCents: i.unitPriceCents || (i.kind === 'photo' ? 0 : cfg.orders.postcardPriceCents),
     }))
     res.json({
       items,
       recipient: cart.recipient || null,
-      priceCents: cfg.postcard.priceCents,
+      priceCents: cfg.orders.postcardPriceCents,
       totalCents: cartTotal(items),
       currency: 'usd',
     })
@@ -657,7 +657,7 @@ app.put('/api/cart/shipping', requireUser, async (req, res) => {
 app.post('/api/cart', requireUser, async (req, res) => {
   try {
     const cfg = await getConfig()
-    const result = await addItem(req.userEmail, req.body || {}, cfg.postcard.priceCents)
+    const result = await addItem(req.userEmail, req.body || {}, cfg.orders.postcardPriceCents)
     if (!result.ok) return cartErr(res, result)
     res.json({ items: result.cart, merged: Boolean(result.merged) })
   } catch (err) {
@@ -783,7 +783,7 @@ function baseUrl(req) {
 app.get('/api/pay/config', requireUser, async (req, res) => {
   const cfg = await getConfig()
   res.json({
-    priceCents: cfg.postcard.priceCents,
+    priceCents: cfg.orders.postcardPriceCents,
     currency: 'usd',
     stripe: stripeConfigured(),
     paypal: paypalConfigured() ? { clientId: paypalClientId(), env: paypalEnv() } : null,
@@ -804,7 +804,7 @@ function addBusinessDays(from, n) {
 
 app.get('/api/delivery-estimate', requireUser, async (req, res) => {
   const cfg = await getConfig()
-  const origin = cfg.postcard.originZip
+  const origin = cfg.orders.originZip
   const dest = String(req.query.zip || '').replace(/\D/g, '').slice(0, 5)
   const generic = { precise: false, text: 'about 3–9 business days in the mail' }
 
@@ -829,7 +829,7 @@ app.get('/api/delivery-estimate', requireUser, async (req, res) => {
 app.post('/api/checkout', requireUser, async (req, res) => {
   try {
     const cfg = await getConfig()
-    const result = await createPendingOrder(req.userEmail, cfg.postcard.priceCents)
+    const result = await createPendingOrder(req.userEmail, cfg.orders.postcardPriceCents)
     if (!result.ok) return cartErr(res, result)
     res.json({ order: result.order })
   } catch (err) {
