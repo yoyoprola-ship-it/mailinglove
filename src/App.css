@@ -1491,3 +1491,10 @@
   padding: 0;
   font: inherit;
 }
+
+.pp__orient {
+  margin-top: 14px;
+}
+.pp__orient .pp__row {
+  margin-top: 2px;
+}

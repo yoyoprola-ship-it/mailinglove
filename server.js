@@ -683,6 +683,8 @@ app.post('/api/cart/photo', requireUser, (req, res) => {
       }
       const fmt = cfg.photoprint.formats.find((f) => f.id === String(req.body.formatId || ''))
       if (!fmt) return res.status(400).json({ error: 'Pick a valid format.' })
+      const landscape = String(req.body.orientation) === 'landscape' && fmt.w !== fmt.h
+      const label = landscape ? `${fmt.label} (landscape)` : fmt.label
 
       const saved = await savePhotoPrint({
         email: req.userEmail,
@@ -696,7 +698,7 @@ app.post('/api/cart/photo', requireUser, (req, res) => {
         storagePath: saved.storagePath,
         contentType: saved.contentType,
         formatId: fmt.id,
-        formatLabel: fmt.label,
+        formatLabel: label,
         unitPriceCents: fmt.priceCents,
         width: Number(req.body.width) || 0,
         height: Number(req.body.height) || 0,

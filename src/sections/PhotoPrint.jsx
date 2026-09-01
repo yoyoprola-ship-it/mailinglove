@@ -62,6 +62,7 @@ export default function PhotoPrint({ formats = [], signedIn, onAdded, onRequireA
   const [status, setStatus] = useState('idle') // idle | adding | error
   const [error, setError] = useState('')
   const [justAdded, setJustAdded] = useState(false)
+  const [orientation, setOrientation] = useState('portrait') // portrait | landscape
 
   const previewRef = useRef(null)
   const drag = useRef(null)
@@ -73,7 +74,12 @@ export default function PhotoPrint({ formats = [], signedIn, onAdded, onRequireA
     () => formats.find((f) => f.id === formatId) || formats[0],
     [formats, formatId]
   )
-  const ratio = format ? format.w / format.h : 1
+  const square = format ? format.w === format.h : true
+  const landscape = orientation === 'landscape' && !square
+  // inches of the printed piece, respecting the chosen orientation
+  const wIn = format ? (landscape ? format.h : format.w) : 1
+  const hIn = format ? (landscape ? format.w : format.h) : 1
+  const ratio = wIn / hIn
   const sel = texts.find((t) => t.id === selId) || null
 
   // Load the fonts once.
@@ -237,6 +243,7 @@ export default function PhotoPrint({ formats = [], signedIn, onAdded, onRequireA
     setSelId(null)
     setStatus('idle')
     setError('')
+    setOrientation('portrait')
     boundsRef.current = {}
     drag.current = null
   }
@@ -254,6 +261,8 @@ export default function PhotoPrint({ formats = [], signedIn, onAdded, onRequireA
       setDims({ w: im.naturalWidth, h: im.naturalHeight })
       setCenter({ x: im.naturalWidth / 2, y: im.naturalHeight / 2 })
       setZoom(1)
+      // match the photo's own orientation to start
+      setOrientation(im.naturalWidth > im.naturalHeight ? 'landscape' : 'portrait')
       setStatus('idle')
     }
     im.onerror = () => setError('Could not read that image.')
@@ -333,7 +342,7 @@ export default function PhotoPrint({ formats = [], signedIn, onAdded, onRequireA
     if (selId === id) setSelId(null)
   }
 
-  const lowRes = img && format && crop.w > 0 && crop.w < format.w * 150
+  const lowRes = img && format && crop.w > 0 && crop.w < wIn * 150
 
   async function addToCart() {
     if (!img || !format) return
@@ -347,7 +356,7 @@ export default function PhotoPrint({ formats = [], signedIn, onAdded, onRequireA
       if (document.fonts) {
         await Promise.all(texts.map((t) => document.fonts.load(cssFont(t, 60)).catch(() => {})))
       }
-      const outW = Math.max(600, Math.round(Math.min(format.w * 300, crop.w, 3000)))
+      const outW = Math.max(600, Math.round(Math.min(wIn * 300, crop.w, 3000)))
       const outH = Math.round(outW / ratio)
       const canvas = document.createElement('canvas')
       draw(canvas, outW, outH)
@@ -359,6 +368,7 @@ export default function PhotoPrint({ formats = [], signedIn, onAdded, onRequireA
       const body = new FormData()
       body.append('image', blob, `photo-${format.id}.jpg`)
       body.append('formatId', format.id)
+      body.append('orientation', landscape ? 'landscape' : 'portrait')
       body.append('width', String(outW))
       body.append('height', String(outH))
       const res = await fetch('/api/cart/photo', {
@@ -484,6 +494,28 @@ export default function PhotoPrint({ formats = [], signedIn, onAdded, onRequireA
                     </button>
                   ))}
                 </div>
+
+                {!square && (
+                  <div className="pp__orient">
+                    <span className="pp__label">Orientation</span>
+                    <div className="pp__row">
+                      <button
+                        type="button"
+                        className={`pp__opt${!landscape ? ' is-active' : ''}`}
+                        onClick={() => setOrientation('portrait')}
+                      >
+                        ▯ Portrait
+                      </button>
+                      <button
+                        type="button"
+                        className={`pp__opt${landscape ? ' is-active' : ''}`}
+                        onClick={() => setOrientation('landscape')}
+                      >
+                        ▭ Landscape
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div className="pp__block">
