@@ -113,7 +113,14 @@ export default function App() {
   }
 
   function scrollToId(id) {
-    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' })
+    const el = document.getElementById(id)
+    if (!el) return
+    el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    // Lazy images above (the gallery) load and push the target down mid-scroll,
+    // so re-aim a few times until the layout settles.
+    ;[200, 550, 1000, 1600].forEach((t) =>
+      setTimeout(() => el.scrollIntoView({ behavior: 'smooth', block: 'start' }), t)
+    )
   }
 
   function openAccount() {
