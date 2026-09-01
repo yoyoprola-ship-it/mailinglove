@@ -105,14 +105,23 @@ export async function getUser(email) {
   return snap.exists ? publicUser(snap.data()) : null
 }
 
-export async function saveProfile(email, input) {
+export async function saveProfile(email, input, meta = {}) {
   const { value, errors } = validateProfile(input)
   if (errors.length) return { ok: false, errors }
   const db = getDb()
-  await db
-    .collection('users')
-    .doc(email)
-    .set({ ...value, updatedAt: Date.now() }, { merge: true })
+  const ref = db.collection('users').doc(email)
+
+  const prevSnap = await ref.get()
+  const prev = prevSnap.exists ? prevSnap.data() : {}
+  const before = { name: prev.name || '', address: prev.address || null }
+  const after = { name: value.name || '', address: value.address || null }
+
+  await ref.set({ ...value, updatedAt: Date.now() }, { merge: true })
+
+  if (JSON.stringify(before) !== JSON.stringify(after)) {
+    const { logChange } = await import('./audit.js')
+    logChange({ email, kind: 'profile.update', before, after, ip: meta.ip, userAgent: meta.userAgent })
+  }
   return { ok: true, user: await getUser(email) }
 }
 

@@ -73,6 +73,7 @@ import {
   getSupportImage,
   streamSupportImage,
 } from './server/support.js'
+import { clientIp, listAuditForEmail, listRecentAudit } from './server/audit.js'
 import {
   stripe,
   stripeConfigured,
@@ -645,7 +646,10 @@ app.get('/api/me', requireUser, async (req, res) => {
 
 app.put('/api/me', requireUser, async (req, res) => {
   try {
-    const result = await saveProfile(req.userEmail, req.body || {})
+    const result = await saveProfile(req.userEmail, req.body || {}, {
+      ip: clientIp(req),
+      userAgent: req.get('user-agent') || '',
+    })
     if (!result.ok) return res.status(400).json({ error: result.errors[0], errors: result.errors })
     res.json({ user: result.user })
   } catch (err) {
@@ -685,7 +689,10 @@ app.get('/api/cart', requireUser, async (req, res) => {
 // so "shipping" isn't captured as an item id.
 app.put('/api/cart/shipping', requireUser, async (req, res) => {
   try {
-    const result = await setCartShipping(req.userEmail, req.body || {})
+    const result = await setCartShipping(req.userEmail, req.body || {}, {
+      ip: clientIp(req),
+      userAgent: req.get('user-agent') || '',
+    })
     if (!result.ok) return cartErr(res, result)
     res.json({ recipient: result.recipient })
   } catch (err) {
@@ -986,6 +993,28 @@ app.put('/api/admin/support/:email', requireAdmin, async (req, res) => {
   }
 })
 
+// --- audit / change history (admin) --------------------------------
+
+// Registered before /api/admin/audit/:email so "recent" isn't read as an email.
+app.get('/api/admin/audit/recent', requireAdmin, async (req, res) => {
+  try {
+    res.json({ entries: await listRecentAudit(Number(req.query.limit) || 200) })
+  } catch (err) {
+    console.error('[audit] recent failed:', err?.message || err)
+    res.status(500).json({ error: 'Could not load the activity log.' })
+  }
+})
+
+app.get('/api/admin/audit/:email', requireAdmin, async (req, res) => {
+  try {
+    const email = String(req.params.email || '').toLowerCase()
+    res.json({ email, entries: await listAuditForEmail(email) })
+  } catch (err) {
+    console.error('[audit] by-email failed:', err?.message || err)
+    res.status(500).json({ error: 'Could not load the change history.' })
+  }
+})
+
 // --- checkout & payments -------------------------------------------
 
 // The origin the shopper is actually on (custom domain included), so Stripe
@@ -1048,7 +1077,10 @@ app.get('/api/delivery-estimate', requireUser, async (req, res) => {
 app.post('/api/checkout', requireUser, async (req, res) => {
   try {
     const cfg = await getConfig()
-    const result = await createPendingOrder(req.userEmail, cfg.orders.postcardPriceCents)
+    const result = await createPendingOrder(req.userEmail, cfg.orders.postcardPriceCents, {
+      ip: clientIp(req),
+      userAgent: req.get('user-agent') || '',
+    })
     if (!result.ok) return cartErr(res, result)
     res.json({ order: result.order })
   } catch (err) {

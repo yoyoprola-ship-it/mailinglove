@@ -149,14 +149,27 @@ export async function clearCart(email) {
 }
 
 // The whole cart ships to one recipient; each card carries its own note.
-export async function setCartShipping(email, input = {}) {
+export async function setCartShipping(email, input = {}, meta = {}) {
   const rec = validateRecipient(input.recipient)
   if (rec.errors.length) return { ok: false, errors: rec.errors }
   if (!rec.value) return { ok: false, errors: ['Choose who to send it to.'] }
-  await (await userRef(email)).set(
-    { cartRecipient: rec.value, updatedAt: Date.now() },
-    { merge: true }
-  )
+
+  const ref = await userRef(email)
+  const prev = (await ref.get()).data()?.cartRecipient || null
+
+  await ref.set({ cartRecipient: rec.value, updatedAt: Date.now() }, { merge: true })
+
+  if (JSON.stringify(prev) !== JSON.stringify(rec.value)) {
+    const { logChange } = await import('./audit.js')
+    logChange({
+      email,
+      kind: 'cart.recipient',
+      before: prev,
+      after: rec.value,
+      ip: meta.ip,
+      userAgent: meta.userAgent,
+    })
+  }
   return { ok: true, recipient: rec.value }
 }
 
@@ -164,7 +177,7 @@ export async function setCartShipping(email, input = {}) {
 // cart — that happens on payment (markOrderPaid). Prices come from each
 // line (postcards and photo prints can differ); `fallbackUnitCents` fills
 // in for older postcard lines saved before per-line pricing.
-export async function createPendingOrder(email, fallbackUnitCents = 0) {
+export async function createPendingOrder(email, fallbackUnitCents = 0, meta = {}) {
   const db = getDb()
   const ref = await userRef(email)
   const snap = await ref.get()
@@ -229,6 +242,19 @@ export async function createPendingOrder(email, fallbackUnitCents = 0) {
     updatedAt: Date.now(),
   }
   await db.collection('orders').doc(orderId).set(order)
+
+  // Freeze exactly what address these cards will be mailed to, at this moment.
+  const { logChange } = await import('./audit.js')
+  logChange({
+    email,
+    kind: 'order.created',
+    before: null,
+    after: { recipient, cardCount, amountCents, currency: 'usd' },
+    orderId,
+    ip: meta.ip,
+    userAgent: meta.userAgent,
+  })
+
   return { ok: true, order }
 }
 
@@ -264,6 +290,21 @@ export async function markOrderPaid(orderId, { provider, ref, amountCents }) {
     .set({ cart: [], updatedAt: Date.now() }, { merge: true })
 
   sendReceipt({ ...order, ...patch })
+
+  import('./audit.js').then(({ logChange }) =>
+    logChange({
+      email: order.userEmail,
+      kind: 'order.paid',
+      before: null,
+      after: {
+        recipient: order.recipient,
+        amountCents: order.amountCents,
+        provider,
+        paymentRef: ref || null,
+      },
+      orderId: order.id,
+    })
+  )
 
   return { ok: true, order: { ...order, ...patch } }
 }

@@ -930,3 +930,70 @@ input.adm__input[type='checkbox'] {
   text-overflow: ellipsis;
   color: var(--text-dark);
 }
+
+/* change history / audit */
+.adm__aud {
+  margin: 10px 0;
+  border: 1px solid rgba(74, 22, 38, 0.12);
+  border-radius: 8px;
+  background: #faf7f8;
+}
+.adm__aud-toggle {
+  width: 100%;
+  text-align: left;
+  padding: 8px 12px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--rose-900);
+}
+.adm__aud-body {
+  padding: 4px 12px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.adm__aud-row {
+  border-top: 1px solid rgba(74, 22, 38, 0.08);
+  padding-top: 8px;
+  font-size: 0.8rem;
+}
+.adm__aud-row:first-child {
+  border-top: none;
+}
+.adm__aud-when {
+  color: var(--muted);
+  font-size: 0.72rem;
+}
+.adm__aud-ip {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+.adm__aud-kind {
+  font-weight: 600;
+  color: var(--rose-900);
+  margin: 1px 0 3px;
+}
+.adm__aud-diff {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.adm__aud-tag {
+  display: inline-block;
+  min-width: 34px;
+  font-size: 0.66rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.adm__aud-tag--new {
+  color: #2e7d5b;
+}
+.adm__aud-addr {
+  color: var(--text-dark);
+}
+.adm__aud-none {
+  color: var(--muted);
+}

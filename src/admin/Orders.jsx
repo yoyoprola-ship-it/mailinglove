@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { api } from './api'
+import AuditHistory from './AuditHistory'
 
 const STATUSES = ['awaiting_payment', 'paid', 'printed', 'mailed', 'cancelled']
 
@@ -76,6 +77,8 @@ function OrderRow({ o, onStatus, onOpenGallery, onPreview }) {
               <div key={j}>{l}</div>
             ))}
           </div>
+
+          <AuditHistory email={o.userEmail} />
 
           <ul className="adm__order-items">
             {o.items.map((it, i) => {

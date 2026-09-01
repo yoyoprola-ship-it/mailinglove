@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { api } from './api'
 import { downscaleImage } from '../lib/downscaleImage'
+import AuditHistory from './AuditHistory'
 
 const fmtTime = (ms) =>
   ms
@@ -163,6 +164,8 @@ export default function Support() {
                   {thread.status === 'closed' ? 'Reopen' : 'Mark resolved'}
                 </button>
               </div>
+
+              <AuditHistory email={thread.email} />
 
               <div className="adm__sup-msgs" ref={listRef}>
                 {thread.messages.map((m) => (
