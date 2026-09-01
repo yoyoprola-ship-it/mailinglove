@@ -1,6 +1,7 @@
 import crypto from 'node:crypto'
 import { getDb } from './firebaseAdmin.js'
 import { sendSms, sendEmail, smsConfigured, emailConfigured } from './notify.js'
+import { renderEmail } from './emailTemplate.js'
 import {
   sixDigits,
   hashCode,
@@ -55,12 +56,19 @@ export async function startChallenge() {
     })
 
   await Promise.all([
-    sendSms(ADMIN_PHONE, `MailingLove admin code: ${smsCode} (valid 10 min)`),
+    sendSms(ADMIN_PHONE, `${smsCode} is your MailingLove admin code (valid 10 min)`),
     sendEmail(
       ADMIN_EMAIL,
-      'MailingLove admin login code',
-      `Your email verification code is ${emailCode}. It is valid for 10 minutes.\n\n` +
-        `If you did not try to sign in, ignore this message.`
+      `${emailCode} — MailingLove admin verification`,
+      renderEmail({
+        preheader: `Email code ${emailCode} — valid for 10 minutes.`,
+        title: 'Admin sign-in verification',
+        blocks: [
+          { p: 'Use this email code together with the code sent to your phone. Both expire in 10 minutes.' },
+          { code: emailCode },
+          { small: "If you didn't try to sign in to the admin panel, ignore this message and consider changing your credentials." },
+        ],
+      })
     ),
   ])
 

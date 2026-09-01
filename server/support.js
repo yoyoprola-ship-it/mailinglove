@@ -1,6 +1,7 @@
 import crypto from 'node:crypto'
 import { getDb } from './firebaseAdmin.js'
 import { sendEmail, emailConfigured } from './notify.js'
+import { renderEmail } from './emailTemplate.js'
 import { saveFile, downloadFile, EXT } from './bucket.js'
 
 // One support conversation per customer, keyed by email. Messages live in an
@@ -118,12 +119,19 @@ async function append(email, { from, text, userName, image }) {
 export async function postUserMessage(email, userName, text, image) {
   const res = await append(email, { from: 'user', text, userName, image })
   if (res.ok && emailConfigured() && ADMIN_EMAIL) {
-    const line = clip(text) || (image ? '[sent a photo — open the chat to view it]' : '')
+    const line = clip(text) || (image ? '(sent a photo — open the chat to view it)' : '')
     sendEmail(
       ADMIN_EMAIL,
       `Support message from ${userName || email}`,
-      `${userName ? userName + ' ' : ''}<${email}> wrote:\n\n${line}\n\n` +
-        `Reply in the admin panel → Support.`
+      renderEmail({
+        preheader: line.slice(0, 120),
+        title: 'New support message',
+        blocks: [
+          { rows: [['From', `${userName ? userName + ' ' : ''}${email}`]] },
+          { quote: line },
+        ],
+        cta: { label: 'Open the admin panel', href: 'https://mailinglove.com/admin' },
+      })
     ).catch((err) => console.error('[support] admin notify failed:', err?.message || err))
   }
   return res
@@ -132,12 +140,19 @@ export async function postUserMessage(email, userName, text, image) {
 export async function postAdminMessage(email, text, image) {
   const res = await append(email, { from: 'admin', text, image })
   if (res.ok && emailConfigured()) {
-    const line = clip(text) || (image ? '[a photo — open the chat to view it]' : '')
+    const line = clip(text) || (image ? '(a photo — open the chat to view it)' : '')
     sendEmail(
       email,
       'Reply from MailingLove support',
-      `We replied to your support message:\n\n${line}\n\n` +
-        `Open the chat on mailinglove.com to continue the conversation.`
+      renderEmail({
+        preheader: line.slice(0, 120),
+        title: 'You have a reply from support',
+        blocks: [
+          { p: 'Our team replied to your message:' },
+          { quote: line },
+        ],
+        cta: { label: 'Open the chat', href: 'https://mailinglove.com' },
+      })
     ).catch((err) => console.error('[support] user notify failed:', err?.message || err))
   }
   return res

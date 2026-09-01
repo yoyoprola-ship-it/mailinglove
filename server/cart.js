@@ -3,6 +3,7 @@ import { getDb } from './firebaseAdmin.js'
 import { getPostcard } from './catalog.js'
 import { validateAddress } from './userAuth.js'
 import { sendEmail, emailConfigured } from './notify.js'
+import { renderEmail } from './emailTemplate.js'
 
 const MAX_LINES = 60 // distinct designs in the cart
 const MAX_QTY = 50 // copies of one design
@@ -313,28 +314,41 @@ export async function markOrderPaid(orderId, { provider, ref, amountCents }) {
 function sendReceipt(order) {
   if (!emailConfigured() || !order.userEmail) return
   const cards = (order.items || []).reduce((n, i) => n + (i.qty || 1), 0)
-  const designs = (order.items || [])
-    .map(
-      (i) =>
-        `  • ${i.title}${(i.qty || 1) > 1 ? ` ×${i.qty}` : ''}${i.message ? ` — “${i.message}”` : ''}`
-    )
-    .join('\n')
+  const designs = (order.items || []).map(
+    (i) =>
+      `${i.title}${(i.qty || 1) > 1 ? ` ×${i.qty}` : ''}${i.message ? ` — “${i.message}”` : ''}`
+  )
   const rec = order.recipient || order.items?.[0]?.recipient
   const oid = String(order.id).slice(0, 8)
+  const ship = [rec?.name, shipLine(rec?.address)].filter(Boolean).join('\n')
 
   sendEmail(
     order.userEmail,
     `Your MailingLove receipt — Order #${oid}`,
-    `Hi${order.userName ? ' ' + order.userName : ''},\n\n` +
-      `Thanks — your payment went through. Here's your receipt.\n\n` +
-      `Order #${oid}\n` +
-      `Paid: ${money(order.amountCents, order.currency)} via ${order.paymentProvider || 'card'}\n` +
-      `${cards} card${cards === 1 ? '' : 's'} printed & mailed to:\n` +
-      `${rec?.name || ''}\n${shipLine(rec?.address)}\n\n` +
-      `Designs:\n${designs}\n\n` +
-      `Delivery: about 3–9 business days after your cards are handed to USPS ` +
-      `(we mail them within ~1–2 business days). We'll email you when they're printed and when they ship.\n\n` +
-      `— MailingLove`
+    renderEmail({
+      preheader: `Payment received — ${money(order.amountCents, order.currency)} for order #${oid}.`,
+      title: 'Payment received',
+      greeting: `Hi${order.userName ? ' ' + order.userName : ''},`,
+      blocks: [
+        { p: 'Thanks — your payment went through and your order is queued for printing.' },
+        {
+          rows: [
+            ['Order', `#${oid}`],
+            ['Paid', `${money(order.amountCents, order.currency)} · ${order.paymentProvider || 'card'}`],
+            ['Items', `${cards} print${cards === 1 ? '' : 's'}`],
+            ['Mailing to', ship || '—'],
+          ],
+        },
+        { small: 'In this order:' },
+        { list: designs },
+        { hr: true },
+        {
+          small:
+            'Delivery is about 3–9 business days after we hand your order to USPS (we mail within ~1–2 business days). We will email you when it is printed and when it ships.',
+        },
+      ],
+      cta: { label: 'View your orders', href: 'https://mailinglove.com/account?tab=orders' },
+    })
   ).catch((err) => console.error('[order] receipt email failed:', err?.message || err))
 }
 
@@ -355,14 +369,17 @@ export async function listAllOrders({ status } = {}) {
 const STATUS_EMAIL = {
   printed: {
     subject: 'Your MailingLove order is being printed',
-    line: 'Your cards have been printed and are being prepared for mailing.',
+    title: "Your order is being printed",
+    line: 'Your order has been printed and is being prepared for mailing.',
   },
   mailed: {
-    subject: 'Your MailingLove cards are on their way',
-    line: 'Your cards have been handed to USPS. First-Class Mail usually arrives 3–9 business days after that.',
+    subject: 'Your MailingLove order is on its way',
+    title: 'On its way',
+    line: 'Your order has been handed to USPS. First-Class Mail usually arrives 3–9 business days after that.',
   },
   cancelled: {
     subject: 'Your MailingLove order was cancelled',
+    title: 'Order cancelled',
     line: 'Your order has been cancelled. If you were charged, a refund follows to your original payment method.',
   },
 }
@@ -381,12 +398,26 @@ export async function setOrderStatus(orderId, status) {
   const tpl = STATUS_EMAIL[status]
   if (tpl && emailConfigured() && order.userEmail) {
     const cards = (order.items || []).reduce((n, i) => n + (i.qty || 1), 0)
+    const oid = String(order.id).slice(0, 8)
     sendEmail(
       order.userEmail,
       tpl.subject,
-      `Hi${order.userName ? ' ' + order.userName : ''},\n\n${tpl.line}\n\n` +
-        `Order: #${String(order.id).slice(0, 8)} · ${cards} card${cards === 1 ? '' : 's'}` +
-        `${order.recipient?.name ? ` to ${order.recipient.name}` : ''}.\n\n— MailingLove`
+      renderEmail({
+        preheader: tpl.line,
+        title: tpl.title,
+        greeting: `Hi${order.userName ? ' ' + order.userName : ''},`,
+        blocks: [
+          { p: tpl.line },
+          {
+            rows: [
+              ['Order', `#${oid}`],
+              ['Items', `${cards} print${cards === 1 ? '' : 's'}`],
+              ...(order.recipient?.name ? [['To', order.recipient.name]] : []),
+            ],
+          },
+        ],
+        cta: { label: 'View your orders', href: 'https://mailinglove.com/account?tab=orders' },
+      })
     ).catch((err) => console.error('[order] status email failed:', err?.message || err))
   }
 

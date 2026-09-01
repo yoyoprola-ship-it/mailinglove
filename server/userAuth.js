@@ -1,6 +1,7 @@
 import crypto from 'node:crypto'
 import { getDb } from './firebaseAdmin.js'
 import { sendEmail, emailConfigured } from './notify.js'
+import { renderEmail } from './emailTemplate.js'
 import {
   sixDigits,
   hashCode,
@@ -53,9 +54,16 @@ export async function startUserChallenge(email) {
 
   await sendEmail(
     normEmail(email),
-    'Your MailingLove sign-in code',
-    `Your sign-in code is ${code}. It is valid for 10 minutes.\n\n` +
-      `If you did not request this, you can ignore this email.`
+    `${code} is your MailingLove sign-in code`,
+    renderEmail({
+      preheader: `Your code is ${code} — valid for 10 minutes.`,
+      title: 'Sign in to MailingLove',
+      blocks: [
+        { p: 'Enter this code to finish signing in. It expires in 10 minutes.' },
+        { code },
+        { small: "If you didn't request this, you can safely ignore this email — no one can sign in without the code." },
+      ],
+    })
   )
 
   return { ok: true, challengeId }
