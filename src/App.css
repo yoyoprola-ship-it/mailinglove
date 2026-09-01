@@ -1362,6 +1362,11 @@
 }
 .pp__thumb {
   position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  width: 72px;
 }
 .pp__thumb > button:first-child {
   border: 2px solid transparent;
@@ -1377,7 +1382,7 @@
   border-color: var(--rose);
 }
 .pp__thumb canvas {
-  width: 60px;
+  width: 68px;
   height: auto;
   display: block;
 }
@@ -1395,9 +1400,24 @@
   line-height: 1;
   cursor: pointer;
 }
+.pp__thumb-fmt {
+  font-size: 0.6rem;
+  line-height: 1.2;
+  text-align: center;
+  color: var(--muted);
+  word-break: break-word;
+}
+.pp__thumb.is-done .pp__thumb-fmt {
+  color: var(--rose-900);
+}
+.pp__thumb-check {
+  color: #2e7d5b;
+  font-weight: 700;
+  margin-right: 2px;
+}
 .pp__addmore {
-  width: 60px;
-  min-height: 60px;
+  width: 68px;
+  height: 82px;
   border: 1px dashed var(--rose-light);
   border-radius: 8px;
   background: #fff;

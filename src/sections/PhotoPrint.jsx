@@ -48,18 +48,25 @@ function drawCrop(canvas, photo, crop, outW, outH) {
 
 function PhotoThumb({ photo, format, active, onClick, onRemove }) {
   const ref = useRef(null)
-  const { ratio } = orientOf(photo, format)
+  const { ratio, landscape, square } = orientOf(photo, format)
   useEffect(() => {
     if (ref.current) drawCrop(ref.current, photo, cropOf(photo, ratio), 120, Math.round(120 / ratio))
   }, [photo, ratio])
   return (
-    <div className={`pp__thumb${active ? ' is-active' : ''}`}>
+    <div
+      className={`pp__thumb${active ? ' is-active' : ''}${photo.configured ? ' is-done' : ''}`}
+    >
       <button type="button" onClick={onClick} aria-label="Edit this photo">
         <canvas ref={ref} />
       </button>
       <button type="button" className="pp__thumb-x" onClick={onRemove} aria-label="Remove">
         ×
       </button>
+      <span className="pp__thumb-fmt">
+        {photo.configured && <span className="pp__thumb-check">✓</span>}
+        {format.label}
+        {!square && (landscape ? ' · landscape' : ' · portrait')}
+      </span>
     </div>
   )
 }
@@ -100,6 +107,19 @@ export default function PhotoPrint({ formats = [], signedIn, onAdded, onRequireA
     setPhotos((list) => list.map((p) => (p.id === activeId ? { ...p, ...patch } : p)))
   }
 
+  // Photos still needing a look, other than the one on screen.
+  const pendingCount = photos.filter((p) => p.id !== activeId && !p.configured).length
+
+  // Mark the current photo done and jump to the next one that isn't.
+  function continueConfiguring() {
+    const idx = photos.findIndex((p) => p.id === activeId)
+    const after = photos.slice(idx + 1).find((p) => !p.configured)
+    const before = photos.slice(0, idx).find((p) => !p.configured)
+    const next = after || before
+    setPhotos((list) => list.map((p) => (p.id === activeId ? { ...p, configured: true } : p)))
+    if (next) setActiveId(next.id)
+  }
+
   function addFiles(fileList) {
     const files = [...(fileList || [])].filter((f) => f.type.startsWith('image/'))
     if (!files.length) return
@@ -123,6 +143,7 @@ export default function PhotoPrint({ formats = [], signedIn, onAdded, onRequireA
                 zoom: 1,
                 cx: im.naturalWidth / 2,
                 cy: im.naturalHeight / 2,
+                configured: false,
               })
             im.onerror = () => resolve(null)
             im.src = url
@@ -409,6 +430,11 @@ export default function PhotoPrint({ formats = [], signedIn, onAdded, onRequireA
               </div>
 
               <div className="pp__foot">
+                {status !== 'adding' && pendingCount > 0 && (
+                  <button type="button" className="btn btn--ghost" onClick={continueConfiguring}>
+                    Continue configuring → <span className="pp__muted">({pendingCount} left)</span>
+                  </button>
+                )}
                 <button
                   className="btn btn--primary"
                   type="button"
