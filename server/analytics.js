@@ -60,8 +60,8 @@ export async function geoCountry(req) {
       { signal: timeout() }
     )
     if (r.ok) code = ok((await r.json())?.country?.toUpperCase())
-  } catch (err) {
-    console.warn('[geo] geojs failed:', err?.message || err)
+  } catch {
+    /* try the next provider */
   }
   if (!code) {
     try {
@@ -69,12 +69,11 @@ export async function geoCountry(req) {
         signal: timeout(),
       })
       if (r.ok) code = ok((await r.json())?.country_code?.toUpperCase())
-    } catch (err) {
-      console.warn('[geo] ipwho failed:', err?.message || err)
+    } catch {
+      /* leave unknown */
     }
   }
 
-  console.log(`[geo] ip=${ip} -> ${code || 'unknown'}`)
   if (geoCache.size > 5000) geoCache.clear()
   geoCache.set(ip, code)
   return code
@@ -88,11 +87,12 @@ export async function recordVisit({ path = '/', ref = '', visitorId = '', countr
   const dayRef = db.collection('analytics').doc(day)
   const cc = /^[A-Za-z]{2}$/.test(country) ? country.toUpperCase() : ''
   try {
+    // Nested objects (not "a.b" string keys) so set(merge) writes a real map.
     await dayRef.set(
       {
         views: FieldValue.increment(1),
         updatedAt: FieldValue.serverTimestamp(),
-        [`paths.${sanitizeKey(path)}`]: FieldValue.increment(1),
+        paths: { [sanitizeKey(path)]: FieldValue.increment(1) },
       },
       { merge: true }
     )
@@ -100,7 +100,7 @@ export async function recordVisit({ path = '/', ref = '', visitorId = '', countr
       try {
         await dayRef.collection('visitors').doc(sanitizeKey(visitorId)).create({ ref, at: Date.now() })
         const patch = { uniques: FieldValue.increment(1) }
-        if (cc) patch[`geo.${cc}`] = FieldValue.increment(1)
+        if (cc) patch.geo = { [cc]: FieldValue.increment(1) }
         await dayRef.set(patch, { merge: true })
       } catch {
         // visitor already counted today
@@ -128,11 +128,19 @@ export async function getStats() {
     .map((d) => ({ day: d.id, views: d.data().views || 0, uniques: d.data().uniques || 0 }))
     .sort((a, b) => a.day.localeCompare(b.day))
 
-  // Countries of unique visitors over the window.
+  // Countries of unique visitors over the window. Handles both the nested
+  // `geo` map and any legacy flat "geo.XX" keys from before that fix.
   const geoTotals = {}
-  for (const d of daysSnap.docs) {
-    const g = d.data().geo || {}
-    for (const [code, n] of Object.entries(g)) geoTotals[code] = (geoTotals[code] || 0) + (n || 0)
+  const addGeo = (code, n) => {
+    const cc = String(code || '').toUpperCase()
+    if (/^[A-Z]{2}$/.test(cc)) geoTotals[cc] = (geoTotals[cc] || 0) + (Number(n) || 0)
+  }
+  for (const doc of daysSnap.docs) {
+    const data = doc.data()
+    for (const [code, n] of Object.entries(data.geo || {})) addGeo(code, n)
+    for (const [k, n] of Object.entries(data)) {
+      if (k.startsWith('geo.')) addGeo(k.slice(4), n)
+    }
   }
   const regionName =
     typeof Intl !== 'undefined' && Intl.DisplayNames
