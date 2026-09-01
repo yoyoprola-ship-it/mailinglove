@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import Icon from '../components/Icon'
 import MenuDrawer from './MenuDrawer'
 
 export default function Nav({
