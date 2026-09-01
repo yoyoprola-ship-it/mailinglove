@@ -605,3 +605,105 @@ input.adm__input[type='checkbox'] {
 .adm__addcard .adm__field:last-of-type {
   margin-bottom: 14px;
 }
+
+/* order item previews */
+.adm__order-shots {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 0 14px 12px 34px;
+}
+
+.adm__order-shot {
+  position: relative;
+  border: 1px solid rgba(74, 22, 38, 0.15);
+  border-radius: 6px;
+  padding: 0;
+  background: var(--blush);
+  cursor: zoom-in;
+  line-height: 0;
+  overflow: hidden;
+}
+.adm__order-shot img {
+  width: 52px;
+  height: 68px;
+  object-fit: cover;
+  display: block;
+}
+.adm__order-shot:hover {
+  border-color: var(--rose);
+}
+.adm__order-shot-q {
+  position: absolute;
+  right: 2px;
+  bottom: 2px;
+  background: rgba(74, 22, 38, 0.85);
+  color: #fff;
+  font-size: 0.62rem;
+  border-radius: 4px;
+  padding: 0 4px;
+  line-height: 1.4;
+}
+
+.adm__order-item-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+.adm__order-item-actions .adm__chip {
+  font-size: 0.72rem;
+  text-decoration: none;
+}
+
+.adm__img-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: rgba(20, 8, 12, 0.82);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+.adm__img-modal__box {
+  position: relative;
+  max-width: min(92vw, 760px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+.adm__img-modal__img {
+  max-width: 100%;
+  max-height: 82vh;
+  border-radius: 10px;
+  background: #fff;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+}
+.adm__img-modal__foot {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: #fff;
+  font-size: 0.85rem;
+}
+.adm__img-modal__foot .adm__chip {
+  background: #fff;
+  text-decoration: none;
+}
+.adm__img-modal__close {
+  position: absolute;
+  top: -14px;
+  right: -14px;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: none;
+  background: #fff;
+  color: var(--rose-900);
+  font-size: 1.3rem;
+  line-height: 1;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3);
+}
