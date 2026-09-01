@@ -116,11 +116,26 @@ export default function App() {
     const el = document.getElementById(id)
     if (!el) return
     el.scrollIntoView({ behavior: 'smooth', block: 'start' })
-    // Lazy images above (the gallery) load and push the target down mid-scroll,
-    // so re-aim a few times until the layout settles.
-    ;[200, 550, 1000, 1600].forEach((t) =>
+
+    // Only long trips (past the lazy-loading gallery) drift as images settle —
+    // re-aim a few times for those. Any manual scroll/touch/key cancels the
+    // chase so the viewer isn't yanked back.
+    const far = Math.abs(el.getBoundingClientRect().top) > window.innerHeight * 1.2
+    if (!far) return
+
+    const timers = [250, 600, 1100, 1700].map((t) =>
       setTimeout(() => el.scrollIntoView({ behavior: 'smooth', block: 'start' }), t)
     )
+    const cancel = () => {
+      timers.forEach(clearTimeout)
+      window.removeEventListener('wheel', cancel)
+      window.removeEventListener('touchstart', cancel)
+      window.removeEventListener('keydown', cancel)
+    }
+    window.addEventListener('wheel', cancel, { passive: true })
+    window.addEventListener('touchstart', cancel, { passive: true })
+    window.addEventListener('keydown', cancel)
+    setTimeout(cancel, 1900)
   }
 
   function openAccount() {
