@@ -17,6 +17,7 @@ export default function Orders() {
   const [orders, setOrders] = useState(null)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
+  const [preview, setPreview] = useState(null)
 
   async function load() {
     try {
@@ -48,6 +49,19 @@ export default function Orders() {
     }
   }, [])
 
+  useEffect(() => {
+    if (!preview) return
+    function onKey(e) {
+      if (e.key === 'Escape') setPreview(null)
+    }
+    document.addEventListener('keydown', onKey)
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.removeEventListener('keydown', onKey)
+      document.body.style.overflow = ''
+    }
+  }, [preview])
+
   if (error) return <p className="acc__error">{error}</p>
   if (!orders) return <p className="acc__muted">Loading…</p>
 
@@ -59,6 +73,7 @@ export default function Orders() {
 
       {orders.map((o) => {
         const cards = o.items.reduce((n, it) => n + (it.qty || 1), 0)
+        const showShots = o.status !== 'cancelled'
         return (
           <div className="acc__order" key={o.id}>
             <div className="acc__order-head">
@@ -66,7 +81,7 @@ export default function Orders() {
                 {STATUS_LABEL[o.status] || o.status}
               </span>
               <span className="acc__muted">
-                {fmt(o.createdAt)} · {cards} card{cards > 1 ? 's' : ''}
+                {fmt(o.createdAt)} · {cards} item{cards > 1 ? 's' : ''}
                 {o.amountCents != null && ` · ${money(o.amountCents, o.currency)}`}
               </span>
             </div>
@@ -79,6 +94,24 @@ export default function Orders() {
                 </p>
               )
             })()}
+
+            {showShots && (
+              <div className="acc__order-shots">
+                {o.items.map((it, i) => (
+                  <button
+                    key={i}
+                    type="button"
+                    className="acc__order-shot"
+                    onClick={() => setPreview({ src: it.image, title: it.title })}
+                    title={`View ${it.title}`}
+                  >
+                    <img src={it.image} alt={it.title} loading="lazy" />
+                    {(it.qty || 1) > 1 && <span className="acc__order-shot-q">×{it.qty}</span>}
+                  </button>
+                ))}
+              </div>
+            )}
+
             <ul className="acc__order-items">
               {o.items.map((it, i) => (
                 <li key={i}>
@@ -91,6 +124,28 @@ export default function Orders() {
           </div>
         )
       })}
+
+      {preview && (
+        <div
+          className="acc__img-modal"
+          onClick={() => setPreview(null)}
+          role="dialog"
+          aria-modal="true"
+          aria-label={preview.title}
+        >
+          <div className="acc__img-modal__box" onClick={(e) => e.stopPropagation()}>
+            <button
+              className="acc__img-modal__close"
+              onClick={() => setPreview(null)}
+              aria-label="Close preview"
+            >
+              ×
+            </button>
+            <img className="acc__img-modal__img" src={preview.src} alt={preview.title} />
+            <span className="acc__img-modal__title">{preview.title}</span>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

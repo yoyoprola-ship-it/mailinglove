@@ -569,3 +569,41 @@
   cursor: pointer;
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3);
 }
+
+.acc__order-shots {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 8px 0 4px;
+}
+
+.acc__order-shot {
+  position: relative;
+  border: 1px solid rgba(74, 22, 38, 0.15);
+  border-radius: 6px;
+  padding: 0;
+  background: var(--blush);
+  cursor: zoom-in;
+  line-height: 0;
+  overflow: hidden;
+}
+.acc__order-shot img {
+  width: 54px;
+  height: 70px;
+  object-fit: cover;
+  display: block;
+}
+.acc__order-shot:hover {
+  border-color: var(--rose);
+}
+.acc__order-shot-q {
+  position: absolute;
+  right: 2px;
+  bottom: 2px;
+  background: rgba(74, 22, 38, 0.85);
+  color: #fff;
+  font-size: 0.62rem;
+  border-radius: 4px;
+  padding: 0 4px;
+  line-height: 1.4;
+}
