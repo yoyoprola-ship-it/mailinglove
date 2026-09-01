@@ -1171,6 +1171,19 @@
   font-size: 0.9rem;
 }
 
+.footer__links {
+  display: flex;
+  gap: 18px;
+  font-size: 0.85rem;
+}
+.footer__links a {
+  color: var(--rose-900);
+  text-decoration: none;
+}
+.footer__links a:hover {
+  color: var(--rose);
+}
+
 .footer__copy {
   color: var(--muted);
   font-size: 0.8rem;

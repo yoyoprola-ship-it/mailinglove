@@ -6,6 +6,10 @@ export default function Footer() {
           <img className="brand__logo" src="/logo.png" alt="MailingLove" width="631" height="200" />
         </a>
         <p className="footer__text">Real mail, redesigned by AI.</p>
+        <nav className="footer__links">
+          <a href="/terms">Terms &amp; Conditions</a>
+          <a href="/privacy">Privacy Policy</a>
+        </nav>
         <p className="footer__copy">© {new Date().getFullYear()} MailingLove</p>
       </div>
     </footer>

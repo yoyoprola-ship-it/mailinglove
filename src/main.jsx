@@ -4,14 +4,23 @@ import './index.css'
 import App from './App.jsx'
 import AdminApp from './admin/AdminApp.jsx'
 import AccountApp from './account/AccountApp.jsx'
+import LegalPage from './legal/LegalPage.jsx'
 import { track } from './track.js'
 
 const path = window.location.pathname
-const view = path.startsWith('/admin') ? 'admin' : path.startsWith('/account') ? 'account' : 'site'
+const view = path.startsWith('/admin')
+  ? 'admin'
+  : path.startsWith('/account')
+    ? 'account'
+    : path.startsWith('/terms')
+      ? 'terms'
+      : path.startsWith('/privacy')
+        ? 'privacy'
+        : 'site'
 
 if (view === 'site') {
   track()
-} else {
+} else if (view === 'admin' || view === 'account') {
   // The app pages share index.html — keep them out of search results.
   document.title = view === 'admin' ? 'MailingLove admin' : 'Your MailingLove account'
   const robots =
@@ -21,6 +30,15 @@ if (view === 'site') {
   document.querySelector('link[rel="canonical"]')?.remove()
 }
 
-const root = view === 'admin' ? <AdminApp /> : view === 'account' ? <AccountApp /> : <App />
+const root =
+  view === 'admin' ? (
+    <AdminApp />
+  ) : view === 'account' ? (
+    <AccountApp />
+  ) : view === 'terms' || view === 'privacy' ? (
+    <LegalPage doc={view} />
+  ) : (
+    <App />
+  )
 
 createRoot(document.getElementById('root')).render(<StrictMode>{root}</StrictMode>)
