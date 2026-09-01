@@ -92,35 +92,6 @@ export default function Dashboard() {
           </tbody>
         </table>
       </section>
-
-      <section className="adm__panel">
-        <h2 className="adm__h2">Waitlist ({stats.waitlistTotal})</h2>
-        <table className="adm__table">
-          <thead>
-            <tr>
-              <th>Email</th>
-              <th>Interest</th>
-              <th>Joined</th>
-            </tr>
-          </thead>
-          <tbody>
-            {stats.waitlistRecent.map((w, i) => (
-              <tr key={i}>
-                <td>{w.email}</td>
-                <td>{w.category || '—'}</td>
-                <td>{fmtDate(w.createdAt)}</td>
-              </tr>
-            ))}
-            {!stats.waitlistRecent.length && (
-              <tr>
-                <td colSpan={3} className="adm__muted">
-                  No signups yet.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </section>
     </div>
   )
 }

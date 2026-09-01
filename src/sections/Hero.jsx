@@ -26,8 +26,8 @@ export default function Hero() {
         </Reveal>
         <Reveal delay={240}>
           <div className="hero__actions">
-            <a className="btn btn--primary" href="#waitlist">
-              Join the waitlist
+            <a className="btn btn--primary" href="#postcards">
+              Shop postcards
             </a>
             <a className="btn btn--ghost" href="#how-it-works">
               See how it works
@@ -37,7 +37,7 @@ export default function Hero() {
         <Reveal delay={320}>
           <div className="hero__badge">
             <Icon name="mail" size={16} />
-            <span>Coming soon — be first in line</span>
+            <span>Printed and mailed — straight to their mailbox</span>
           </div>
         </Reveal>
       </div>

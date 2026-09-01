@@ -250,6 +250,7 @@ app.get('/api/site-config', async (req, res) => {
     postcardDesignEnabled: cfg.postcard.enabled,
     postcardsPerPage: cfg.postcard.perPage,
     postcardSizes: cfg.postcard.sizes.map((s) => ({ id: s.id, label: s.label })),
+    postcardPriceCents: cfg.orders.postcardPriceCents,
     photoPrintEnabled: cfg.photoprint.enabled,
     photoPrintFormats: cfg.photoprint.formats.map((f) => ({
       id: f.id,
@@ -701,6 +702,48 @@ app.post('/api/cart/photo', requireUser, (req, res) => {
     } catch (err) {
       console.error('[cart] photo add failed:', err?.message || err)
       res.status(500).json({ error: 'Could not add the photo print.' })
+    }
+  })
+})
+
+// Add an AI-generated custom postcard (image rendered by /api/postcard-generate)
+// to the cart. Priced like any printed postcard.
+app.post('/api/cart/custom-postcard', requireUser, (req, res) => {
+  photoPrintUpload.single('image')(req, res, async (uploadErr) => {
+    if (uploadErr) return res.status(400).json({ error: uploadErr.message })
+    if (!req.file) return res.status(400).json({ error: 'Attach the generated image.' })
+    try {
+      const cfg = await getConfig()
+      const price = cfg.orders.postcardPriceCents
+      if (!price || price <= 0) {
+        return res.status(400).json({ error: 'Pricing is not set up yet.' })
+      }
+      const size = cfg.postcard.sizes.find((s) => s.id === String(req.body.size || ''))
+      const label = size ? size.label : 'postcard'
+
+      const saved = await savePhotoPrint({
+        email: req.userEmail,
+        buffer: req.file.buffer,
+        contentType: req.file.mimetype,
+      })
+      if (!saved.ok) return res.status(400).json({ error: saved.error })
+
+      const result = await addPhotoItem(req.userEmail, {
+        photoId: saved.id,
+        storagePath: saved.storagePath,
+        contentType: saved.contentType,
+        formatId: size?.id || null,
+        formatLabel: label,
+        unitPriceCents: price,
+        title: `Custom postcard — ${label}`,
+        width: Number(req.body.width) || 0,
+        height: Number(req.body.height) || 0,
+      })
+      if (!result.ok) return cartErr(res, result)
+      res.json({ items: result.cart })
+    } catch (err) {
+      console.error('[cart] custom postcard add failed:', err?.message || err)
+      res.status(500).json({ error: 'Could not add to cart.' })
     }
   })
 })

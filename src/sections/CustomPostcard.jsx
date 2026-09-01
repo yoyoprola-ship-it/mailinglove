@@ -9,7 +9,15 @@ const FALLBACK_SIZES = [
   { id: '4x4', label: '4×4 in — square' },
 ]
 
-export default function CustomPostcard({ sizes }) {
+const money = (c) => `$${((c || 0) / 100).toFixed(2)}`
+
+export default function CustomPostcard({
+  sizes,
+  priceCents = 0,
+  signedIn,
+  onAdded,
+  onRequireAuth,
+}) {
   const SIZES = useMemo(() => (sizes && sizes.length ? sizes : FALLBACK_SIZES), [sizes])
   const [name, setName] = useState('')
   const [category, setCategory] = useState(catalog.types[0].id)
@@ -20,6 +28,44 @@ export default function CustomPostcard({ sizes }) {
   const [status, setStatus] = useState('idle') // idle | working | done | error
   const [result, setResult] = useState('')
   const [error, setError] = useState('')
+  const [cartState, setCartState] = useState('idle') // idle | adding | done
+  const [cartError, setCartError] = useState('')
+
+  async function addToCart() {
+    if (!result) return
+    if (!signedIn) {
+      onRequireAuth?.()
+      return
+    }
+    setCartState('adding')
+    setCartError('')
+    try {
+      const blob = await (await fetch(result)).blob()
+      const dims = await new Promise((resolve) => {
+        const im = new Image()
+        im.onload = () => resolve({ w: im.naturalWidth, h: im.naturalHeight })
+        im.onerror = () => resolve({ w: 0, h: 0 })
+        im.src = result
+      })
+      const body = new FormData()
+      body.append('image', blob, 'custom-postcard.png')
+      body.append('size', size)
+      body.append('width', String(dims.w))
+      body.append('height', String(dims.h))
+      const res = await fetch('/api/cart/custom-postcard', {
+        method: 'POST',
+        credentials: 'same-origin',
+        body,
+      })
+      const d = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(d.error || 'Could not add to cart.')
+      setCartState('done')
+      onAdded?.(d.items)
+    } catch (err) {
+      setCartError(err.message)
+      setCartState('idle')
+    }
+  }
 
   const subs = useMemo(
     () => catalog.types.find((t) => t.id === category)?.subcategories || [],
@@ -57,6 +103,8 @@ export default function CustomPostcard({ sizes }) {
       if (!res.ok) throw new Error(data.error || 'Something went wrong.')
       setResult(data.image)
       setStatus('done')
+      setCartState('idle')
+      setCartError('')
     } catch (err) {
       setError(err.message)
       setStatus('error')
@@ -200,10 +248,28 @@ export default function CustomPostcard({ sizes }) {
                     >
                       Download
                     </a>
-                    <a className="btn btn--primary btn--sm" href="#waitlist">
-                      Like it? Join the waitlist
-                    </a>
+                    {cartState === 'done' ? (
+                      <a className="btn btn--primary btn--sm" href="/account?tab=cart">
+                        In your cart · view
+                      </a>
+                    ) : (
+                      <button
+                        type="button"
+                        className="btn btn--primary btn--sm"
+                        onClick={addToCart}
+                        disabled={cartState === 'adding'}
+                      >
+                        {cartState === 'adding'
+                          ? 'Adding…'
+                          : !signedIn
+                            ? 'Sign in to add to cart'
+                            : priceCents > 0
+                              ? `Add to cart · ${money(priceCents)}`
+                              : 'Add to cart'}
+                      </button>
+                    )}
                   </div>
+                  {cartError && <p className="studio__error">{cartError}</p>}
                 </>
               ) : status === 'working' ? (
                 <span className="studio__placeholder">

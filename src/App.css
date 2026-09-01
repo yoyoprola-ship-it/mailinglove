@@ -702,60 +702,6 @@
   line-height: 1.5;
 }
 
-/* ---------- waitlist ---------- */
-
-.waitlist {
-  text-align: center;
-  max-width: 560px;
-}
-
-.waitlist__form {
-  margin-top: 32px;
-  display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
-  justify-content: center;
-}
-
-.waitlist__form input,
-.waitlist__form select {
-  flex: 1 1 200px;
-  padding: 14px 18px;
-  border-radius: 999px;
-  border: 1px solid rgba(255, 255, 255, 0.25);
-  background: rgba(255, 255, 255, 0.08);
-  color: #fff;
-  font-size: 0.95rem;
-}
-
-.waitlist__form input::placeholder {
-  color: rgba(255, 255, 255, 0.55);
-}
-
-.waitlist__form select {
-  color: rgba(255, 255, 255, 0.85);
-}
-
-.waitlist__form select option {
-  color: #000;
-}
-
-.waitlist__success {
-  margin-top: 32px;
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  color: var(--rose-light);
-  font-weight: 600;
-  font-size: 1.05rem;
-}
-
-.waitlist__error {
-  margin-top: 16px;
-  color: #ffb3b3;
-  font-size: 0.9rem;
-}
-
 /* ---------- ready-made postcards ---------- */
 
 .pc-filter {

@@ -100,7 +100,7 @@ export async function addPhotoItem(email, p = {}) {
     contentType: p.contentType || 'image/jpeg',
     formatId: p.formatId,
     formatLabel: p.formatLabel,
-    title: `Photo print — ${p.formatLabel}`,
+    title: p.title || `Photo print — ${p.formatLabel}`,
     image: `/api/photo-image/${p.photoId}`,
     width: Math.trunc(p.width || 0),
     height: Math.trunc(p.height || 0),

@@ -65,28 +65,6 @@ export async function getStats() {
     return days.filter((d) => d.day >= cutoff).reduce((a, d) => a + d.views, 0)
   }
 
-  let waitlistTotal = 0
-  let waitlistRecent = []
-  try {
-    const countSnap = await db.collection('waitlist').count().get()
-    waitlistTotal = countSnap.data().count
-    const recentSnap = await db
-      .collection('waitlist')
-      .orderBy('createdAt', 'desc')
-      .limit(20)
-      .get()
-    waitlistRecent = recentSnap.docs.map((d) => {
-      const v = d.data()
-      return {
-        email: v.email || '',
-        category: v.category || null,
-        createdAt: v.createdAt?.toMillis?.() || null,
-      }
-    })
-  } catch (err) {
-    console.warn('[analytics] waitlist read failed:', err?.message || err)
-  }
-
   let ordersPending = 0
   try {
     const snap = await db.collection('orders').where('status', '==', 'paid').count().get()
@@ -122,8 +100,6 @@ export async function getStats() {
     last7: sum(7),
     last30: sum(30),
     days,
-    waitlistTotal,
-    waitlistRecent,
     usersTotal,
     usersRecent,
     ordersPending,

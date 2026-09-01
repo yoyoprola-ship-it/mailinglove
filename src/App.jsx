@@ -9,7 +9,6 @@ import Postcards from './sections/Postcards'
 import CustomPostcard from './sections/CustomPostcard'
 import PhotoPrint from './sections/PhotoPrint'
 import Products from './sections/Products'
-import Waitlist from './sections/Waitlist'
 import Footer from './sections/Footer'
 import AuthModal from './components/AuthModal'
 import './App.css'
@@ -25,6 +24,7 @@ export default function App() {
   const [photoPrintFormats, setPhotoPrintFormats] = useState([])
   const [perPage, setPerPage] = useState(25)
   const [postcardSizes, setPostcardSizes] = useState(null)
+  const [postcardPriceCents, setPostcardPriceCents] = useState(0)
   const [pcFilter, setPcFilter] = useState({ type: 'birthday', sub: null })
   const [signedIn, setSignedIn] = useState(false)
   const [cartItems, setCartItems] = useState([])
@@ -42,6 +42,7 @@ export default function App() {
         if (Array.isArray(c.photoPrintFormats)) setPhotoPrintFormats(c.photoPrintFormats)
         if (Number.isFinite(c.postcardsPerPage)) setPerPage(c.postcardsPerPage)
         if (Array.isArray(c.postcardSizes) && c.postcardSizes.length) setPostcardSizes(c.postcardSizes)
+        if (Number.isFinite(c.postcardPriceCents)) setPostcardPriceCents(c.postcardPriceCents)
       })
       .catch(() => {
         setPhotoEnabled(true)
@@ -148,7 +149,15 @@ export default function App() {
         cartQtyFor={cartQty}
         perPage={perPage}
       />
-      {postcardEnabled && <CustomPostcard sizes={postcardSizes} />}
+      {postcardEnabled && (
+        <CustomPostcard
+          sizes={postcardSizes}
+          priceCents={postcardPriceCents}
+          signedIn={signedIn}
+          onAdded={(items) => Array.isArray(items) && setCartItems(items)}
+          onRequireAuth={() => setAuthCtx({ mode: 'account' })}
+        />
+      )}
       {photoPrintEnabled && photoPrintFormats.length > 0 && (
         <PhotoPrint
           formats={photoPrintFormats}
@@ -167,7 +176,6 @@ export default function App() {
         </>
       )}
       <Products />
-      <Waitlist />
       <Footer />
 
       {toast && <div className="toast">{toast}</div>}

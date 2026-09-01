@@ -38,8 +38,8 @@ export default function Nav({ onNavigate, onAccount, onCart, cartCount = 0 }) {
             <Icon name="cart" size={20} />
             {cartCount > 0 && <span className="site-nav__cart-badge">{cartCount}</span>}
           </button>
-          <a className="btn btn--primary btn--sm" href="#waitlist">
-            Join the waitlist
+          <a className="btn btn--primary btn--sm" href="#postcards">
+            Shop postcards
           </a>
         </span>
       </div>
