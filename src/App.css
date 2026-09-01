@@ -1088,6 +1088,11 @@
   color: #fff;
 }
 
+.cpc__size-price {
+  opacity: 0.7;
+  font-weight: 500;
+}
+
 .section--dark .studio__placeholder,
 .section--dark .studio__note {
   color: rgba(255, 255, 255, 0.7);

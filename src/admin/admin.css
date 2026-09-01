@@ -126,17 +126,19 @@
 
 .adm__size-row {
   display: flex;
-  gap: 8px;
+  gap: 6px;
   align-items: center;
+  flex-wrap: wrap;
 }
 
 .adm__size-row .adm__input--sm {
-  width: 92px;
+  width: 72px;
   flex: none;
 }
 
 .adm__size-row .adm__input {
   flex: 1;
+  min-width: 140px;
 }
 
 .adm__pf-head,

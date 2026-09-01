@@ -9,7 +9,7 @@ function SizesEditor({ value, apiValues, onChange }) {
     onChange(rows.map((r, j) => (j === i ? { ...r, ...patch } : r)))
   const remove = (i) => onChange(rows.filter((_, j) => j !== i))
   const add = () =>
-    onChange([...rows, { id: '', label: '', api: apiValues[0] }])
+    onChange([...rows, { id: '', label: '', api: apiValues[0], priceCents: 0 }])
 
   return (
     <div className="adm__sizes">
@@ -38,6 +38,15 @@ function SizesEditor({ value, apiValues, onChange }) {
               </option>
             ))}
           </select>
+          <input
+            className="adm__input adm__input--sm"
+            type="number"
+            min={0}
+            max={100000}
+            placeholder="¢"
+            value={r.priceCents ?? 0}
+            onChange={(e) => setRow(i, { priceCents: Number(e.target.value) })}
+          />
           <button type="button" className="adm__chip" onClick={() => remove(i)}>
             ✕
           </button>
@@ -47,7 +56,8 @@ function SizesEditor({ value, apiValues, onChange }) {
         + Add format
       </button>
       <p className="adm__hint">
-        id: short slug (a–z, 0–9, -). api: the gpt-image output size. Order here is
+        id: short slug (a–z, 0–9, -). api: the gpt-image output size. Price is in
+        cents (299 = $2.99); 0 falls back to the flat postcard price. Order here is
         the order shown on the site.
       </p>
     </div>

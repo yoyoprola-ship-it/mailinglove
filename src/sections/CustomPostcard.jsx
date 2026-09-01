@@ -23,6 +23,7 @@ export default function CustomPostcard({
   const [category, setCategory] = useState(catalog.types[0].id)
   const [subcategory, setSubcategory] = useState('')
   const [size, setSize] = useState(SIZES[0].id)
+  const unitPrice = (SIZES.find((s) => s.id === size)?.priceCents || 0) || priceCents
   const [message, setMessage] = useState('')
   const [background, setBackground] = useState('')
   const [status, setStatus] = useState('idle') // idle | working | done | error
@@ -187,16 +188,20 @@ export default function CustomPostcard({
 
               <label className="studio__label">Size (fits a standard #10 envelope)</label>
               <div className="cpc__sizes">
-                {SIZES.map((s) => (
-                  <button
-                    type="button"
-                    key={s.id}
-                    className={`cpc__size${size === s.id ? ' is-active' : ''}`}
-                    onClick={() => setSize(s.id)}
-                  >
-                    {s.label}
-                  </button>
-                ))}
+                {SIZES.map((s) => {
+                  const p = s.priceCents || priceCents
+                  return (
+                    <button
+                      type="button"
+                      key={s.id}
+                      className={`cpc__size${size === s.id ? ' is-active' : ''}`}
+                      onClick={() => setSize(s.id)}
+                    >
+                      {s.label}
+                      {p > 0 && <span className="cpc__size-price"> · {money(p)}</span>}
+                    </button>
+                  )
+                })}
               </div>
 
               <label className="studio__label" htmlFor="cpc-msg">
@@ -263,8 +268,8 @@ export default function CustomPostcard({
                           ? 'Adding…'
                           : !signedIn
                             ? 'Sign in to add to cart'
-                            : priceCents > 0
-                              ? `Add to cart · ${money(priceCents)}`
+                            : unitPrice > 0
+                              ? `Add to cart · ${money(unitPrice)}`
                               : 'Add to cart'}
                       </button>
                     )}

@@ -249,7 +249,11 @@ app.get('/api/site-config', async (req, res) => {
     photoRedesignEnabled: cfg.photo.enabled,
     postcardDesignEnabled: cfg.postcard.enabled,
     postcardsPerPage: cfg.postcard.perPage,
-    postcardSizes: cfg.postcard.sizes.map((s) => ({ id: s.id, label: s.label })),
+    postcardSizes: cfg.postcard.sizes.map((s) => ({
+      id: s.id,
+      label: s.label,
+      priceCents: s.priceCents || 0,
+    })),
     postcardPriceCents: cfg.orders.postcardPriceCents,
     photoPrintEnabled: cfg.photoprint.enabled,
     photoPrintFormats: cfg.photoprint.formats.map((f) => ({
@@ -714,12 +718,13 @@ app.post('/api/cart/custom-postcard', requireUser, (req, res) => {
     if (!req.file) return res.status(400).json({ error: 'Attach the generated image.' })
     try {
       const cfg = await getConfig()
-      const price = cfg.orders.postcardPriceCents
+      const size = cfg.postcard.sizes.find((s) => s.id === String(req.body.size || ''))
+      const label = size ? size.label : 'postcard'
+      // per-format price, falling back to the flat postcard price
+      const price = (size && size.priceCents) || cfg.orders.postcardPriceCents
       if (!price || price <= 0) {
         return res.status(400).json({ error: 'Pricing is not set up yet.' })
       }
-      const size = cfg.postcard.sizes.find((s) => s.id === String(req.body.size || ''))
-      const label = size ? size.label : 'postcard'
 
       const saved = await savePhotoPrint({
         email: req.userEmail,

@@ -16,9 +16,9 @@ const envSize = process.env.OPENAI_IMAGE_SIZE || '1024x1536'
 const envFidelity = process.env.OPENAI_IMAGE_INPUT_FIDELITY ?? 'high'
 
 const DEFAULT_POSTCARD_SIZES = [
-  { id: '4x6', label: '4×6 in — vertical', api: '1024x1536' },
-  { id: '6x4', label: '6×4 in — horizontal', api: '1536x1024' },
-  { id: '4x4', label: '4×4 in — square', api: '1024x1024' },
+  { id: '4x6', label: '4×6 in — vertical', api: '1024x1536', priceCents: 299 },
+  { id: '6x4', label: '6×4 in — horizontal', api: '1536x1024', priceCents: 299 },
+  { id: '4x4', label: '4×4 in — square', api: '1024x1024', priceCents: 249 },
 ]
 
 // Print-your-own-photo formats. w/h are inches — they set the crop aspect
@@ -84,7 +84,11 @@ export const CONFIG_SCHEMA = {
       quality: { type: 'enum', values: QUALITIES, label: 'Image quality' },
       rateLimitMax: { type: 'int', min: 1, max: 100, label: 'Rate limit — requests / 15 min per IP' },
       perPage: { type: 'int', min: 4, max: 100, label: 'Ready-made gallery — designs per page' },
-      sizes: { type: 'sizes', apiValues: API_SIZES, label: 'Selectable formats (add more as needed)' },
+      sizes: {
+        type: 'sizes',
+        apiValues: API_SIZES,
+        label: 'Selectable formats & prices (¢ — 0 uses the flat postcard price)',
+      },
     },
   },
   orders: {
@@ -130,8 +134,12 @@ export function validSizes(arr) {
     const label = str(it?.label, 40)
     const api = enumv(it?.api, API_SIZES)
     if (!id || !label || !api || seen.has(id)) return null
+    // priceCents is optional (older saved lists won't have it); 0 = fall
+    // back to the flat postcard price.
+    const priceCents = it?.priceCents == null ? 0 : intv(it.priceCents, 0, 100000)
+    if (priceCents === undefined) return null
     seen.add(id)
-    out.push({ id, label, api })
+    out.push({ id, label, api, priceCents })
   }
   return out
 }
