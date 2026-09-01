@@ -11,8 +11,8 @@ export default function ServiceChooser({ showPhotoPrint = true, showPostcards = 
       icon: 'image',
       eyebrow: 'Your photos',
       title: 'Print your photos',
-      text: 'Upload a photo, crop it, add beautiful text. We print it at full quality and mail it.',
-      cta: 'Print a photo',
+      text: 'Upload one photo or many, crop each to size, and we print them at full quality and mail them.',
+      cta: 'Print photos',
     })
   }
   if (showPostcards) {
