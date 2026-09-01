@@ -12,12 +12,65 @@ const DAY_FMT = new Intl.DateTimeFormat('en-CA', {
 })
 const dayKey = (d = new Date()) => DAY_FMT.format(d)
 
+// --- visitor country -------------------------------------------------
+
+const geoCache = new Map() // ip -> 2-letter code ('' = unknown), bounded
+const isPrivateIp = (ip) =>
+  !ip ||
+  ip === '127.0.0.1' ||
+  ip === '::1' ||
+  ip.startsWith('10.') ||
+  ip.startsWith('192.168.') ||
+  /^172\.(1[6-9]|2\d|3[01])\./.test(ip) ||
+  ip.startsWith('fc') ||
+  ip.startsWith('fd')
+
+function clientIp(req) {
+  const xff = String(req.headers['x-forwarded-for'] || '').split(',')[0].trim()
+  const ip = xff || req.ip || req.socket?.remoteAddress || ''
+  return ip.replace(/^::ffff:/, '')
+}
+
+// Best-effort 2-letter country for a request: a proxy/CDN header if present,
+// otherwise a keyless IP lookup (cached per IP for the process lifetime).
+export async function geoCountry(req) {
+  const hdr = (
+    req.headers['cf-ipcountry'] ||
+    req.headers['x-vercel-ip-country'] ||
+    req.headers['x-appengine-country'] ||
+    req.headers['x-country-code'] ||
+    ''
+  )
+    .toString()
+    .toUpperCase()
+  if (/^[A-Z]{2}$/.test(hdr) && hdr !== 'XX') return hdr
+
+  const ip = clientIp(req)
+  if (isPrivateIp(ip)) return ''
+  if (geoCache.has(ip)) return geoCache.get(ip)
+
+  let code = ''
+  try {
+    const ctrl = AbortSignal.timeout ? AbortSignal.timeout(2500) : undefined
+    const r = await fetch(`https://ipapi.co/${encodeURIComponent(ip)}/country/`, { signal: ctrl })
+    const t = (await r.text()).trim().toUpperCase()
+    if (/^[A-Z]{2}$/.test(t)) code = t
+  } catch {
+    /* leave unknown */
+  }
+
+  if (geoCache.size > 5000) geoCache.clear()
+  geoCache.set(ip, code)
+  return code
+}
+
 // Fire-and-forget: a failure here must never break a page load.
-export async function recordVisit({ path = '/', ref = '', visitorId = '' } = {}) {
+export async function recordVisit({ path = '/', ref = '', visitorId = '', country = '' } = {}) {
   const db = getDb()
   if (!db) return
   const day = dayKey()
   const dayRef = db.collection('analytics').doc(day)
+  const cc = /^[A-Za-z]{2}$/.test(country) ? country.toUpperCase() : ''
   try {
     await dayRef.set(
       {
@@ -30,7 +83,9 @@ export async function recordVisit({ path = '/', ref = '', visitorId = '' } = {})
     if (visitorId) {
       try {
         await dayRef.collection('visitors').doc(sanitizeKey(visitorId)).create({ ref, at: Date.now() })
-        await dayRef.set({ uniques: FieldValue.increment(1) }, { merge: true })
+        const patch = { uniques: FieldValue.increment(1) }
+        if (cc) patch[`geo.${cc}`] = FieldValue.increment(1)
+        await dayRef.set(patch, { merge: true })
       } catch {
         // visitor already counted today
       }
@@ -56,6 +111,31 @@ export async function getStats() {
   const days = daysSnap.docs
     .map((d) => ({ day: d.id, views: d.data().views || 0, uniques: d.data().uniques || 0 }))
     .sort((a, b) => a.day.localeCompare(b.day))
+
+  // Countries of unique visitors over the window.
+  const geoTotals = {}
+  for (const d of daysSnap.docs) {
+    const g = d.data().geo || {}
+    for (const [code, n] of Object.entries(g)) geoTotals[code] = (geoTotals[code] || 0) + (n || 0)
+  }
+  const regionName =
+    typeof Intl !== 'undefined' && Intl.DisplayNames
+      ? new Intl.DisplayNames(['en'], { type: 'region' })
+      : null
+  const countries = Object.entries(geoTotals)
+    .map(([code, count]) => ({
+      code,
+      count,
+      name: (() => {
+        try {
+          return regionName?.of(code) || code
+        } catch {
+          return code
+        }
+      })(),
+    }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 15)
 
   const today = days.find((d) => d.day === dayKey()) || { day: dayKey(), views: 0, uniques: 0 }
   // Count by calendar date, not by number of day-docs — days with no traffic
@@ -100,6 +180,7 @@ export async function getStats() {
     last7: sum(7),
     last30: sum(30),
     days,
+    countries,
     usersTotal,
     usersRecent,
     ordersPending,

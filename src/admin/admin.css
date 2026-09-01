@@ -920,3 +920,13 @@ input.adm__input[type='checkbox'] {
 .adm__sup-attach:hover {
   border-color: var(--rose);
 }
+
+.adm__geo-row {
+  grid-template-columns: 150px 1fr 34px;
+}
+.adm__geo-name {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--text-dark);
+}

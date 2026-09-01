@@ -6,6 +6,11 @@ function fmtDate(ms) {
   return new Date(ms).toLocaleDateString()
 }
 
+const flag = (cc) =>
+  /^[A-Z]{2}$/.test(cc || '')
+    ? String.fromCodePoint(...[...cc].map((c) => 127397 + c.charCodeAt(0)))
+    : '🌐'
+
 export default function Dashboard() {
   const [stats, setStats] = useState(null)
   const [error, setError] = useState('')
@@ -24,6 +29,8 @@ export default function Dashboard() {
   }
 
   const maxViews = Math.max(1, ...stats.days.map((d) => d.views))
+  const countries = stats.countries || []
+  const maxCountry = Math.max(1, ...countries.map((c) => c.count))
 
   return (
     <div className="adm__grid">
@@ -59,6 +66,32 @@ export default function Dashboard() {
             </div>
           ))}
           {!stats.days.length && <p className="adm__muted">No visits recorded yet.</p>}
+        </div>
+      </section>
+
+      <section className="adm__panel">
+        <h2 className="adm__h2">Where visitors are</h2>
+        <p className="adm__hint adm__hint--top">
+          Countries of unique visitors over the last 30 days.
+        </p>
+        <div className="adm__bars">
+          {countries.map((c) => (
+            <div className="adm__bar-row adm__geo-row" key={c.code}>
+              <span className="adm__geo-name">
+                {flag(c.code)} {c.name}
+              </span>
+              <span className="adm__bar-track">
+                <span
+                  className="adm__bar-fill"
+                  style={{ width: `${(c.count / maxCountry) * 100}%` }}
+                />
+              </span>
+              <span className="adm__bar-n">{c.count}</span>
+            </div>
+          ))}
+          {!countries.length && (
+            <p className="adm__muted">No location data yet — it fills in as visitors arrive.</p>
+          )}
         </div>
       </section>
 

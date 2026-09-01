@@ -8,7 +8,7 @@ import { fileURLToPath } from 'node:url'
 
 import { getConfig, invalidateConfigCache, pickValid, CONFIG_SCHEMA, CONFIG_DEFAULTS } from './server/config.js'
 import { getDb } from './server/firebaseAdmin.js'
-import { recordVisit, getStats } from './server/analytics.js'
+import { recordVisit, getStats, geoCountry } from './server/analytics.js'
 import {
   adminConfigured,
   adminSetupIssues,
@@ -402,12 +402,18 @@ app.post('/api/postcard-generate', postcardLimiter, async (req, res) => {
 
 app.post('/api/track', (req, res) => {
   const { path: p, ref, visitorId } = req.body || {}
-  recordVisit({
-    path: typeof p === 'string' ? p : '/',
-    ref: typeof ref === 'string' ? ref : '',
-    visitorId: typeof visitorId === 'string' ? visitorId : '',
-  })
   res.status(204).end()
+  // Resolve the country (header or IP lookup) off the response path.
+  geoCountry(req)
+    .catch(() => '')
+    .then((country) =>
+      recordVisit({
+        path: typeof p === 'string' ? p : '/',
+        ref: typeof ref === 'string' ? ref : '',
+        visitorId: typeof visitorId === 'string' ? visitorId : '',
+        country,
+      })
+    )
 })
 
 // --- admin: auth ------------------------------------------------------
