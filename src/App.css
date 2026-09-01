@@ -1512,7 +1512,7 @@
 .chooser__card {
   position: relative;
   display: flex;
-  min-height: 260px;
+  min-height: 236px;
   text-align: left;
   padding: 0;
   border: 1px solid rgba(74, 22, 38, 0.12);
@@ -1536,8 +1536,8 @@
   flex-direction: column;
   align-items: flex-start;
   gap: 8px;
-  width: 58%;
-  padding: 30px 22px 28px 30px;
+  width: 53%;
+  padding: 30px 14px 28px 30px;
 }
 
 .chooser__icon {
@@ -1553,13 +1553,14 @@
 }
 
 /* product cutout (transparent PNG/WebP) — a sticker anchored to the
-   bottom-right, spilling off the top of the card */
+   bottom-right, spilling off the top of the card. Its left edge stays
+   clear of the text column (body is 53%). */
 .chooser__media {
   position: absolute;
   z-index: 1;
-  right: -14px;
-  bottom: -4px;
-  width: 54%;
+  right: -26px;
+  bottom: -6px;
+  width: 48%;
   pointer-events: none;
 }
 .chooser__media img {
