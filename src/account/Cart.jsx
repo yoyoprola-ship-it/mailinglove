@@ -30,9 +30,11 @@ function QtyStepper({ value, onChange, min = 1 }) {
   )
 }
 
-function CartLine({ item, priceCents, currency, onQty, onRemove, onSaveNote }) {
+function CartLine({ item, currency, onQty, onRemove, onSaveNote }) {
   const [open, setOpen] = useState(false)
   const [draft, setDraft] = useState(item.note || '')
+  const isPhoto = item.kind === 'photo'
+  const unit = item.unitPriceCents || 0
 
   function done() {
     if (draft.trim() !== (item.note || '')) onSaveNote(item, draft.trim())
@@ -58,9 +60,10 @@ function CartLine({ item, priceCents, currency, onQty, onRemove, onSaveNote }) {
           </span>
         </div>
 
-        {priceCents > 0 && (
+        {unit > 0 && (
           <span className="acc__muted acc__line-total">
-            {money((item.qty || 1) * priceCents, currency)}
+            {money((item.qty || 1) * unit, currency)}
+            <span className="acc__line-each"> · {money(unit, currency)} each</span>
           </span>
         )}
 
@@ -73,7 +76,7 @@ function CartLine({ item, priceCents, currency, onQty, onRemove, onSaveNote }) {
               autoFocus
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
-              placeholder="Printed on the back of this card"
+              placeholder={isPhoto ? 'Anything we should know' : 'Printed on the back of this card'}
             />
             <div className="acc__note-actions">
               <button type="button" className="acc__link" onClick={done}>
@@ -114,7 +117,7 @@ function CartLine({ item, priceCents, currency, onQty, onRemove, onSaveNote }) {
               setOpen(true)
             }}
           >
-            + Add a personal note
+            {isPhoto ? '+ Add a note for us' : '+ Add a personal note'}
           </button>
         )}
 
@@ -197,7 +200,7 @@ function RecipientForm({ recipient, hasAccountAddress, onDone, onCancel }) {
 export default function Cart({ user, onCount }) {
   const [items, setItems] = useState(null)
   const [recipient, setRecipient] = useState(null)
-  const [price, setPrice] = useState({ priceCents: 0, currency: 'usd' })
+  const [price, setPrice] = useState({ priceCents: 0, currency: 'usd', totalCents: 0 })
   const [eta, setEta] = useState(null)
   const [error, setError] = useState('')
   const [editRcpt, setEditRcpt] = useState(false)
@@ -229,7 +232,11 @@ export default function Cart({ user, onCount }) {
       const d = await api.get('/api/cart')
       setItems(d.items)
       setRecipient(d.recipient || null)
-      setPrice({ priceCents: d.priceCents || 0, currency: d.currency || 'usd' })
+      setPrice({
+        priceCents: d.priceCents || 0,
+        currency: d.currency || 'usd',
+        totalCents: d.totalCents || 0,
+      })
     } catch (err) {
       setError(err.message)
     }
@@ -319,7 +326,9 @@ export default function Cart({ user, onCount }) {
   }
 
   const count = items ? cardCount(items) : 0
-  const total = count * price.priceCents
+  const total =
+    price.totalCents ||
+    (items || []).reduce((n, i) => n + (i.unitPriceCents || 0) * (i.qty || 1), 0)
 
   return (
     <div className="acc__card acc__card--wide">
@@ -337,13 +346,7 @@ export default function Cart({ user, onCount }) {
       {items && items.length > 0 && (
         <>
           <p className="acc__muted acc__cart-sum">
-            {items.length} design{items.length > 1 ? 's' : ''} · {count} card{count > 1 ? 's' : ''}
-            {price.priceCents > 0 && (
-              <>
-                {' '}
-                · {money(price.priceCents, price.currency)} each
-              </>
-            )}
+            {items.length} item{items.length > 1 ? 's' : ''} · {count} print{count > 1 ? 's' : ''}
           </p>
 
           <ul className="acc__list">
@@ -351,7 +354,6 @@ export default function Cart({ user, onCount }) {
               <CartLine
                 key={it.id}
                 item={it}
-                priceCents={price.priceCents}
                 currency={price.currency}
                 onQty={setQty}
                 onRemove={remove}
@@ -393,7 +395,7 @@ export default function Cart({ user, onCount }) {
           {total > 0 && (
             <p className="acc__cart-total">
               Total <strong>{money(total, price.currency)}</strong>
-              <span className="acc__muted"> · {count} card{count > 1 ? 's' : ''}</span>
+              <span className="acc__muted"> · {count} print{count > 1 ? 's' : ''}</span>
             </p>
           )}
 
@@ -407,7 +409,7 @@ export default function Cart({ user, onCount }) {
                 ? 'Loading…'
                 : total > 0
                   ? `Checkout · ${money(total, price.currency)}`
-                  : `Checkout · ${count} card${count > 1 ? 's' : ''}`}
+                  : `Checkout · ${count} print${count > 1 ? 's' : ''}`}
             </button>
             <a className="acc__link" href="/#postcards">
               Add more

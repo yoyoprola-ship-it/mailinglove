@@ -31,6 +31,7 @@ import {
 import {
   getCart,
   addItem,
+  addPhotoItem,
   updateItem,
   removeItem,
   clearCart,
@@ -42,7 +43,14 @@ import {
   listOrders,
   listAllOrders,
   setOrderStatus,
+  cartTotal,
 } from './server/cart.js'
+import {
+  savePhotoPrint,
+  getPhotoPrint,
+  streamPhotoPrint,
+  PHOTO_MAX_BYTES,
+} from './server/photoPrints.js'
 import {
   validateCustomPostcard,
   generateCustomPostcard,
@@ -189,6 +197,16 @@ const hiresUpload = multer({
   },
 })
 
+// Customer-composed photo prints (crop + text baked in, kept at full res).
+const photoPrintUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: PHOTO_MAX_BYTES },
+  fileFilter(req, file, cb) {
+    const ok = ['image/png', 'image/jpeg'].includes(file.mimetype)
+    cb(ok ? null : new Error('The rendered image must be a JPEG or PNG.'), ok)
+  },
+})
+
 const photoLimiter = rateLimit({
   windowMs: RATE_WINDOW_MS,
   limit: async () => (await getConfig()).photo.rateLimitMax,
@@ -232,6 +250,14 @@ app.get('/api/site-config', async (req, res) => {
     postcardDesignEnabled: cfg.postcard.enabled,
     postcardsPerPage: cfg.postcard.perPage,
     postcardSizes: cfg.postcard.sizes.map((s) => ({ id: s.id, label: s.label })),
+    photoPrintEnabled: cfg.photoprint.enabled,
+    photoPrintFormats: cfg.photoprint.formats.map((f) => ({
+      id: f.id,
+      label: f.label,
+      w: f.w,
+      h: f.h,
+      priceCents: f.priceCents,
+    })),
   })
 })
 
@@ -517,6 +543,22 @@ app.get('/api/postcard-image/:id', async (req, res) => {
   }
 })
 
+// Admin: download a customer's photo-print file for an order.
+app.get('/api/admin/photo-image/:id', requireAdmin, async (req, res) => {
+  try {
+    const entry = await getPhotoPrint(req.params.id)
+    if (!entry) return res.status(404).end()
+    if (String(req.query.download) === '1') {
+      const ext = (entry.contentType || '').includes('png') ? 'png' : 'jpg'
+      res.setHeader('Content-Disposition', `attachment; filename="photo-${req.params.id}.${ext}"`)
+    }
+    await streamPhotoPrint(entry, res)
+  } catch (err) {
+    console.error('[photo] admin image route failed:', err?.message || err)
+    if (!res.headersSent) res.status(500).end()
+  }
+})
+
 // --- customer accounts ---------------------------------------------
 
 app.post('/api/auth/start', authLimiter, async (req, res) => {
@@ -580,7 +622,19 @@ const cartErr = (res, result) =>
 app.get('/api/cart', requireUser, async (req, res) => {
   try {
     const [cart, cfg] = await Promise.all([getCart(req.userEmail), getConfig()])
-    res.json({ ...cart, priceCents: cfg.postcard.priceCents, currency: 'usd' })
+    // Fill a per-line price for older postcard lines saved before per-line
+    // pricing, so the cart + checkout always have a number to work with.
+    const items = (cart.items || []).map((i) => ({
+      ...i,
+      unitPriceCents: i.unitPriceCents || (i.kind === 'photo' ? 0 : cfg.postcard.priceCents),
+    }))
+    res.json({
+      items,
+      recipient: cart.recipient || null,
+      priceCents: cfg.postcard.priceCents,
+      totalCents: cartTotal(items),
+      currency: 'usd',
+    })
   } catch (err) {
     console.error('[cart] get failed:', err?.message || err)
     res.status(500).json({ error: 'Could not load your cart.' })
@@ -602,12 +656,64 @@ app.put('/api/cart/shipping', requireUser, async (req, res) => {
 
 app.post('/api/cart', requireUser, async (req, res) => {
   try {
-    const result = await addItem(req.userEmail, req.body || {})
+    const cfg = await getConfig()
+    const result = await addItem(req.userEmail, req.body || {}, cfg.postcard.priceCents)
     if (!result.ok) return cartErr(res, result)
     res.json({ items: result.cart, merged: Boolean(result.merged) })
   } catch (err) {
     console.error('[cart] add failed:', err?.message || err)
     res.status(500).json({ error: 'Could not add to cart.' })
+  }
+})
+
+// Add a finished photo print (rendered in the browser) to the cart.
+app.post('/api/cart/photo', requireUser, (req, res) => {
+  photoPrintUpload.single('image')(req, res, async (uploadErr) => {
+    if (uploadErr) return res.status(400).json({ error: uploadErr.message })
+    if (!req.file) return res.status(400).json({ error: 'Attach the rendered image.' })
+    try {
+      const cfg = await getConfig()
+      if (!cfg.photoprint.enabled) {
+        return res.status(403).json({ error: 'Photo printing is not available right now.' })
+      }
+      const fmt = cfg.photoprint.formats.find((f) => f.id === String(req.body.formatId || ''))
+      if (!fmt) return res.status(400).json({ error: 'Pick a valid format.' })
+
+      const saved = await savePhotoPrint({
+        email: req.userEmail,
+        buffer: req.file.buffer,
+        contentType: req.file.mimetype,
+      })
+      if (!saved.ok) return res.status(400).json({ error: saved.error })
+
+      const result = await addPhotoItem(req.userEmail, {
+        photoId: saved.id,
+        storagePath: saved.storagePath,
+        contentType: saved.contentType,
+        formatId: fmt.id,
+        formatLabel: fmt.label,
+        unitPriceCents: fmt.priceCents,
+        width: Number(req.body.width) || 0,
+        height: Number(req.body.height) || 0,
+      })
+      if (!result.ok) return cartErr(res, result)
+      res.json({ items: result.cart })
+    } catch (err) {
+      console.error('[cart] photo add failed:', err?.message || err)
+      res.status(500).json({ error: 'Could not add the photo print.' })
+    }
+  })
+})
+
+// Stream a photo print — only to the customer who made it.
+app.get('/api/photo-image/:id', requireUser, async (req, res) => {
+  try {
+    const entry = await getPhotoPrint(req.params.id)
+    if (!entry || entry.userEmail !== req.userEmail) return res.status(404).end()
+    await streamPhotoPrint(entry, res)
+  } catch (err) {
+    console.error('[photo] image route failed:', err?.message || err)
+    if (!res.headersSent) res.status(500).end()
   }
 })
 
@@ -756,16 +862,21 @@ app.post('/api/pay/stripe/session', requireUser, async (req, res) => {
       client_reference_id: order.id,
       metadata: { orderId: order.id },
       customer_email: order.userEmail,
-      line_items: [
-        {
-          quantity: order.cardCount,
+      line_items: order.items
+        .filter((it) => it.unitPriceCents > 0)
+        .map((it) => ({
+          quantity: it.qty,
           price_data: {
             currency: order.currency,
-            unit_amount: order.unitPriceCents,
-            product_data: { name: 'MailingLove postcard (printed & mailed)' },
+            unit_amount: it.unitPriceCents,
+            product_data: {
+              name:
+                it.kind === 'photo'
+                  ? it.title
+                  : `MailingLove postcard — ${it.title} (printed & mailed)`,
+            },
           },
-        },
-      ],
+        })),
       success_url: `${baseUrl(req)}/account?tab=orders&stripe_session={CHECKOUT_SESSION_ID}`,
       cancel_url: `${baseUrl(req)}/account?tab=cart`,
     })

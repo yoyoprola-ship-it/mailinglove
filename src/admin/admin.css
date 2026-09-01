@@ -139,6 +139,24 @@
   flex: 1;
 }
 
+.adm__pf-head,
+.adm__pf-row {
+  display: grid;
+  grid-template-columns: 70px 1fr 62px 62px 72px 28px;
+  gap: 6px;
+  align-items: center;
+}
+.adm__pf-head {
+  font-size: 0.7rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  padding: 0 2px;
+}
+.adm__pf-row .adm__input {
+  width: 100%;
+}
+
 .adm__h2 {
   font-size: 1.05rem;
   color: var(--rose-900);

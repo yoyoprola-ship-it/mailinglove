@@ -83,7 +83,7 @@ export default function Checkout({ order, onBack }) {
     <div className="acc__card acc__card--wide">
       <h2 className="acc__title">Checkout</h2>
       <p className="acc__muted">
-        {order.cardCount} card{order.cardCount > 1 ? 's' : ''} printed &amp; mailed — total{' '}
+        {order.cardCount} print{order.cardCount > 1 ? 's' : ''} printed &amp; mailed — total{' '}
         <strong>{money(order.amountCents, order.currency)}</strong>
       </p>
 

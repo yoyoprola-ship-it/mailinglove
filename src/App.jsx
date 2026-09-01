@@ -7,6 +7,7 @@ import Studio from './sections/Studio'
 import Restore from './sections/Restore'
 import Postcards from './sections/Postcards'
 import CustomPostcard from './sections/CustomPostcard'
+import PhotoPrint from './sections/PhotoPrint'
 import Products from './sections/Products'
 import Waitlist from './sections/Waitlist'
 import Footer from './sections/Footer'
@@ -20,6 +21,8 @@ export default function App() {
   // Fail open if the check errors.
   const [photoEnabled, setPhotoEnabled] = useState(null)
   const [postcardEnabled, setPostcardEnabled] = useState(null)
+  const [photoPrintEnabled, setPhotoPrintEnabled] = useState(false)
+  const [photoPrintFormats, setPhotoPrintFormats] = useState([])
   const [perPage, setPerPage] = useState(25)
   const [postcardSizes, setPostcardSizes] = useState(null)
   const [pcFilter, setPcFilter] = useState({ type: 'birthday', sub: null })
@@ -35,6 +38,8 @@ export default function App() {
       .then((c) => {
         setPhotoEnabled(Boolean(c.photoRedesignEnabled))
         setPostcardEnabled(Boolean(c.postcardDesignEnabled))
+        setPhotoPrintEnabled(Boolean(c.photoPrintEnabled))
+        if (Array.isArray(c.photoPrintFormats)) setPhotoPrintFormats(c.photoPrintFormats)
         if (Number.isFinite(c.postcardsPerPage)) setPerPage(c.postcardsPerPage)
         if (Array.isArray(c.postcardSizes) && c.postcardSizes.length) setPostcardSizes(c.postcardSizes)
       })
@@ -144,6 +149,14 @@ export default function App() {
         perPage={perPage}
       />
       {postcardEnabled && <CustomPostcard sizes={postcardSizes} />}
+      {photoPrintEnabled && photoPrintFormats.length > 0 && (
+        <PhotoPrint
+          formats={photoPrintFormats}
+          signedIn={signedIn}
+          onAdded={(items) => Array.isArray(items) && setCartItems(items)}
+          onRequireAuth={() => setAuthCtx({ mode: 'account' })}
+        />
+      )}
       <Hero />
       <Categories />
       <HowItWorks />

@@ -34,16 +34,21 @@ export function validateRecipient(r) {
   return { errors: ['Choose who to send it to.'], value: null }
 }
 
-async function cartLine(postcardId, qty) {
+export const lineTotal = (i) => (i.unitPriceCents || 0) * clampQty(i.qty)
+export const cartTotal = (items) => (items || []).reduce((n, i) => n + lineTotal(i), 0)
+
+async function cartLine(postcardId, qty, unitPriceCents) {
   const card = await getPostcard(postcardId)
   if (!card) return null
   return {
     id: crypto.randomBytes(8).toString('hex'),
+    kind: 'postcard',
     postcardId: card.id,
     title: card.title,
     image: card.image,
     category: card.type,
     subcategory: card.subcategory || null,
+    unitPriceCents: Math.max(0, Math.trunc(unitPriceCents || 0)),
     qty: clampQty(qty),
     note: '', // personal note printed on the back of this card
     addedAt: Date.now(),
@@ -60,8 +65,8 @@ export async function getCart(email) {
   return { items: d.cart || [], recipient: d.cartRecipient || null }
 }
 
-export async function addItem(email, input) {
-  const line = await cartLine((input || {}).postcardId, 1)
+export async function addItem(email, input, unitPriceCents) {
+  const line = await cartLine((input || {}).postcardId, 1, unitPriceCents)
   if (!line) return { ok: false, errors: ['That postcard is no longer available.'] }
   const ref = await userRef(email)
   const { items } = await getCart(email)
@@ -70,6 +75,7 @@ export async function addItem(email, input) {
   let merged = false
   if (existing) {
     existing.qty = clampQty((existing.qty || 1) + 1)
+    if (!existing.unitPriceCents) existing.unitPriceCents = line.unitPriceCents
     merged = true
   } else {
     if (items.length >= MAX_LINES) return { ok: false, errors: ['Your cart is full.'] }
@@ -77,6 +83,34 @@ export async function addItem(email, input) {
   }
   await ref.set({ cart: items, updatedAt: Date.now() }, { merge: true })
   return { ok: true, cart: items, merged }
+}
+
+// A finished photo-print the customer composed in the browser.
+export async function addPhotoItem(email, p = {}) {
+  const ref = await userRef(email)
+  const { items } = await getCart(email)
+  if (items.length >= MAX_LINES) return { ok: false, errors: ['Your cart is full.'] }
+
+  items.push({
+    id: crypto.randomBytes(8).toString('hex'),
+    kind: 'photo',
+    postcardId: null,
+    photoId: p.photoId,
+    storagePath: p.storagePath,
+    contentType: p.contentType || 'image/jpeg',
+    formatId: p.formatId,
+    formatLabel: p.formatLabel,
+    title: `Photo print — ${p.formatLabel}`,
+    image: `/api/photo-image/${p.photoId}`,
+    width: Math.trunc(p.width || 0),
+    height: Math.trunc(p.height || 0),
+    unitPriceCents: Math.max(0, Math.trunc(p.unitPriceCents || 0)),
+    qty: 1,
+    note: '',
+    addedAt: Date.now(),
+  })
+  await ref.set({ cart: items, updatedAt: Date.now() }, { merge: true })
+  return { ok: true, cart: items }
 }
 
 export async function updateItem(email, itemId, patch) {
@@ -127,8 +161,10 @@ export async function setCartShipping(email, input = {}) {
 }
 
 // Build an unpaid order from the cart + its shipping. Does NOT clear the
-// cart — that happens on payment (markOrderPaid).
-export async function createPendingOrder(email, priceCents) {
+// cart — that happens on payment (markOrderPaid). Prices come from each
+// line (postcards and photo prints can differ); `fallbackUnitCents` fills
+// in for older postcard lines saved before per-line pricing.
+export async function createPendingOrder(email, fallbackUnitCents = 0) {
   const db = getDb()
   const ref = await userRef(email)
   const snap = await ref.get()
@@ -146,18 +182,35 @@ export async function createPendingOrder(email, priceCents) {
       ? { name: user.name, address: user.address }
       : { name: rec.name, address: rec.address }
 
-  const items = cart.map((i) => ({
-    postcardId: i.postcardId,
-    title: i.title,
-    image: i.image,
-    category: i.category,
-    qty: clampQty(i.qty),
-    message: i.note || '',
-    recipient,
-  }))
+  const items = cart.map((i) => {
+    const unitPriceCents = i.unitPriceCents || fallbackUnitCents
+    const base = {
+      kind: i.kind || 'postcard',
+      title: i.title,
+      image: i.image,
+      qty: clampQty(i.qty),
+      unitPriceCents,
+      message: i.note || '',
+      recipient,
+    }
+    if (i.kind === 'photo') {
+      return {
+        ...base,
+        postcardId: null,
+        photoId: i.photoId,
+        storagePath: i.storagePath || null,
+        contentType: i.contentType || 'image/jpeg',
+        formatId: i.formatId || null,
+        formatLabel: i.formatLabel || null,
+        width: i.width || 0,
+        height: i.height || 0,
+      }
+    }
+    return { ...base, postcardId: i.postcardId, category: i.category || null }
+  })
 
   const cardCount = items.reduce((n, i) => n + i.qty, 0)
-  const amountCents = cardCount * Math.max(0, Math.trunc(priceCents))
+  const amountCents = items.reduce((n, i) => n + i.unitPriceCents * i.qty, 0)
   if (amountCents <= 0) return { ok: false, errors: ['Pricing is not set up yet.'] }
 
   const orderId = crypto.randomBytes(10).toString('hex')
@@ -168,7 +221,6 @@ export async function createPendingOrder(email, priceCents) {
     recipient,
     items,
     cardCount,
-    unitPriceCents: priceCents,
     amountCents,
     currency: 'usd',
     paid: false,

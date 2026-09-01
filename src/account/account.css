@@ -243,6 +243,11 @@
   color: var(--rose-900);
 }
 
+.acc__line-each {
+  font-weight: 400;
+  color: var(--muted);
+}
+
 .acc__cart-total {
   font-size: 1.05rem;
   margin: 4px 0 14px;

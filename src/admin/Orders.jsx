@@ -57,28 +57,65 @@ function OrderRow({ o, onStatus, onOpenGallery }) {
           </div>
 
           <ul className="adm__order-items">
-            {o.items.map((it, i) => (
-              <li key={i} className="adm__order-item">
-                <button
-                  className="adm__order-thumbbtn"
-                  onClick={() => onOpenGallery?.(it.postcardId)}
-                  title="Open in the postcard library"
-                >
-                  <img className="adm__order-thumb" src={it.image} alt={it.title} />
-                </button>
-                <div>
-                  <button
-                    className="adm__linklike"
-                    onClick={() => onOpenGallery?.(it.postcardId)}
-                  >
-                    {it.title}
-                  </button>{' '}
-                  {(it.qty || 1) > 1 && <strong className="adm__qty-badge">×{it.qty}</strong>}{' '}
-                  <span className="adm__muted">({it.category})</span>
-                  {it.message && <div className="adm__msg">Note: “{it.message}”</div>}
-                </div>
-              </li>
-            ))}
+            {o.items.map((it, i) => {
+              const isPhoto = it.kind === 'photo'
+              const photoSrc = isPhoto ? `/api/admin/photo-image/${it.photoId}` : null
+              return (
+                <li key={i} className="adm__order-item">
+                  {isPhoto ? (
+                    <a
+                      className="adm__order-thumbbtn"
+                      href={photoSrc}
+                      target="_blank"
+                      rel="noreferrer"
+                      title="Open the full-resolution photo"
+                    >
+                      <img className="adm__order-thumb" src={photoSrc} alt={it.title} />
+                    </a>
+                  ) : (
+                    <button
+                      className="adm__order-thumbbtn"
+                      onClick={() => onOpenGallery?.(it.postcardId)}
+                      title="Open in the postcard library"
+                    >
+                      <img className="adm__order-thumb" src={it.image} alt={it.title} />
+                    </button>
+                  )}
+                  <div>
+                    {isPhoto ? (
+                      <strong>{it.title}</strong>
+                    ) : (
+                      <button
+                        className="adm__linklike"
+                        onClick={() => onOpenGallery?.(it.postcardId)}
+                      >
+                        {it.title}
+                      </button>
+                    )}{' '}
+                    {(it.qty || 1) > 1 && <strong className="adm__qty-badge">×{it.qty}</strong>}{' '}
+                    {isPhoto ? (
+                      <span className="adm__muted">
+                        {it.width}×{it.height}px
+                      </span>
+                    ) : (
+                      <span className="adm__muted">({it.category})</span>
+                    )}
+                    {isPhoto && (
+                      <div>
+                        <a
+                          className="adm__chip"
+                          href={`${photoSrc}?download=1`}
+                          title="Download the print file"
+                        >
+                          ↓ Download print file
+                        </a>
+                      </div>
+                    )}
+                    {it.message && <div className="adm__msg">Note: “{it.message}”</div>}
+                  </div>
+                </li>
+              )
+            })}
           </ul>
         </div>
       )}

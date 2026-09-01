@@ -21,6 +21,16 @@ const DEFAULT_POSTCARD_SIZES = [
   { id: '4x4', label: '4×4 in — square', api: '1024x1024' },
 ]
 
+// Print-your-own-photo formats. w/h are inches — they set the crop aspect
+// ratio and the 300 DPI target the browser renders at. priceCents is what
+// that format costs in the cart.
+const DEFAULT_PHOTO_FORMATS = [
+  { id: '4x6', label: '4×6 in', w: 4, h: 6, priceCents: 129 },
+  { id: '5x7', label: '5×7 in', w: 5, h: 7, priceCents: 299 },
+  { id: '8x10', label: '8×10 in', w: 8, h: 10, priceCents: 599 },
+  { id: '4x4', label: '4×4 in — square', w: 4, h: 4, priceCents: 199 },
+]
+
 const DEFAULTS = {
   photo: {
     enabled: true,
@@ -39,6 +49,10 @@ const DEFAULTS = {
     priceCents: 500, // USD price per printed+mailed card — set the real value in the admin
     originZip: '', // ZIP the cards are printed & mailed from (for delivery estimates)
     sizes: DEFAULT_POSTCARD_SIZES,
+  },
+  photoprint: {
+    enabled: false, // off until the admin sets real prices
+    formats: DEFAULT_PHOTO_FORMATS,
   },
 }
 
@@ -73,6 +87,14 @@ export const CONFIG_SCHEMA = {
       sizes: { type: 'sizes', apiValues: API_SIZES, label: 'Selectable formats (add more as needed)' },
     },
   },
+  photoprint: {
+    label: 'Print your photos',
+    hint: 'The "Print your photos and mail them" section. Each format has its own price in the cart.',
+    fields: {
+      enabled: { type: 'bool', label: 'Section enabled' },
+      formats: { type: 'priceformats', label: 'Formats & prices' },
+    },
+  },
 }
 
 // --- validators -------------------------------------------------------
@@ -101,11 +123,30 @@ export function validSizes(arr) {
   return out
 }
 
+export function validPriceFormats(arr) {
+  if (!Array.isArray(arr) || !arr.length || arr.length > 12) return null
+  const out = []
+  const seen = new Set()
+  for (const it of arr) {
+    const id = slug(it?.id)
+    const label = str(it?.label, 40)
+    const w = intv(it?.w, 1, 48)
+    const h = intv(it?.h, 1, 48)
+    const priceCents = intv(it?.priceCents, 0, 100000)
+    if (!id || !label || w === undefined || h === undefined || priceCents === undefined || seen.has(id))
+      return null
+    seen.add(id)
+    out.push({ id, label, w, h, priceCents })
+  }
+  return out
+}
+
 function validateField(rule, v) {
   if (rule.type === 'bool') return boolv(v)
   if (rule.type === 'enum') return enumv(v, rule.values)
   if (rule.type === 'int') return intv(v, rule.min, rule.max)
   if (rule.type === 'sizes') return validSizes(v) || undefined
+  if (rule.type === 'priceformats') return validPriceFormats(v) || undefined
   if (rule.type === 'zip') {
     const z = String(v ?? '').trim()
     return z === '' || /^\d{5}$/.test(z) ? z : undefined
@@ -171,6 +212,10 @@ function migrate(s = {}) {
       priceCents: pick(intv(pc.priceCents, 0, 100000), DEFAULTS.postcard.priceCents),
       originZip: /^\d{5}$/.test(String(pc.originZip || '')) ? pc.originZip : DEFAULTS.postcard.originZip,
       sizes: validSizes(pc.sizes) || DEFAULTS.postcard.sizes,
+    },
+    photoprint: {
+      enabled: pick(boolv((s.photoprint || {}).enabled), DEFAULTS.photoprint.enabled),
+      formats: validPriceFormats((s.photoprint || {}).formats) || DEFAULTS.photoprint.formats,
     },
   }
 }
