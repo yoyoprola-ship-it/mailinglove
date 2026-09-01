@@ -1,7 +1,16 @@
 import { FieldPath, FieldValue } from 'firebase-admin/firestore'
 import { getDb } from './firebaseAdmin.js'
 
-const dayKey = (d = new Date()) => d.toISOString().slice(0, 10) // YYYY-MM-DD (UTC)
+// Analytics "day" is anchored to US Eastern, not UTC — otherwise the daily
+// counters roll over mid-evening for a US audience and a night's traffic gets
+// split across two buckets. en-CA formats as YYYY-MM-DD.
+const DAY_FMT = new Intl.DateTimeFormat('en-CA', {
+  timeZone: 'America/New_York',
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+})
+const dayKey = (d = new Date()) => DAY_FMT.format(d)
 
 // Fire-and-forget: a failure here must never break a page load.
 export async function recordVisit({ path = '/', ref = '', visitorId = '' } = {}) {
@@ -49,7 +58,12 @@ export async function getStats() {
     .sort((a, b) => a.day.localeCompare(b.day))
 
   const today = days.find((d) => d.day === dayKey()) || { day: dayKey(), views: 0, uniques: 0 }
-  const sum = (n) => days.slice(-n).reduce((a, d) => a + d.views, 0)
+  // Count by calendar date, not by number of day-docs — days with no traffic
+  // have no doc, so slice(-n) would reach further back than n days.
+  const sum = (n) => {
+    const cutoff = dayKey(new Date(Date.now() - (n - 1) * 86_400_000))
+    return days.filter((d) => d.day >= cutoff).reduce((a, d) => a + d.views, 0)
+  }
 
   let waitlistTotal = 0
   let waitlistRecent = []
