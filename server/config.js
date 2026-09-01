@@ -27,6 +27,7 @@ const DEFAULT_POSTCARD_SIZES = [
 // fold-free into a standard #10 envelope; anything bigger needs a flat
 // catalog envelope.
 const DEFAULT_PHOTO_FORMATS_10 = [
+  { id: 'wallet', label: 'Wallet — 2.5 × 3.5 in', w: 2.5, h: 3.5, priceCents: 99 },
   { id: '4x6', label: '4×6 in', w: 4, h: 6, priceCents: 129 },
   { id: '4x4', label: '4×4 in — square', w: 4, h: 4, priceCents: 199 },
 ]
@@ -134,6 +135,11 @@ const intv = (v, min, max) => {
   const n = Math.trunc(Number(v))
   return Number.isFinite(n) && n >= min && n <= max ? n : undefined
 }
+// like intv but keeps up to 2 decimals (print sizes like 2.5 × 3.5)
+const dimv = (v, min, max) => {
+  const n = Math.round(Number(v) * 100) / 100
+  return Number.isFinite(n) && n >= min && n <= max ? n : undefined
+}
 const slug = (v) => (typeof v === 'string' && /^[a-z0-9-]{1,20}$/.test(v.trim()) ? v.trim() : null)
 const str = (v, max) => (typeof v === 'string' && v.trim() ? v.trim().slice(0, max) : null)
 
@@ -163,8 +169,8 @@ export function validPriceFormats(arr) {
   for (const it of arr) {
     const id = slug(it?.id)
     const label = str(it?.label, 40)
-    const w = intv(it?.w, 1, 48)
-    const h = intv(it?.h, 1, 48)
+    const w = dimv(it?.w, 0.5, 48)
+    const h = dimv(it?.h, 0.5, 48)
     const priceCents = intv(it?.priceCents, 0, 100000)
     if (!id || !label || w === undefined || h === undefined || priceCents === undefined || seen.has(id))
       return null

@@ -97,16 +97,18 @@ function PriceFormatsEditor({ value, onChange }) {
           <input
             className="adm__input adm__input--sm"
             type="number"
-            min={1}
+            min={0.5}
             max={48}
+            step={0.5}
             value={r.w}
             onChange={(e) => setRow(i, { w: Number(e.target.value) })}
           />
           <input
             className="adm__input adm__input--sm"
             type="number"
-            min={1}
+            min={0.5}
             max={48}
+            step={0.5}
             value={r.h}
             onChange={(e) => setRow(i, { h: Number(e.target.value) })}
           />
