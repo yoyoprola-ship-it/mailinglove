@@ -45,6 +45,7 @@ function newText() {
     italic: false,
     shadow: true,
     align: 'center',
+    rotation: 0,
     xPct: 50,
     yPct: 88,
   }
@@ -117,10 +118,17 @@ export default function PhotoPrint({ formats = [], signedIn, onAdded, onRequireA
       ctx.fillRect(0, 0, outW, outH)
       ctx.drawImage(img, crop.x, crop.y, crop.w, crop.h, 0, 0, outW, outH)
 
+      const s = Math.max(1, outW / PREVIEW_W) // px scale vs the on-screen preview
+
       for (const t of texts) {
         const fontPx = (t.sizePct / 100) * outH
         const x = (t.xPct / 100) * outW
         const y = (t.yPct / 100) * outH
+        const rot = ((t.rotation || 0) * Math.PI) / 180
+
+        ctx.save()
+        ctx.translate(x, y)
+        ctx.rotate(rot)
         ctx.font = cssFont(t, fontPx)
         ctx.fillStyle = t.color
         ctx.textAlign = t.align
@@ -129,19 +137,14 @@ export default function PhotoPrint({ formats = [], signedIn, onAdded, onRequireA
         const lines = String(t.text).split('\n')
         const widest = Math.max(1, ...lines.map((l) => ctx.measureText(l || ' ').width))
         const blockH = (lines.length - 1) * fontPx * 1.2
-        const padX = fontPx * 0.18
+        const padX = fontPx * 0.2
         const padY = fontPx * 0.7
-        const left = t.align === 'left' ? x : t.align === 'right' ? x - widest : x - widest / 2
-        const bx0 = left - padX
-        const bx1 = left + widest + padX
-        const by0 = y - blockH / 2 - padY
-        const by1 = y + blockH / 2 + padY
-        boundsRef.current[t.id] = {
-          x0: bx0 / outW,
-          y0: by0 / outH,
-          x1: bx1 / outW,
-          y1: by1 / outH,
-        }
+        // local box, relative to the rotate origin
+        const lLeft = t.align === 'left' ? 0 : t.align === 'right' ? -widest : -widest / 2
+        const lx0 = lLeft - padX
+        const lx1 = lLeft + widest + padX
+        const ly0 = -blockH / 2 - padY
+        const ly1 = blockH / 2 + padY
 
         if (t.shadow) {
           ctx.shadowColor = 'rgba(0,0,0,0.45)'
@@ -149,19 +152,61 @@ export default function PhotoPrint({ formats = [], signedIn, onAdded, onRequireA
           ctx.shadowOffsetY = fontPx * 0.06
         }
         lines.forEach((line, i) => {
-          ctx.fillText(line, x, y + (i - (lines.length - 1) / 2) * fontPx * 1.2)
+          ctx.fillText(line, 0, (i - (lines.length - 1) / 2) * fontPx * 1.2)
         })
         ctx.shadowColor = 'transparent'
         ctx.shadowBlur = 0
         ctx.shadowOffsetY = 0
 
         if (interactive && t.id === selId) {
-          ctx.save()
-          ctx.strokeStyle = 'rgba(184,53,95,0.9)'
-          ctx.lineWidth = Math.max(1, outW / PREVIEW_W)
-          ctx.setLineDash([6, 4])
-          ctx.strokeRect(bx0, by0, bx1 - bx0, by1 - by0)
-          ctx.restore()
+          const bw = lx1 - lx0
+          const bh = ly1 - ly0
+          ctx.fillStyle = 'rgba(184,53,95,0.10)'
+          ctx.fillRect(lx0, ly0, bw, bh)
+          ctx.lineJoin = 'round'
+          ctx.setLineDash([])
+          ctx.strokeStyle = 'rgba(255,255,255,0.95)'
+          ctx.lineWidth = 4 * s
+          ctx.strokeRect(lx0, ly0, bw, bh)
+          ctx.strokeStyle = '#b8355f'
+          ctx.lineWidth = 2 * s
+          ctx.setLineDash([9 * s, 5 * s])
+          ctx.strokeRect(lx0, ly0, bw, bh)
+          ctx.setLineDash([])
+          const hs = 4.5 * s
+          for (const [hx, hy] of [
+            [lx0, ly0],
+            [lx1, ly0],
+            [lx0, ly1],
+            [lx1, ly1],
+          ]) {
+            ctx.fillStyle = '#fff'
+            ctx.fillRect(hx - hs - s, hy - hs - s, (hs + s) * 2, (hs + s) * 2)
+            ctx.fillStyle = '#b8355f'
+            ctx.fillRect(hx - hs, hy - hs, hs * 2, hs * 2)
+          }
+        }
+        ctx.restore()
+
+        // axis-aligned bounds in canvas space (for pointer hit testing)
+        const cos = Math.cos(rot)
+        const sin = Math.sin(rot)
+        const xs = []
+        const ys = []
+        for (const [cxp, cyp] of [
+          [lx0, ly0],
+          [lx1, ly0],
+          [lx1, ly1],
+          [lx0, ly1],
+        ]) {
+          xs.push(x + cxp * cos - cyp * sin)
+          ys.push(y + cxp * sin + cyp * cos)
+        }
+        boundsRef.current[t.id] = {
+          x0: Math.min(...xs) / outW,
+          y0: Math.min(...ys) / outH,
+          x1: Math.max(...xs) / outW,
+          y1: Math.max(...ys) / outH,
         }
       }
     },
@@ -530,6 +575,33 @@ export default function PhotoPrint({ formats = [], signedIn, onAdded, onRequireA
                         Shadow
                       </label>
                     </div>
+
+                    <label className="pp__f">
+                      <span className="pp__rot-head">
+                        Rotate
+                        <span className="pp__rot-val">{Math.round(sel.rotation || 0)}°</span>
+                        <span className="pp__rot-quick">
+                          {[-90, -45, 0, 45, 90].map((deg) => (
+                            <button
+                              key={deg}
+                              type="button"
+                              className={`pp__rot-btn${(sel.rotation || 0) === deg ? ' is-active' : ''}`}
+                              onClick={() => patchText(sel.id, { rotation: deg })}
+                            >
+                              {deg > 0 ? `+${deg}` : deg}
+                            </button>
+                          ))}
+                        </span>
+                      </span>
+                      <input
+                        type="range"
+                        min={-180}
+                        max={180}
+                        step={1}
+                        value={sel.rotation || 0}
+                        onChange={(e) => patchText(sel.id, { rotation: Number(e.target.value) })}
+                      />
+                    </label>
 
                     <span className="pp__label">Position</span>
                     <div className="pp__pos">

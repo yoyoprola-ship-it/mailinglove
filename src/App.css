@@ -1497,3 +1497,34 @@
     margin: 0 auto;
   }
 }
+
+.pp__rot-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.pp__rot-val {
+  font-weight: 700;
+  color: var(--rose-900);
+}
+.pp__rot-quick {
+  display: inline-flex;
+  gap: 4px;
+  margin-left: auto;
+}
+.pp__rot-btn {
+  min-width: 30px;
+  padding: 3px 6px;
+  font-size: 0.72rem;
+  border: 1px solid rgba(74, 22, 38, 0.2);
+  border-radius: 6px;
+  background: #fff;
+  color: var(--text-dark);
+  cursor: pointer;
+}
+.pp__rot-btn.is-active {
+  border-color: var(--rose);
+  background: var(--blush);
+  color: var(--rose-900);
+}
