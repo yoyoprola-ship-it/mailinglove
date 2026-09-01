@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { downscaleImage } from '../lib/downscaleImage'
 import './SupportChat.css'
 
 const fmtTime = (ms) =>
@@ -16,17 +17,6 @@ async function jget(url) {
   if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || 'Request failed')
   return r.json()
 }
-async function jpost(url, body) {
-  const r = await fetch(url, {
-    method: 'POST',
-    credentials: 'same-origin',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  })
-  const d = await r.json().catch(() => ({}))
-  if (!r.ok) throw new Error(d.error || 'Could not send.')
-  return d
-}
 
 export default function SupportChat({ signedIn, onRequireAuth }) {
   const [open, setOpen] = useState(false)
@@ -36,7 +26,9 @@ export default function SupportChat({ signedIn, onRequireAuth }) {
   const [sending, setSending] = useState(false)
   const [error, setError] = useState('')
   const [unread, setUnread] = useState(false)
+  const [pending, setPending] = useState(null) // { file, url }
   const listRef = useRef(null)
+  const fileRef = useRef(null)
 
   // Poll for an unread reply while the panel is closed.
   useEffect(() => {
@@ -80,16 +72,40 @@ export default function SupportChat({ signedIn, onRequireAuth }) {
     if (listRef.current) listRef.current.scrollTop = listRef.current.scrollHeight
   }, [messages, open])
 
+  async function pickImage(file) {
+    if (!file) return
+    if (!file.type.startsWith('image/')) {
+      setError('Attach an image file.')
+      return
+    }
+    setError('')
+    const small = await downscaleImage(file)
+    if (pending?.url) URL.revokeObjectURL(pending.url)
+    setPending({ file: small, url: URL.createObjectURL(small) })
+  }
+
+  function clearPending() {
+    if (pending?.url) URL.revokeObjectURL(pending.url)
+    setPending(null)
+    if (fileRef.current) fileRef.current.value = ''
+  }
+
   async function send(e) {
     e.preventDefault()
     const body = text.trim()
-    if (!body || sending) return
+    if ((!body && !pending) || sending) return
     setSending(true)
     setError('')
     try {
-      const d = await jpost('/api/support', { text: body })
+      const fd = new FormData()
+      fd.append('text', body)
+      if (pending) fd.append('image', pending.file)
+      const r = await fetch('/api/support', { method: 'POST', credentials: 'same-origin', body: fd })
+      const d = await r.json().catch(() => ({}))
+      if (!r.ok) throw new Error(d.error || 'Could not send.')
       setMessages(d.messages || [])
       setText('')
+      clearPending()
     } catch (err) {
       setError(err.message)
     } finally {
@@ -147,7 +163,21 @@ export default function SupportChat({ signedIn, onRequireAuth }) {
                     key={m.id}
                     className={`support__msg support__msg--${m.from === 'admin' ? 'them' : 'me'}`}
                   >
-                    <span className="support__bubble">{m.text}</span>
+                    {m.image && (
+                      <a
+                        href={`/api/support/image/${m.image.token}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="support__imglink"
+                      >
+                        <img
+                          className="support__img"
+                          src={`/api/support/image/${m.image.token}`}
+                          alt="attachment"
+                        />
+                      </a>
+                    )}
+                    {m.text && <span className="support__bubble">{m.text}</span>}
                     <span className="support__time">
                       {m.from === 'admin' ? 'MailingLove · ' : ''}
                       {fmtTime(m.at)}
@@ -158,7 +188,34 @@ export default function SupportChat({ signedIn, onRequireAuth }) {
 
               {error && <p className="support__err">{error}</p>}
 
+              {pending && (
+                <div className="support__pending">
+                  <img src={pending.url} alt="to send" />
+                  <button type="button" onClick={clearPending} aria-label="Remove image">
+                    ×
+                  </button>
+                </div>
+              )}
+
               <form className="support__form" onSubmit={send}>
+                <button
+                  type="button"
+                  className="support__attach"
+                  onClick={() => fileRef.current?.click()}
+                  aria-label="Attach an image"
+                  title="Attach an image"
+                >
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
+                  </svg>
+                </button>
+                <input
+                  ref={fileRef}
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  hidden
+                  onChange={(e) => pickImage(e.target.files?.[0])}
+                />
                 <textarea
                   className="support__input"
                   rows={2}
@@ -170,7 +227,11 @@ export default function SupportChat({ signedIn, onRequireAuth }) {
                     if (e.key === 'Enter' && !e.shiftKey) send(e)
                   }}
                 />
-                <button className="support__send" type="submit" disabled={sending || !text.trim()}>
+                <button
+                  className="support__send"
+                  type="submit"
+                  disabled={sending || (!text.trim() && !pending)}
+                >
                   {sending ? '…' : 'Send'}
                 </button>
               </form>

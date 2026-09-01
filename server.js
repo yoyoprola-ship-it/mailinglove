@@ -69,6 +69,9 @@ import {
   markRead,
   setThreadStatus,
   listThreads,
+  saveSupportImage,
+  getSupportImage,
+  streamSupportImage,
 } from './server/support.js'
 import {
   stripe,
@@ -212,6 +215,16 @@ const photoPrintUpload = multer({
   fileFilter(req, file, cb) {
     const ok = ['image/png', 'image/jpeg'].includes(file.mimetype)
     cb(ok ? null : new Error('The rendered image must be a JPEG or PNG.'), ok)
+  },
+})
+
+// Image attachments in the support chat.
+const supportUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 12 * 1024 * 1024 }, // 12 MB
+  fileFilter(req, file, cb) {
+    const ok = ['image/png', 'image/jpeg', 'image/webp'].includes(file.mimetype)
+    cb(ok ? null : new Error('Attach a JPEG, PNG, or WebP image.'), ok)
   },
 })
 
@@ -859,20 +872,42 @@ app.get('/api/support/unread', requireUser, async (req, res) => {
   }
 })
 
-app.post('/api/support', requireUser, supportLimiter, async (req, res) => {
+// An image attachment — only to the customer whose thread it belongs to.
+app.get('/api/support/image/:token', requireUser, async (req, res) => {
   try {
-    const user = await getUser(req.userEmail).catch(() => null)
-    const result = await postUserMessage(
-      req.userEmail,
-      user?.name || '',
-      String((req.body || {}).text || '')
-    )
-    if (!result.ok) return res.status(400).json({ error: result.error })
-    res.json({ messages: result.thread.messages, status: result.thread.status })
+    const entry = await getSupportImage(req.params.token)
+    if (!entry || entry.email !== req.userEmail) return res.status(404).end()
+    await streamSupportImage(entry, res)
   } catch (err) {
-    console.error('[support] post failed:', err?.message || err)
-    res.status(500).json({ error: 'Could not send your message.' })
+    console.error('[support] image route failed:', err?.message || err)
+    if (!res.headersSent) res.status(500).end()
   }
+})
+
+app.post('/api/support', requireUser, supportLimiter, (req, res) => {
+  supportUpload.single('image')(req, res, async (uploadErr) => {
+    if (uploadErr) return res.status(400).json({ error: uploadErr.message })
+    try {
+      const user = await getUser(req.userEmail).catch(() => null)
+      let image = null
+      if (req.file) {
+        const saved = await saveSupportImage(req.userEmail, req.file.buffer, req.file.mimetype)
+        if (!saved.ok) return res.status(400).json({ error: saved.error })
+        image = saved.image
+      }
+      const result = await postUserMessage(
+        req.userEmail,
+        user?.name || '',
+        String((req.body || {}).text || ''),
+        image
+      )
+      if (!result.ok) return res.status(400).json({ error: result.error })
+      res.json({ messages: result.thread.messages, status: result.thread.status })
+    } catch (err) {
+      console.error('[support] post failed:', err?.message || err)
+      res.status(500).json({ error: 'Could not send your message.' })
+    }
+  })
 })
 
 // --- support chat (admin) --------------------------------------------
@@ -883,6 +918,18 @@ app.get('/api/admin/support', requireAdmin, async (req, res) => {
   } catch (err) {
     console.error('[support] admin list failed:', err?.message || err)
     res.status(500).json({ error: 'Could not load support threads.' })
+  }
+})
+
+// Registered before /api/admin/support/:email so "image" isn't read as an email.
+app.get('/api/admin/support/image/:token', requireAdmin, async (req, res) => {
+  try {
+    const entry = await getSupportImage(req.params.token)
+    if (!entry) return res.status(404).end()
+    await streamSupportImage(entry, res)
+  } catch (err) {
+    console.error('[support] admin image route failed:', err?.message || err)
+    if (!res.headersSent) res.status(500).end()
   }
 })
 
@@ -899,17 +946,26 @@ app.get('/api/admin/support/:email', requireAdmin, async (req, res) => {
   }
 })
 
-app.post('/api/admin/support/:email', requireAdmin, async (req, res) => {
-  try {
-    const email = String(req.params.email || '').toLowerCase()
-    const result = await postAdminMessage(email, String((req.body || {}).text || ''))
-    if (!result.ok) return res.status(400).json({ error: result.error })
-    console.log(`[support] ${req.adminEmail} replied to ${email}`)
-    res.json({ thread: result.thread })
-  } catch (err) {
-    console.error('[support] admin post failed:', err?.message || err)
-    res.status(500).json({ error: 'Could not send the reply.' })
-  }
+app.post('/api/admin/support/:email', requireAdmin, (req, res) => {
+  supportUpload.single('image')(req, res, async (uploadErr) => {
+    if (uploadErr) return res.status(400).json({ error: uploadErr.message })
+    try {
+      const email = String(req.params.email || '').toLowerCase()
+      let image = null
+      if (req.file) {
+        const saved = await saveSupportImage(email, req.file.buffer, req.file.mimetype)
+        if (!saved.ok) return res.status(400).json({ error: saved.error })
+        image = saved.image
+      }
+      const result = await postAdminMessage(email, String((req.body || {}).text || ''), image)
+      if (!result.ok) return res.status(400).json({ error: result.error })
+      console.log(`[support] ${req.adminEmail} replied to ${email}`)
+      res.json({ thread: result.thread })
+    } catch (err) {
+      console.error('[support] admin post failed:', err?.message || err)
+      res.status(500).json({ error: 'Could not send the reply.' })
+    }
+  })
 })
 
 app.put('/api/admin/support/:email', requireAdmin, async (req, res) => {

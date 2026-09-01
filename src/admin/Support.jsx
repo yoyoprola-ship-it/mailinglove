@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { api } from './api'
+import { downscaleImage } from '../lib/downscaleImage'
 
 const fmtTime = (ms) =>
   ms
@@ -18,7 +19,9 @@ export default function Support() {
   const [text, setText] = useState('')
   const [error, setError] = useState('')
   const [sending, setSending] = useState(false)
+  const [pending, setPending] = useState(null) // { file, url }
   const listRef = useRef(null)
+  const fileRef = useRef(null)
 
   const loadThreads = useCallback(async () => {
     try {
@@ -56,18 +59,44 @@ export default function Support() {
     if (listRef.current) listRef.current.scrollTop = listRef.current.scrollHeight
   }, [thread])
 
+  async function pickImage(file) {
+    if (!file) return
+    if (!file.type.startsWith('image/')) {
+      setError('Attach an image file.')
+      return
+    }
+    setError('')
+    const small = await downscaleImage(file)
+    if (pending?.url) URL.revokeObjectURL(pending.url)
+    setPending({ file: small, url: URL.createObjectURL(small) })
+  }
+
+  function clearPending() {
+    if (pending?.url) URL.revokeObjectURL(pending.url)
+    setPending(null)
+    if (fileRef.current) fileRef.current.value = ''
+  }
+
   async function send(e) {
     e.preventDefault()
     const body = text.trim()
-    if (!body || sending) return
+    if ((!body && !pending) || sending) return
     setSending(true)
     setError('')
     try {
-      const { thread } = await api.post(`/api/admin/support/${encodeURIComponent(sel)}`, {
-        text: body,
+      const fd = new FormData()
+      fd.append('text', body)
+      if (pending) fd.append('image', pending.file)
+      const r = await fetch(`/api/admin/support/${encodeURIComponent(sel)}`, {
+        method: 'POST',
+        credentials: 'same-origin',
+        body: fd,
       })
-      setThread(thread)
+      const d = await r.json().catch(() => ({}))
+      if (!r.ok) throw new Error(d.error || 'Could not send the reply.')
+      setThread(d.thread)
       setText('')
+      clearPending()
       loadThreads()
     } catch (err) {
       setError(err.message)
@@ -141,7 +170,20 @@ export default function Support() {
                     key={m.id}
                     className={`adm__sup-msg adm__sup-msg--${m.from === 'admin' ? 'me' : 'them'}`}
                   >
-                    <span className="adm__sup-bubble">{m.text}</span>
+                    {m.image && (
+                      <a
+                        href={`/api/admin/support/image/${m.image.token}`}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        <img
+                          className="adm__sup-img"
+                          src={`/api/admin/support/image/${m.image.token}`}
+                          alt="attachment"
+                        />
+                      </a>
+                    )}
+                    {m.text && <span className="adm__sup-bubble">{m.text}</span>}
                     <span className="adm__sup-time">
                       {m.from === 'admin' ? 'You' : thread.userName || 'Customer'} · {fmtTime(m.at)}
                     </span>
@@ -149,7 +191,31 @@ export default function Support() {
                 ))}
               </div>
 
+              {pending && (
+                <div className="adm__sup-pending">
+                  <img src={pending.url} alt="to send" />
+                  <button type="button" onClick={clearPending} aria-label="Remove image">
+                    ×
+                  </button>
+                </div>
+              )}
+
               <form className="adm__sup-form" onSubmit={send}>
+                <button
+                  type="button"
+                  className="adm__sup-attach"
+                  onClick={() => fileRef.current?.click()}
+                  title="Attach an image"
+                >
+                  📎
+                </button>
+                <input
+                  ref={fileRef}
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  hidden
+                  onChange={(e) => pickImage(e.target.files?.[0])}
+                />
                 <textarea
                   className="adm__input"
                   rows={2}
@@ -161,7 +227,11 @@ export default function Support() {
                     if (e.key === 'Enter' && !e.shiftKey) send(e)
                   }}
                 />
-                <button className="adm__btn" type="submit" disabled={sending || !text.trim()}>
+                <button
+                  className="adm__btn"
+                  type="submit"
+                  disabled={sending || (!text.trim() && !pending)}
+                >
                   {sending ? 'Sending…' : 'Send'}
                 </button>
               </form>

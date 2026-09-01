@@ -222,3 +222,57 @@
     display: none;
   }
 }
+
+.support__img {
+  max-width: 200px;
+  max-height: 240px;
+  border-radius: 10px;
+  display: block;
+  cursor: zoom-in;
+}
+.support__msg--me .support__img {
+  margin-left: auto;
+}
+.support__imglink {
+  line-height: 0;
+}
+
+.support__pending {
+  position: relative;
+  align-self: flex-start;
+  margin: 0 12px 6px;
+}
+.support__pending img {
+  max-width: 90px;
+  max-height: 90px;
+  border-radius: 8px;
+  display: block;
+}
+.support__pending button {
+  position: absolute;
+  top: -7px;
+  right: -7px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: none;
+  background: var(--rose-900);
+  color: #fff;
+  font-size: 0.9rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.support__attach {
+  align-self: flex-end;
+  border: 1px solid rgba(74, 22, 38, 0.25);
+  background: #fff;
+  color: var(--rose-900);
+  border-radius: 10px;
+  padding: 8px;
+  cursor: pointer;
+  display: inline-flex;
+}
+.support__attach:hover {
+  border-color: var(--rose);
+}
