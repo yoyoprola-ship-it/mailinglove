@@ -64,10 +64,6 @@
   margin-bottom: 16px;
 }
 
-.acc__label--grow {
-  flex: 1;
-}
-
 .acc__opt {
   font-weight: 400;
   color: var(--muted);
@@ -83,16 +79,6 @@
   font-size: 0.95rem;
   font-family: inherit;
   background: #fff;
-}
-
-.acc__input--zip {
-  width: 110px;
-}
-
-.acc__row {
-  display: flex;
-  gap: 12px;
-  flex-wrap: wrap;
 }
 
 .acc__btn {
