@@ -73,7 +73,13 @@ function PhotoThumb({ photo, format, active, onClick, onRemove }) {
 
 // --- section ---------------------------------------------------------
 
-export default function PhotoPrint({ formats = [], signedIn, onAdded, onRequireAuth }) {
+export default function PhotoPrint({
+  formats10 = [],
+  formatsCatalog = [],
+  signedIn,
+  onAdded,
+  onRequireAuth,
+}) {
   const [photos, setPhotos] = useState([]) // { id, img, w, h, url, formatId, orientation, zoom, cx, cy }
   const [activeId, setActiveId] = useState(null)
   const [status, setStatus] = useState('idle') // idle | adding
@@ -88,6 +94,8 @@ export default function PhotoPrint({ formats = [], signedIn, onAdded, onRequireA
   const addedTimer = useRef(null)
   const dragDepth = useRef(0)
 
+  // Two envelope groups, but most logic just needs "all the formats".
+  const formats = useMemo(() => [...formats10, ...formatsCatalog], [formats10, formatsCatalog])
   const defFormat = formats[0]?.id || ''
   const active = photos.find((p) => p.id === activeId) || null
   const format = useMemo(
@@ -391,20 +399,46 @@ export default function PhotoPrint({ formats = [], signedIn, onAdded, onRequireA
                 <span className="pp__label">
                   Format {photos.length > 1 && <em className="pp__muted">· for the selected photo</em>}
                 </span>
-                <div className="pp__formats">
-                  {formats.map((f) => (
-                    <button
-                      key={f.id}
-                      type="button"
-                      className={`pp__format${active && f.id === active.formatId ? ' is-active' : ''}`}
-                      onClick={() => patchActive({ formatId: f.id })}
-                      disabled={!active}
-                    >
-                      <strong>{f.label}</strong>
-                      <span>{money(f.priceCents)}</span>
-                    </button>
-                  ))}
-                </div>
+
+                {formats10.length > 0 && (
+                  <>
+                    <span className="pp__group-label">Fits a #10 envelope</span>
+                    <div className="pp__formats">
+                      {formats10.map((f) => (
+                        <button
+                          key={f.id}
+                          type="button"
+                          className={`pp__format${active && f.id === active.formatId ? ' is-active' : ''}`}
+                          onClick={() => patchActive({ formatId: f.id })}
+                          disabled={!active}
+                        >
+                          <strong>{f.label}</strong>
+                          <span>{money(f.priceCents)}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
+
+                {formatsCatalog.length > 0 && (
+                  <>
+                    <span className="pp__group-label">Needs a catalog envelope</span>
+                    <div className="pp__formats">
+                      {formatsCatalog.map((f) => (
+                        <button
+                          key={f.id}
+                          type="button"
+                          className={`pp__format${active && f.id === active.formatId ? ' is-active' : ''}`}
+                          onClick={() => patchActive({ formatId: f.id })}
+                          disabled={!active}
+                        >
+                          <strong>{f.label}</strong>
+                          <span>{money(f.priceCents)}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
 
                 {active && geo && !geo.square && (
                   <div className="pp__orient">

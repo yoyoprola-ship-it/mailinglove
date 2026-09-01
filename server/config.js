@@ -23,12 +23,16 @@ const DEFAULT_POSTCARD_SIZES = [
 
 // Print-your-own-photo formats. w/h are inches — they set the crop aspect
 // ratio and the 300 DPI target the browser renders at. priceCents is what
-// that format costs in the cart.
-const DEFAULT_PHOTO_FORMATS = [
+// that format costs in the cart. Split by what they mail in: small prints
+// fold-free into a standard #10 envelope; anything bigger needs a flat
+// catalog envelope.
+const DEFAULT_PHOTO_FORMATS_10 = [
   { id: '4x6', label: '4×6 in', w: 4, h: 6, priceCents: 129 },
+  { id: '4x4', label: '4×4 in — square', w: 4, h: 4, priceCents: 199 },
+]
+const DEFAULT_PHOTO_FORMATS_CATALOG = [
   { id: '5x7', label: '5×7 in', w: 5, h: 7, priceCents: 299 },
   { id: '8x10', label: '8×10 in', w: 8, h: 10, priceCents: 599 },
-  { id: '4x4', label: '4×4 in — square', w: 4, h: 4, priceCents: 199 },
 ]
 
 const DEFAULTS = {
@@ -54,7 +58,8 @@ const DEFAULTS = {
   },
   photoprint: {
     enabled: false, // off until the admin sets real prices
-    formats: DEFAULT_PHOTO_FORMATS,
+    formats10: DEFAULT_PHOTO_FORMATS_10,
+    formatsCatalog: DEFAULT_PHOTO_FORMATS_CATALOG,
   },
 }
 
@@ -109,7 +114,14 @@ export const CONFIG_SCHEMA = {
     hint: 'The "Print your photos and mail them" section. Each format has its own price in the cart.',
     fields: {
       enabled: { type: 'bool', label: 'Section enabled' },
-      formats: { type: 'priceformats', label: 'Formats & prices' },
+      formats10: {
+        type: 'priceformats',
+        label: 'Formats — fit in a #10 envelope (folded/flat, no extra postage)',
+      },
+      formatsCatalog: {
+        type: 'priceformats',
+        label: 'Formats — need a catalog envelope (larger, mailed flat)',
+      },
     },
   },
 }
@@ -195,12 +207,13 @@ export function pickValid(input = {}) {
 
 // --- load + migrate -------------------------------------------------
 
+const pick = (...vals) => vals.find((v) => v !== undefined && v !== null)
+
 // Map a stored doc (any generation of the schema) onto the current shape.
 function migrate(s = {}) {
   const legacy = boolv(s.generateEnabled) // the original single toggle
   const p = s.photo || {}
   const pc = s.postcard || {}
-  const pick = (...vals) => vals.find((v) => v !== undefined && v !== null)
 
   return {
     photo: {
@@ -243,10 +256,35 @@ function migrate(s = {}) {
         String(pc.originZip || ''), // legacy: was under `postcard`
       ].find((z) => /^\d{5}$/.test(z)) || DEFAULTS.orders.originZip,
     },
-    photoprint: {
-      enabled: pick(boolv((s.photoprint || {}).enabled), DEFAULTS.photoprint.enabled),
-      formats: validPriceFormats((s.photoprint || {}).formats) || DEFAULTS.photoprint.formats,
-    },
+    photoprint: migratePhotoprint(s.photoprint || {}),
+  }
+}
+
+// formats10/formatsCatalog replaced a single flat `formats` list. If only
+// the old list is on record, split it by size so nothing is lost: anything
+// that clears a standard #10 envelope stays there, bigger goes to catalog.
+function migratePhotoprint(pp) {
+  const formats10 = validPriceFormats(pp.formats10)
+  const formatsCatalog = validPriceFormats(pp.formatsCatalog)
+  if (formats10 || formatsCatalog) {
+    return {
+      enabled: pick(boolv(pp.enabled), DEFAULTS.photoprint.enabled),
+      formats10: formats10 || DEFAULTS.photoprint.formats10,
+      formatsCatalog: formatsCatalog || DEFAULTS.photoprint.formatsCatalog,
+    }
+  }
+  const legacyAll = validPriceFormats(pp.formats)
+  if (legacyAll) {
+    return {
+      enabled: pick(boolv(pp.enabled), DEFAULTS.photoprint.enabled),
+      formats10: legacyAll.filter((f) => f.w * f.h <= 24),
+      formatsCatalog: legacyAll.filter((f) => f.w * f.h > 24),
+    }
+  }
+  return {
+    enabled: pick(boolv(pp.enabled), DEFAULTS.photoprint.enabled),
+    formats10: DEFAULTS.photoprint.formats10,
+    formatsCatalog: DEFAULTS.photoprint.formatsCatalog,
   }
 }
 

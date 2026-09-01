@@ -1343,6 +1343,16 @@
   margin-bottom: 10px;
 }
 
+.pp__group-label {
+  display: block;
+  font-size: 0.72rem;
+  color: var(--muted);
+  margin: 10px 0 6px;
+}
+.pp__group-label:first-of-type {
+  margin-top: 0;
+}
+
 .pp__formats {
   display: flex;
   flex-wrap: wrap;

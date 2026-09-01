@@ -287,7 +287,14 @@ app.get('/api/site-config', async (req, res) => {
     })),
     postcardPriceCents: cfg.orders.postcardPriceCents,
     photoPrintEnabled: cfg.photoprint.enabled,
-    photoPrintFormats: cfg.photoprint.formats.map((f) => ({
+    photoPrintFormats10: cfg.photoprint.formats10.map((f) => ({
+      id: f.id,
+      label: f.label,
+      w: f.w,
+      h: f.h,
+      priceCents: f.priceCents,
+    })),
+    photoPrintFormatsCatalog: cfg.photoprint.formatsCatalog.map((f) => ({
       id: f.id,
       label: f.label,
       w: f.w,
@@ -724,7 +731,9 @@ app.post('/api/cart/photo', requireUser, (req, res) => {
       if (!cfg.photoprint.enabled) {
         return res.status(403).json({ error: 'Photo printing is not available right now.' })
       }
-      const fmt = cfg.photoprint.formats.find((f) => f.id === String(req.body.formatId || ''))
+      const fmt = [...cfg.photoprint.formats10, ...cfg.photoprint.formatsCatalog].find(
+        (f) => f.id === String(req.body.formatId || '')
+      )
       if (!fmt) return res.status(400).json({ error: 'Pick a valid format.' })
       const landscape = String(req.body.orientation) === 'landscape' && fmt.w !== fmt.h
       const label = landscape ? `${fmt.label} (landscape)` : fmt.label

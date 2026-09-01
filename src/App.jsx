@@ -23,7 +23,8 @@ export default function App() {
   const [photoEnabled, setPhotoEnabled] = useState(null)
   const [postcardEnabled, setPostcardEnabled] = useState(null)
   const [photoPrintEnabled, setPhotoPrintEnabled] = useState(false)
-  const [photoPrintFormats, setPhotoPrintFormats] = useState([])
+  const [photoPrintFormats10, setPhotoPrintFormats10] = useState([])
+  const [photoPrintFormatsCatalog, setPhotoPrintFormatsCatalog] = useState([])
   const [perPage, setPerPage] = useState(25)
   const [postcardSizes, setPostcardSizes] = useState(null)
   const [postcardPriceCents, setPostcardPriceCents] = useState(0)
@@ -41,7 +42,9 @@ export default function App() {
         setPhotoEnabled(Boolean(c.photoRedesignEnabled))
         setPostcardEnabled(Boolean(c.postcardDesignEnabled))
         setPhotoPrintEnabled(Boolean(c.photoPrintEnabled))
-        if (Array.isArray(c.photoPrintFormats)) setPhotoPrintFormats(c.photoPrintFormats)
+        if (Array.isArray(c.photoPrintFormats10)) setPhotoPrintFormats10(c.photoPrintFormats10)
+        if (Array.isArray(c.photoPrintFormatsCatalog))
+          setPhotoPrintFormatsCatalog(c.photoPrintFormatsCatalog)
         if (Number.isFinite(c.postcardsPerPage)) setPerPage(c.postcardsPerPage)
         if (Array.isArray(c.postcardSizes) && c.postcardSizes.length) setPostcardSizes(c.postcardSizes)
         if (Number.isFinite(c.postcardPriceCents)) setPostcardPriceCents(c.postcardPriceCents)
@@ -62,6 +65,8 @@ export default function App() {
   }, [])
 
   const cartCount = countCards(cartItems)
+  const hasPhotoPrint =
+    photoPrintEnabled && photoPrintFormats10.length + photoPrintFormatsCatalog.length > 0
 
   // qty of a design in the cart, for the gallery stepper. 0 if not in cart.
   function cartQty(postcardId) {
@@ -169,15 +174,11 @@ export default function App() {
         onCart={openCart}
         onGo={scrollToId}
         cartCount={cartCount}
-        showPhotoPrint={photoPrintEnabled && photoPrintFormats.length > 0}
+        showPhotoPrint={hasPhotoPrint}
         showPostcardGen={postcardEnabled}
         showPhotoRestore={Boolean(photoEnabled)}
       />
-      <ServiceChooser
-        showPhotoPrint={photoPrintEnabled && photoPrintFormats.length > 0}
-        showPostcards
-        onGo={scrollToId}
-      />
+      <ServiceChooser showPhotoPrint={hasPhotoPrint} showPostcards onGo={scrollToId} />
       <Postcards
         filter={pcFilter}
         onFilter={setPcFilter}
@@ -195,9 +196,10 @@ export default function App() {
           onRequireAuth={() => setAuthCtx({ mode: 'account' })}
         />
       )}
-      {photoPrintEnabled && photoPrintFormats.length > 0 && (
+      {hasPhotoPrint && (
         <PhotoPrint
-          formats={photoPrintFormats}
+          formats10={photoPrintFormats10}
+          formatsCatalog={photoPrintFormatsCatalog}
           signedIn={signedIn}
           onAdded={(items) => Array.isArray(items) && setCartItems(items)}
           onRequireAuth={() => setAuthCtx({ mode: 'account' })}
