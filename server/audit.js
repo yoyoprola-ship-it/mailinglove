@@ -23,7 +23,7 @@ export async function logChange({ email, kind, before, after, orderId, ip, userA
     await db.collection('auditLog').add({
       at: Date.now(),
       email: String(email || '').toLowerCase(),
-      kind, // 'profile.update' | 'cart.recipient' | 'order.created' | 'order.paid' | 'order.status'
+      kind, // 'consent.accept' | 'profile.update' | 'cart.recipient' | 'order.created' | 'order.paid' | 'order.status'
       before: before ?? null,
       after: after ?? null,
       orderId: orderId || null,

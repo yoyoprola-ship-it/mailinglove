@@ -4,6 +4,7 @@ import { api } from './api'
 export default function Login({ onSignedIn }) {
   const [step, setStep] = useState('email') // email | code
   const [email, setEmail] = useState('')
+  const [agree, setAgree] = useState(false)
   const [challengeId, setChallengeId] = useState('')
   const [code, setCode] = useState('')
   const [busy, setBusy] = useState(false)
@@ -11,10 +12,17 @@ export default function Login({ onSignedIn }) {
 
   async function sendCode(e) {
     e.preventDefault()
+    if (!agree) {
+      setError('Please read and accept the Terms & Conditions and Privacy Policy first.')
+      return
+    }
     setBusy(true)
     setError('')
     try {
-      const { challengeId } = await api.post('/api/auth/start', { email: email.trim() })
+      const { challengeId } = await api.post('/api/auth/start', {
+        email: email.trim(),
+        acceptedTerms: true,
+      })
       setChallengeId(challengeId)
       setStep('code')
     } catch (err) {
@@ -56,7 +64,25 @@ export default function Login({ onSignedIn }) {
               autoFocus
             />
           </label>
-          <button className="acc__btn" type="submit" disabled={busy}>
+          <label className="acc__check">
+            <input
+              type="checkbox"
+              checked={agree}
+              onChange={(e) => setAgree(e.target.checked)}
+            />
+            <span>
+              I have read and agree to the{' '}
+              <a href="/terms" target="_blank" rel="noopener noreferrer">
+                Terms &amp; Conditions
+              </a>{' '}
+              and{' '}
+              <a href="/privacy" target="_blank" rel="noopener noreferrer">
+                Privacy Policy
+              </a>
+              .
+            </span>
+          </label>
+          <button className="acc__btn" type="submit" disabled={busy || !agree}>
             {busy ? 'Sending…' : 'Send code'}
           </button>
         </form>

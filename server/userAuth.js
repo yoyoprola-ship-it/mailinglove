@@ -18,6 +18,10 @@ import {
 // cookie can't be replayed here and vice versa.
 
 const SECRET = process.env.ADMIN_SESSION_SECRET || ''
+// Bumped whenever the Terms/Privacy text changes materially, so we can tell
+// which version a customer actually agreed to. Keep in step with the
+// "Effective" date shown on /terms and /privacy.
+const TERMS_VERSION = '2026-09-01'
 const CHALLENGE_TTL_MS = 10 * 60 * 1000
 const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000 // 30 days
 const MAX_ATTEMPTS = 5
@@ -38,8 +42,14 @@ export function userAuthConfigured() {
   return Boolean(SECRET && emailConfigured() && getDb())
 }
 
-export async function startUserChallenge(email) {
+export async function startUserChallenge(email, consent = {}) {
   if (!isEmail(email)) return { ok: false, error: 'Enter a valid email.' }
+  if (!consent.accepted) {
+    return {
+      ok: false,
+      error: 'Please accept the Terms & Conditions and Privacy Policy to continue.',
+    }
+  }
   const db = getDb()
   const challengeId = crypto.randomBytes(16).toString('hex')
   const code = sixDigits()
@@ -48,6 +58,12 @@ export async function startUserChallenge(email) {
     email: normEmail(email),
     codeHash: hashCode(SECRET, challengeId, code),
     attempts: 0,
+    // The consent "signature": captured now, written onto the account once
+    // the code is verified so we only record it for real sign-ins.
+    acceptedTerms: true,
+    acceptIp: consent.ip || null,
+    acceptUserAgent: consent.userAgent ? String(consent.userAgent).slice(0, 300) : null,
+    acceptedAt: Date.now(),
     expiresAt: Date.now() + CHALLENGE_TTL_MS,
     createdAt: Date.now(),
   })
@@ -92,7 +108,53 @@ export async function verifyUserChallenge(challengeId, code) {
 
   await ref.delete().catch(() => {})
   const user = await ensureUser(c.email)
+  await recordConsent(c.email, {
+    ip: c.acceptIp,
+    userAgent: c.acceptUserAgent,
+    at: c.acceptedAt,
+  }).catch((err) => console.warn('[auth] consent record failed:', err?.message || err))
   return { ok: true, token: signToken(SECRET, { sub: c.email, aud: AUD }, SESSION_TTL_MS), user }
+}
+
+// Persist the "I agree to the Terms & Privacy Policy" acceptance onto the
+// account. The first acceptance is kept verbatim (date, IP, user agent,
+// version) and never overwritten; every later sign-in refreshes a
+// "last confirmed" stamp. A first acceptance — or one against a new
+// Terms version — is also written to the append-only audit log.
+async function recordConsent(email, { ip, userAgent, at } = {}) {
+  const db = getDb()
+  if (!db || !email) return
+  const ref = db.collection('users').doc(email)
+  const snap = await ref.get()
+  const prev = (snap.exists && snap.data().consent) || null
+  const now = at || Date.now()
+  const first = !prev || !prev.acceptedAt
+  const versionChanged = Boolean(prev && prev.termsVersion !== TERMS_VERSION)
+
+  const consent = {
+    terms: true,
+    privacy: true,
+    termsVersion: TERMS_VERSION,
+    acceptedAt: first ? now : prev.acceptedAt,
+    acceptedIp: first ? ip || null : prev.acceptedIp || null,
+    acceptedUserAgent: first ? userAgent || null : prev.acceptedUserAgent || null,
+    lastAcceptedAt: now,
+    lastAcceptedIp: ip || null,
+    lastAcceptedUserAgent: userAgent || null,
+  }
+  await ref.set({ consent, updatedAt: now }, { merge: true })
+
+  if (first || versionChanged) {
+    const { logChange } = await import('./audit.js')
+    logChange({
+      email,
+      kind: 'consent.accept',
+      before: prev ? { termsVersion: prev.termsVersion || null, acceptedAt: prev.acceptedAt || null } : null,
+      after: { termsVersion: TERMS_VERSION, acceptedAt: now },
+      ip: ip || null,
+      userAgent: userAgent || null,
+    })
+  }
 }
 
 async function ensureUser(email) {
@@ -136,6 +198,15 @@ export async function listCustomers({ q = '', limit = 3000 } = {}) {
           }
         : null,
       hasAddress: Boolean(a && a.line1),
+      consent: v.consent
+        ? {
+            acceptedAt: v.consent.acceptedAt || null,
+            acceptedIp: v.consent.acceptedIp || null,
+            termsVersion: v.consent.termsVersion || null,
+            lastAcceptedAt: v.consent.lastAcceptedAt || null,
+            lastAcceptedIp: v.consent.lastAcceptedIp || null,
+          }
+        : null,
       createdAt: v.createdAt || null,
       updatedAt: v.updatedAt || null,
     }

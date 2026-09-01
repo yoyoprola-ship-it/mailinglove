@@ -1039,3 +1039,29 @@ input.adm__input[type='checkbox'] {
 .adm__cust-body .adm__aud {
   margin-top: 12px;
 }
+
+.adm__consent {
+  margin-top: 12px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  font-size: 0.82rem;
+  line-height: 1.5;
+  color: #1f5133;
+  background: #e4f4ea;
+  border: 1px solid #bfe6cd;
+}
+
+.adm__consent strong {
+  display: block;
+  margin-bottom: 2px;
+}
+
+.adm__consent .adm__muted {
+  margin-top: 3px;
+}
+
+.adm__consent--none {
+  color: #8a6d4b;
+  background: #faf0e6;
+  border-color: #ecd9c2;
+}

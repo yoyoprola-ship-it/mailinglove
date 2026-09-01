@@ -613,7 +613,12 @@ app.get('/api/admin/photo-image/:id', requireAdmin, async (req, res) => {
 app.post('/api/auth/start', authLimiter, async (req, res) => {
   if (!userAuthConfigured()) return res.status(503).json({ error: 'Accounts are not available yet.' })
   try {
-    const result = await startUserChallenge((req.body || {}).email)
+    const body = req.body || {}
+    const result = await startUserChallenge(body.email, {
+      accepted: body.acceptedTerms === true,
+      ip: clientIp(req),
+      userAgent: req.get('user-agent') || '',
+    })
     if (!result.ok) return res.status(400).json({ error: result.error })
     res.json({ challengeId: result.challengeId })
   } catch (err) {

@@ -3,6 +3,36 @@ import { api } from './api'
 import AuditHistory from './AuditHistory'
 
 const fmtDate = (ms) => (ms ? new Date(ms).toLocaleDateString() : '—')
+const fmtDateTime = (ms) => (ms ? new Date(ms).toLocaleString() : '—')
+
+function ConsentLine({ consent }) {
+  if (!consent || !consent.acceptedAt) {
+    return (
+      <p className="adm__consent adm__consent--none">
+        No Terms &amp; Privacy acceptance on record — this account predates the
+        consent checkbox.
+      </p>
+    )
+  }
+  const reconfirmed =
+    consent.lastAcceptedAt && consent.lastAcceptedAt !== consent.acceptedAt
+  return (
+    <div className="adm__consent">
+      <strong>✓ Accepted the Terms &amp; Conditions and Privacy Policy</strong>
+      <div>
+        {fmtDateTime(consent.acceptedAt)}
+        {consent.acceptedIp && <> · IP {consent.acceptedIp}</>}
+        {consent.termsVersion && <> · version {consent.termsVersion}</>}
+      </div>
+      {reconfirmed && (
+        <div className="adm__muted">
+          Last re-confirmed at sign-in {fmtDateTime(consent.lastAcceptedAt)}
+          {consent.lastAcceptedIp && <> · IP {consent.lastAcceptedIp}</>}
+        </div>
+      )}
+    </div>
+  )
+}
 
 function addrLine(a) {
   if (!a || !a.line1) return null
@@ -40,8 +70,8 @@ export default function Customers() {
       <h2 className="adm__h2">Customers</h2>
       <p className="adm__hint adm__hint--top">
         Search by name, email, or any part of an address. Open a customer to see
-        their full change history — every profile edit, recipient address, and
-        order, each with a timestamp and IP.
+        their Terms &amp; Privacy acceptance and full change history — every
+        profile edit, recipient address, and order, each with a timestamp and IP.
       </p>
 
       <input
@@ -81,6 +111,7 @@ export default function Customers() {
 
               {openEmail === c.email && (
                 <div className="adm__cust-body">
+                  <ConsentLine consent={c.consent} />
                   <AuditHistory email={c.email} defaultOpen />
                 </div>
               )}

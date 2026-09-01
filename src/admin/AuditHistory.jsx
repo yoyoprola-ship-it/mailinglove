@@ -4,6 +4,7 @@ import { api } from './api'
 const fmt = (ms) => (ms ? new Date(ms).toLocaleString() : '—')
 
 const KIND_LABEL = {
+  'consent.accept': 'Accepted the Terms & Conditions and Privacy Policy',
   'profile.update': 'Edited their account (name / address)',
   'cart.recipient': 'Changed the cart recipient',
   'order.created': 'Placed an order',
@@ -79,6 +80,17 @@ export default function AuditHistory({ email, defaultOpen = false }) {
                   {e.ip && <span className="adm__aud-ip"> · {e.ip}</span>}
                 </div>
                 <div className="adm__aud-kind">{KIND_LABEL[e.kind] || e.kind}</div>
+
+                {e.kind === 'consent.accept' && (
+                  <div className="adm__aud-diff">
+                    <div className="adm__muted">
+                      Terms version {e.after?.termsVersion || '—'}
+                      {e.before?.termsVersion &&
+                        e.before.termsVersion !== e.after?.termsVersion &&
+                        ` (previously ${e.before.termsVersion})`}
+                    </div>
+                  </div>
+                )}
 
                 {(e.kind === 'profile.update' || e.kind === 'cart.recipient') && (
                   <div className="adm__aud-diff">
