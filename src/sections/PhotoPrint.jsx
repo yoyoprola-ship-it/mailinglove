@@ -73,11 +73,13 @@ export default function PhotoPrint({ formats = [], signedIn, onAdded, onRequireA
   const [progress, setProgress] = useState('')
   const [error, setError] = useState('')
   const [justAdded, setJustAdded] = useState(false)
+  const [dragOver, setDragOver] = useState(false)
 
   const previewRef = useRef(null)
   const drag = useRef(null)
   const addFileRef = useRef(null)
   const addedTimer = useRef(null)
+  const dragDepth = useRef(0)
 
   const defFormat = formats[0]?.id || ''
   const active = photos.find((p) => p.id === activeId) || null
@@ -135,6 +137,29 @@ export default function PhotoPrint({ formats = [], signedIn, onAdded, onRequireA
       setPhotos((list) => [...list, ...ok])
       setActiveId((cur) => cur || ok[0].id)
     })
+  }
+
+  const hasFiles = (e) => [...(e.dataTransfer?.types || [])].includes('Files')
+  function onDragEnter(e) {
+    if (!hasFiles(e)) return
+    e.preventDefault()
+    dragDepth.current += 1
+    setDragOver(true)
+  }
+  function onDragOver(e) {
+    if (hasFiles(e)) e.preventDefault()
+  }
+  function onDragLeave(e) {
+    if (!hasFiles(e)) return
+    dragDepth.current = Math.max(0, dragDepth.current - 1)
+    if (dragDepth.current === 0) setDragOver(false)
+  }
+  function onDrop(e) {
+    if (!hasFiles(e)) return
+    e.preventDefault()
+    dragDepth.current = 0
+    setDragOver(false)
+    addFiles(e.dataTransfer.files)
   }
 
   function removePhoto(id) {
@@ -248,7 +273,14 @@ export default function PhotoPrint({ formats = [], signedIn, onAdded, onRequireA
         </Reveal>
 
         <Reveal delay={120}>
-          <div className="pp">
+          <div
+            className={`pp${dragOver ? ' is-dragover' : ''}`}
+            onDragEnter={onDragEnter}
+            onDragOver={onDragOver}
+            onDragLeave={onDragLeave}
+            onDrop={onDrop}
+          >
+            {dragOver && <div className="pp__drophint">Drop photos to add them</div>}
             <div className="pp__stage">
               {active && geo ? (
                 <canvas
@@ -263,7 +295,11 @@ export default function PhotoPrint({ formats = [], signedIn, onAdded, onRequireA
               ) : (
                 <label className="pp__drop">
                   <Icon name="upload" size={26} />
-                  <span>{justAdded ? 'Added to cart ✓ — choose more photos' : 'Choose photos'}</span>
+                  <span>
+                    {justAdded
+                      ? 'Added to cart ✓ — choose more photos'
+                      : 'Choose photos or drag them here'}
+                  </span>
                   <input
                     type="file"
                     accept="image/jpeg,image/png,image/webp"
