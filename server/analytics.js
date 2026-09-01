@@ -60,8 +60,8 @@ export async function geoCountry(req) {
       { signal: timeout() }
     )
     if (r.ok) code = ok((await r.json())?.country?.toUpperCase())
-  } catch {
-    /* try the next one */
+  } catch (err) {
+    console.warn('[geo] geojs failed:', err?.message || err)
   }
   if (!code) {
     try {
@@ -69,11 +69,12 @@ export async function geoCountry(req) {
         signal: timeout(),
       })
       if (r.ok) code = ok((await r.json())?.country_code?.toUpperCase())
-    } catch {
-      /* leave unknown */
+    } catch (err) {
+      console.warn('[geo] ipwho failed:', err?.message || err)
     }
   }
 
+  console.log(`[geo] ip=${ip} -> ${code || 'unknown'}`)
   if (geoCache.size > 5000) geoCache.clear()
   geoCache.set(ip, code)
   return code
