@@ -4,6 +4,7 @@ import Login from './Login'
 import Dashboard from './Dashboard'
 import Orders from './Orders'
 import Gallery from './Gallery'
+import Support from './Support'
 import Settings from './Settings'
 import './admin.css'
 
@@ -11,6 +12,7 @@ const TABS = [
   ['overview', 'Overview'],
   ['orders', 'Orders'],
   ['gallery', 'Postcards'],
+  ['support', 'Support'],
   ['settings', 'Settings'],
 ]
 
@@ -19,6 +21,7 @@ export default function AdminApp() {
   const [email, setEmail] = useState('')
   const [tab, setTab] = useState('overview')
   const [galleryFocus, setGalleryFocus] = useState(null)
+  const [supportUnread, setSupportUnread] = useState(0)
 
   async function refresh() {
     try {
@@ -33,6 +36,18 @@ export default function AdminApp() {
   useEffect(() => {
     refresh()
   }, [])
+
+  useEffect(() => {
+    if (state !== 'in') return
+    const poll = () =>
+      api
+        .get('/api/admin/support')
+        .then(({ threads }) => setSupportUnread(threads.filter((t) => t.unreadForAdmin).length))
+        .catch(() => {})
+    poll()
+    const t = setInterval(poll, 20000)
+    return () => clearInterval(t)
+  }, [state, tab])
 
   async function logout() {
     await api.post('/api/admin/logout').catch(() => {})
@@ -71,6 +86,9 @@ export default function AdminApp() {
             onClick={() => setTab(id)}
           >
             {label}
+            {id === 'support' && supportUnread > 0 && (
+              <span className="adm__tab-badge">{supportUnread}</span>
+            )}
           </button>
         ))}
       </nav>
@@ -81,6 +99,7 @@ export default function AdminApp() {
         {tab === 'gallery' && (
           <Gallery focusId={galleryFocus} onFocusHandled={() => setGalleryFocus(null)} />
         )}
+        {tab === 'support' && <Support />}
         {tab === 'settings' && <Settings />}
       </main>
     </div>

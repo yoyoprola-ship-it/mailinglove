@@ -11,6 +11,7 @@ import PhotoPrint from './sections/PhotoPrint'
 import Products from './sections/Products'
 import Footer from './sections/Footer'
 import AuthModal from './components/AuthModal'
+import SupportChat from './components/SupportChat'
 import './App.css'
 
 const countCards = (items) => items.reduce((n, i) => n + (i.qty || 1), 0)
@@ -183,6 +184,8 @@ export default function App() {
       {authCtx && (
         <AuthModal context={authCtx} onClose={() => setAuthCtx(null)} onSignedIn={onSignedIn} />
       )}
+
+      <SupportChat signedIn={signedIn} onRequireAuth={() => setAuthCtx({ mode: 'account' })} />
     </div>
   )
 }

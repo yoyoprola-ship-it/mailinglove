@@ -4,6 +4,7 @@ import Login from './Login'
 import Profile from './Profile'
 import Cart from './Cart'
 import Orders from './Orders'
+import SupportChat from '../components/SupportChat'
 import './account.css'
 
 const params = new URLSearchParams(window.location.search)
@@ -80,6 +81,8 @@ export default function AccountApp() {
           </>
         )}
       </main>
+
+      <SupportChat signedIn={state === 'in'} onRequireAuth={() => setState('out')} />
     </div>
   )
 }

@@ -63,6 +63,14 @@ import {
   restorePostcard,
 } from './server/catalog.js'
 import {
+  getThread,
+  postUserMessage,
+  postAdminMessage,
+  markRead,
+  setThreadStatus,
+  listThreads,
+} from './server/support.js'
+import {
   stripe,
   stripeConfigured,
   STRIPE_WEBHOOK_SECRET,
@@ -237,6 +245,14 @@ const authLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: 'Too many attempts — wait a few minutes.' },
+})
+
+const supportLimiter = rateLimit({
+  windowMs: 10 * 60 * 1000,
+  limit: 60, // support messages per IP
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Slow down a moment before sending more messages.' },
 })
 
 // --- public site config -------------------------------------------------
@@ -814,6 +830,97 @@ app.get('/api/orders', requireUser, async (req, res) => {
   } catch (err) {
     console.error('[orders] list failed:', err?.message || err)
     res.status(500).json({ error: 'Could not load your orders.' })
+  }
+})
+
+// --- support chat (customer) -------------------------------------------
+
+app.get('/api/support', requireUser, async (req, res) => {
+  try {
+    const thread = await getThread(req.userEmail)
+    await markRead(req.userEmail, 'user')
+    res.json({
+      messages: thread?.messages || [],
+      status: thread?.status || 'open',
+    })
+  } catch (err) {
+    console.error('[support] get failed:', err?.message || err)
+    res.status(500).json({ error: 'Could not load the chat.' })
+  }
+})
+
+// Lightweight unread check — does NOT mark the thread read.
+app.get('/api/support/unread', requireUser, async (req, res) => {
+  try {
+    const thread = await getThread(req.userEmail)
+    res.json({ unread: Boolean(thread?.unreadForUser) })
+  } catch {
+    res.json({ unread: false })
+  }
+})
+
+app.post('/api/support', requireUser, supportLimiter, async (req, res) => {
+  try {
+    const user = await getUser(req.userEmail).catch(() => null)
+    const result = await postUserMessage(
+      req.userEmail,
+      user?.name || '',
+      String((req.body || {}).text || '')
+    )
+    if (!result.ok) return res.status(400).json({ error: result.error })
+    res.json({ messages: result.thread.messages, status: result.thread.status })
+  } catch (err) {
+    console.error('[support] post failed:', err?.message || err)
+    res.status(500).json({ error: 'Could not send your message.' })
+  }
+})
+
+// --- support chat (admin) --------------------------------------------
+
+app.get('/api/admin/support', requireAdmin, async (req, res) => {
+  try {
+    res.json({ threads: await listThreads() })
+  } catch (err) {
+    console.error('[support] admin list failed:', err?.message || err)
+    res.status(500).json({ error: 'Could not load support threads.' })
+  }
+})
+
+app.get('/api/admin/support/:email', requireAdmin, async (req, res) => {
+  try {
+    const email = String(req.params.email || '').toLowerCase()
+    const thread = await getThread(email)
+    if (!thread) return res.status(404).json({ error: 'No conversation with that customer.' })
+    await markRead(email, 'admin')
+    res.json({ thread })
+  } catch (err) {
+    console.error('[support] admin get failed:', err?.message || err)
+    res.status(500).json({ error: 'Could not load the conversation.' })
+  }
+})
+
+app.post('/api/admin/support/:email', requireAdmin, async (req, res) => {
+  try {
+    const email = String(req.params.email || '').toLowerCase()
+    const result = await postAdminMessage(email, String((req.body || {}).text || ''))
+    if (!result.ok) return res.status(400).json({ error: result.error })
+    console.log(`[support] ${req.adminEmail} replied to ${email}`)
+    res.json({ thread: result.thread })
+  } catch (err) {
+    console.error('[support] admin post failed:', err?.message || err)
+    res.status(500).json({ error: 'Could not send the reply.' })
+  }
+})
+
+app.put('/api/admin/support/:email', requireAdmin, async (req, res) => {
+  try {
+    const email = String(req.params.email || '').toLowerCase()
+    const result = await setThreadStatus(email, String((req.body || {}).status || ''))
+    if (!result.ok) return res.status(400).json({ error: result.error || 'Could not update.' })
+    res.json({ ok: true })
+  } catch (err) {
+    console.error('[support] admin status failed:', err?.message || err)
+    res.status(500).json({ error: 'Could not update.' })
   }
 })
 
