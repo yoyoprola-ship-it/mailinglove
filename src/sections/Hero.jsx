@@ -10,11 +10,11 @@ export default function Hero() {
           <p className="eyebrow">AI-designed keepsakes, delivered by mail</p>
         </Reveal>
         <Reveal delay={80}>
-          <h1 className="hero__title">
+          <h2 className="hero__title">
             Your photos, <em>reimagined</em>.
             <br />
             Mailed to the people you love.
-          </h1>
+          </h2>
         </Reveal>
         <Reveal delay={160}>
           <p className="hero__subtitle">

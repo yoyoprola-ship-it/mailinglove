@@ -2,10 +2,15 @@
   overflow-x: hidden;
 }
 
-/* Postcards is the first section now — clear the fixed nav, and keep its
-   top visible when the hamburger menu scrolls to it. */
-#postcards {
-  padding-top: 116px;
+/* The service chooser is the first section — clear the fixed nav. */
+#start {
+  padding-top: 128px;
+}
+
+/* Keep section tops visible when the nav / hamburger menu scrolls to them. */
+#postcards,
+#photo-print,
+#custom-postcard {
   scroll-margin-top: 76px;
 }
 
@@ -1497,4 +1502,98 @@
 }
 .pp__orient .pp__row {
   margin-top: 2px;
+}
+
+/* ---------- service chooser (top of page) ---------- */
+.chooser {
+  padding-bottom: 40px;
+}
+
+.chooser__title {
+  font-family: var(--serif);
+  font-size: 2.6rem;
+  line-height: 1.15;
+  color: var(--rose-900);
+  margin-top: 6px;
+}
+
+.chooser__grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 22px;
+  margin-top: 36px;
+  align-items: stretch;
+}
+.chooser__grid.is-single {
+  grid-template-columns: 1fr;
+  max-width: 520px;
+}
+
+.chooser__card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  height: 100%;
+  text-align: left;
+  padding: 30px 28px 26px;
+  border: 1px solid rgba(74, 22, 38, 0.16);
+  border-radius: 20px;
+  background: #fff;
+  cursor: pointer;
+  box-shadow: 0 16px 40px rgba(74, 22, 38, 0.06);
+  transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+}
+.chooser__card:hover {
+  transform: translateY(-4px);
+  border-color: var(--rose);
+  box-shadow: 0 24px 60px rgba(74, 22, 38, 0.14);
+}
+
+.chooser__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 58px;
+  height: 58px;
+  border-radius: 16px;
+  background: var(--blush);
+  color: var(--rose);
+  margin-bottom: 6px;
+}
+
+.chooser__eyebrow {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--rose);
+}
+
+.chooser__name {
+  font-family: var(--serif);
+  font-size: 1.55rem;
+  color: var(--rose-900);
+}
+
+.chooser__text {
+  font-size: 0.96rem;
+  color: var(--muted);
+  line-height: 1.5;
+  flex: 1;
+}
+
+.chooser__cta {
+  margin-top: 14px;
+  font-weight: 700;
+  color: var(--rose);
+}
+
+@media (max-width: 720px) {
+  .chooser__grid {
+    grid-template-columns: 1fr;
+  }
+  .chooser__title {
+    font-size: 2.1rem;
+  }
 }

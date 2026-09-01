@@ -5,6 +5,7 @@ import Categories from './sections/Categories'
 import HowItWorks from './sections/HowItWorks'
 import Studio from './sections/Studio'
 import Restore from './sections/Restore'
+import ServiceChooser from './sections/ServiceChooser'
 import Postcards from './sections/Postcards'
 import CustomPostcard from './sections/CustomPostcard'
 import PhotoPrint from './sections/PhotoPrint'
@@ -111,6 +112,10 @@ export default function App() {
     )
   }
 
+  function scrollToId(id) {
+    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' })
+  }
+
   function openAccount() {
     if (signedIn) window.location.href = '/account'
     else setAuthCtx({ mode: 'account' })
@@ -141,6 +146,11 @@ export default function App() {
         onAccount={openAccount}
         onCart={openCart}
         cartCount={cartCount}
+      />
+      <ServiceChooser
+        showPhotoPrint={photoPrintEnabled && photoPrintFormats.length > 0}
+        showPostcards
+        onGo={scrollToId}
       />
       <Postcards
         filter={pcFilter}
