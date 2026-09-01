@@ -49,14 +49,29 @@ export async function geoCountry(req) {
   if (isPrivateIp(ip)) return ''
   if (geoCache.has(ip)) return geoCache.get(ip)
 
+  const timeout = () => (AbortSignal.timeout ? AbortSignal.timeout(2500) : undefined)
+  const ok = (c) => (/^[A-Z]{2}$/.test(c || '') && c !== 'XX' ? c : '')
   let code = ''
+
+  // Two keyless HTTPS providers; first hit wins.
   try {
-    const ctrl = AbortSignal.timeout ? AbortSignal.timeout(2500) : undefined
-    const r = await fetch(`https://ipapi.co/${encodeURIComponent(ip)}/country/`, { signal: ctrl })
-    const t = (await r.text()).trim().toUpperCase()
-    if (/^[A-Z]{2}$/.test(t)) code = t
+    const r = await fetch(
+      `https://get.geojs.io/v1/ip/country/${encodeURIComponent(ip)}.json`,
+      { signal: timeout() }
+    )
+    if (r.ok) code = ok((await r.json())?.country?.toUpperCase())
   } catch {
-    /* leave unknown */
+    /* try the next one */
+  }
+  if (!code) {
+    try {
+      const r = await fetch(`https://ipwho.is/${encodeURIComponent(ip)}?fields=country_code`, {
+        signal: timeout(),
+      })
+      if (r.ok) code = ok((await r.json())?.country_code?.toUpperCase())
+    } catch {
+      /* leave unknown */
+    }
   }
 
   if (geoCache.size > 5000) geoCache.clear()
