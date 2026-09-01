@@ -9,7 +9,17 @@ import { track } from './track.js'
 const path = window.location.pathname
 const view = path.startsWith('/admin') ? 'admin' : path.startsWith('/account') ? 'account' : 'site'
 
-if (view === 'site') track()
+if (view === 'site') {
+  track()
+} else {
+  // The app pages share index.html — keep them out of search results.
+  document.title = view === 'admin' ? 'MailingLove admin' : 'Your MailingLove account'
+  const robots =
+    document.querySelector('meta[name="robots"]') ||
+    document.head.appendChild(Object.assign(document.createElement('meta'), { name: 'robots' }))
+  robots.content = 'noindex, nofollow'
+  document.querySelector('link[rel="canonical"]')?.remove()
+}
 
 const root = view === 'admin' ? <AdminApp /> : view === 'account' ? <AccountApp /> : <App />
 

@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#4a1626"/>
+      <stop offset="1" stop-color="#7d2340"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <circle cx="1010" cy="120" r="220" fill="#b8355f" opacity="0.28"/>
+  <circle cx="150" cy="560" r="180" fill="#f0a8c0" opacity="0.18"/>
+  <g transform="translate(100 250)">
+    <path d="M34 8a20 20 0 0 0-28 0l-3 3-3-3a20 20 0 0 0-28 28l3 3 28 28 28-28 3-3a20 20 0 0 0 0-28z"
+          transform="translate(0 -22) scale(1.1)" fill="#f0a8c0"/>
+    <text x="70" y="14" font-family="'Playfair Display', Georgia, 'Times New Roman', serif"
+          font-size="72" font-weight="700" fill="#fff8f5">MailingLove</text>
+  </g>
+  <text x="100" y="360" font-family="'Inter', Arial, sans-serif" font-size="40" fill="#fbe6ec">
+    AI-designed postcards &amp; photo prints
+  </text>
+  <text x="100" y="418" font-family="'Inter', Arial, sans-serif" font-size="40" fill="#fbe6ec">
+    Printed and mailed — to the people you love.
+  </text>
+  <text x="100" y="540" font-family="'Inter', Arial, sans-serif" font-size="28" fill="#f0a8c0">
+    mailinglove.com
+  </text>
+</svg>
