@@ -237,6 +237,38 @@
   padding: 8px 0 24px;
 }
 
+.drawer__links {
+  display: flex;
+  flex-direction: column;
+  padding: 4px 0 10px;
+  border-bottom: 1px solid rgba(74, 22, 38, 0.1);
+}
+
+.drawer__link {
+  width: 100%;
+  text-align: left;
+  padding: 12px 20px;
+  border: none;
+  background: none;
+  font-size: 0.98rem;
+  font-weight: 600;
+  color: var(--rose-900);
+  cursor: pointer;
+}
+
+.drawer__link:hover {
+  color: var(--rose);
+}
+
+.drawer__section-h {
+  padding: 16px 20px 6px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
 .drawer__type {
   width: 100%;
   display: flex;

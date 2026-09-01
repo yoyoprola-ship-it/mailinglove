@@ -2,7 +2,16 @@ import { useState } from 'react'
 import Icon from '../components/Icon'
 import MenuDrawer from './MenuDrawer'
 
-export default function Nav({ onNavigate, onAccount, onCart, cartCount = 0 }) {
+export default function Nav({
+  onNavigate,
+  onAccount,
+  onCart,
+  onGo,
+  cartCount = 0,
+  showPhotoPrint = false,
+  showPostcardGen = false,
+  showPhotoRestore = false,
+}) {
   const [menuOpen, setMenuOpen] = useState(false)
 
   return (
@@ -12,7 +21,7 @@ export default function Nav({ onNavigate, onAccount, onCart, cartCount = 0 }) {
           <button
             className="site-nav__burger"
             onClick={() => setMenuOpen(true)}
-            aria-label="Open postcard menu"
+            aria-label="Open menu"
           >
             <span />
             <span />
@@ -45,6 +54,12 @@ export default function Nav({ onNavigate, onAccount, onCart, cartCount = 0 }) {
         open={menuOpen}
         onClose={() => setMenuOpen(false)}
         onNavigate={onNavigate}
+        onGo={onGo}
+        onAccount={onAccount}
+        onCart={onCart}
+        showPhotoPrint={showPhotoPrint}
+        showPostcardGen={showPostcardGen}
+        showPhotoRestore={showPhotoRestore}
       />
     </header>
   )

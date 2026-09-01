@@ -112,28 +112,8 @@ export default function App() {
     )
   }
 
-  // A gentle, distance-scaled scroll — a long trip down to "Print photos"
-  // glides past the postcard gallery on the way (that's the point).
   function scrollToId(id) {
-    const el = document.getElementById(id)
-    if (!el) return
-    const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
-    const startY = window.scrollY
-    const targetY = el.getBoundingClientRect().top + startY - 72
-    const dist = targetY - startY
-    if (reduce || Math.abs(dist) < 8) {
-      window.scrollTo(0, targetY)
-      return
-    }
-    const duration = Math.min(2600, Math.max(650, Math.abs(dist) * 0.72))
-    const start = performance.now()
-    const ease = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2)
-    const step = (now) => {
-      const p = Math.min(1, (now - start) / duration)
-      window.scrollTo(0, startY + dist * ease(p))
-      if (p < 1) requestAnimationFrame(step)
-    }
-    requestAnimationFrame(step)
+    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' })
   }
 
   function openAccount() {
@@ -165,7 +145,11 @@ export default function App() {
         onNavigate={goToPostcards}
         onAccount={openAccount}
         onCart={openCart}
+        onGo={scrollToId}
         cartCount={cartCount}
+        showPhotoPrint={photoPrintEnabled && photoPrintFormats.length > 0}
+        showPostcardGen={postcardEnabled}
+        showPhotoRestore={Boolean(photoEnabled)}
       />
       <ServiceChooser
         showPhotoPrint={photoPrintEnabled && photoPrintFormats.length > 0}
