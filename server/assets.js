@@ -1,3 +1,5 @@
+import { readFile } from 'node:fs/promises'
+import path from 'node:path'
 import { getDb } from './firebaseAdmin.js'
 import { saveFile, downloadFile, deleteFile, EXT } from './bucket.js'
 import { getPostcard, adminList, catalog } from './catalog.js'
@@ -67,7 +69,7 @@ export async function removeHiRes(postcardId) {
 // Stream the current best image for a postcard: an uploaded hi-res file if
 // there is one, then the card's own stored file (admin-created cards),
 // otherwise redirect to the static placeholder.
-export async function streamImage(postcardId, res) {
+export async function streamImage(postcardId, res, { download = false } = {}) {
   const card = await getPostcard(postcardId)
   if (!card) return res.status(404).end()
 
@@ -76,16 +78,36 @@ export async function streamImage(postcardId, res) {
     entry ||
     (card.storagePath ? { path: card.storagePath, contentType: card.contentType } : null)
 
+  // No override and no stored file: the original bundled JPEG. Serve it as
+  // an attachment when a download was asked for (admin print file),
+  // otherwise just redirect to the static asset.
   if (!src) {
+    if (download) {
+      try {
+        const buf = await readFile(path.join(process.cwd(), 'dist', card.image.replace(/^\/+/, '')))
+        res.setHeader('Content-Type', 'image/jpeg')
+        res.setHeader('Content-Disposition', `attachment; filename="${postcardId}.jpg"`)
+        res.setHeader('Cache-Control', 'private, max-age=0')
+        return res.end(buf)
+      } catch (err) {
+        console.error('[assets] static read failed:', err?.message || err)
+      }
+    }
     res.setHeader('Cache-Control', 'public, max-age=300')
     return res.redirect(302, card.image)
   }
   try {
     const buf = await downloadFile(src.path)
     res.setHeader('Content-Type', src.contentType || 'application/octet-stream')
-    // Catalog art, not per-user — let the CDN hold it so a crop doesn't
-    // mean every visitor hits Cloud Run for the file.
-    res.setHeader('Cache-Control', 'public, max-age=300')
+    if (download) {
+      const ext = (path.extname(src.path) || '.jpg').slice(1) || 'jpg'
+      res.setHeader('Content-Disposition', `attachment; filename="${postcardId}.${ext}"`)
+      res.setHeader('Cache-Control', 'private, max-age=0')
+    } else {
+      // Catalog art, not per-user — let the CDN hold it so a crop doesn't
+      // mean every visitor hits Cloud Run for the file.
+      res.setHeader('Cache-Control', 'public, max-age=300')
+    }
     res.end(buf)
   } catch (err) {
     console.error('[assets] stream failed:', err?.message || err)

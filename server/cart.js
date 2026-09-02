@@ -46,7 +46,9 @@ async function cartLine(postcardId, qty, unitPriceCents) {
     kind: 'postcard',
     postcardId: card.id,
     title: card.title,
-    image: card.image,
+    // proxy URL, so the cart / order / admin print file always resolve to
+    // the admin-cropped image when there is one (never the raw original)
+    image: `/api/postcard-image/${card.id}`,
     category: card.type,
     subcategory: card.subcategory || null,
     unitPriceCents: Math.max(0, Math.trunc(unitPriceCents || 0)),

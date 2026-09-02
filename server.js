@@ -581,11 +581,12 @@ app.delete('/api/admin/catalog/:id/image', requireAdmin, async (req, res) => {
   }
 })
 
-// Public: current best image for a postcard (uploaded hi-res, else the
-// static placeholder). Used by the admin gallery.
+// Public: current best image for a postcard — the admin-cropped / hi-res
+// file if one exists, otherwise the original bundled JPEG. `?download=1`
+// forces an attachment (admin print file).
 app.get('/api/postcard-image/:id', async (req, res) => {
   try {
-    await streamImage(req.params.id, res)
+    await streamImage(req.params.id, res, { download: String(req.query.download) === '1' })
   } catch (err) {
     console.error('[assets] image route failed:', err?.message || err)
     if (!res.headersSent) res.status(500).end()
