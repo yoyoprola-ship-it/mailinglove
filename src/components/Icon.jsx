@@ -64,6 +64,19 @@ const paths = {
   ),
   arrow: <polyline points="9 18 15 12 9 6" />,
   check: <polyline points="20 6 9 17 4 12" />,
+  user: (
+    <>
+      <circle cx="12" cy="8" r="4" />
+      <path d="M4 21v-1a8 8 0 0 1 16 0v1" />
+    </>
+  ),
+  info: (
+    <>
+      <circle cx="12" cy="12" r="9" />
+      <line x1="12" y1="11" x2="12" y2="16" />
+      <line x1="12" y1="8" x2="12" y2="8" />
+    </>
+  ),
   cart: (
     <>
       <circle cx="9" cy="21" r="1" />
