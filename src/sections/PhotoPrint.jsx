@@ -96,7 +96,14 @@ export default function PhotoPrint({
 
   // Two envelope groups, but most logic just needs "all the formats".
   const formats = useMemo(() => [...formats10, ...formatsCatalog], [formats10, formatsCatalog])
-  const defFormat = formats[0]?.id || ''
+
+  // 4×6 leads the list and is the default pick when it's offered.
+  const is4x6 = (f) =>
+    !!f && (f.id === '4x6' || (Math.min(f.w, f.h) === 4 && Math.max(f.w, f.h) === 6))
+  const lead4x6 = (arr) => [...arr].sort((a, b) => (is4x6(b) ? 1 : 0) - (is4x6(a) ? 1 : 0))
+  const shown10 = useMemo(() => lead4x6(formats10), [formats10])
+  const shownCatalog = useMemo(() => lead4x6(formatsCatalog), [formatsCatalog])
+  const defFormat = (formats.find(is4x6) || formats[0])?.id || ''
   const active = photos.find((p) => p.id === activeId) || null
   const format = useMemo(
     () => (active ? formats.find((f) => f.id === active.formatId) || formats[0] : formats[0]),
@@ -404,7 +411,7 @@ export default function PhotoPrint({
                   <>
                     <span className="pp__group-label">Fits a #10 envelope</span>
                     <div className="pp__formats">
-                      {formats10.map((f) => (
+                      {shown10.map((f) => (
                         <button
                           key={f.id}
                           type="button"
@@ -424,7 +431,7 @@ export default function PhotoPrint({
                   <>
                     <span className="pp__group-label">Needs a catalog envelope</span>
                     <div className="pp__formats">
-                      {formatsCatalog.map((f) => (
+                      {shownCatalog.map((f) => (
                         <button
                           key={f.id}
                           type="button"

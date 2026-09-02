@@ -27,8 +27,8 @@ const DEFAULT_POSTCARD_SIZES = [
 // fold-free into a standard #10 envelope; anything bigger needs a flat
 // catalog envelope.
 const DEFAULT_PHOTO_FORMATS_10 = [
-  { id: 'wallet', label: 'Wallet — 2.5 × 3.5 in', w: 2.5, h: 3.5, priceCents: 99 },
   { id: '4x6', label: '4×6 in', w: 4, h: 6, priceCents: 129 },
+  { id: 'wallet', label: 'Wallet — 2.5 × 3.5 in', w: 2.5, h: 3.5, priceCents: 99 },
   { id: '4x4', label: '4×4 in — square', w: 4, h: 4, priceCents: 199 },
 ]
 const DEFAULT_PHOTO_FORMATS_CATALOG = [
