@@ -54,6 +54,7 @@ export default function Nav({
         onGo={onGo}
         onAccount={onAccount}
         onCart={onCart}
+        cartCount={cartCount}
         showPhotoPrint={showPhotoPrint}
         showPostcardGen={showPostcardGen}
         showPhotoRestore={showPhotoRestore}

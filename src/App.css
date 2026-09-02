@@ -336,6 +336,19 @@
   color: rgba(74, 22, 38, 0.26);
 }
 
+.drawer__badge {
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: #e0245e;
+  color: #fff;
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 20px;
+  text-align: center;
+}
+
 .drawer__section-h {
   padding: 18px 14px 7px;
   font-size: 0.67rem;

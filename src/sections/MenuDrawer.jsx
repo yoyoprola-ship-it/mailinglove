@@ -14,6 +14,7 @@ export default function MenuDrawer({
   onGo,
   onAccount,
   onCart,
+  cartCount = 0,
   showPhotoPrint = false,
   showPostcardGen = false,
   showPhotoRestore = false,
@@ -60,7 +61,12 @@ export default function MenuDrawer({
 
   const youLinks = [
     { label: 'Your account', icon: 'user', fn: () => (onClose(), onAccount?.()) },
-    { label: 'Cart', icon: 'cart', fn: () => (onClose(), onCart?.()) },
+    {
+      label: 'Cart',
+      icon: 'cart',
+      badge: cartCount,
+      fn: () => (onClose(), onCart?.()),
+    },
   ]
 
   const Row = ({ l }) => (
@@ -69,6 +75,7 @@ export default function MenuDrawer({
         <Icon name={l.icon} size={18} />
       </span>
       <span className="drawer__link-t">{l.label}</span>
+      {l.badge > 0 && <span className="drawer__badge">{l.badge}</span>}
       <span className="drawer__link-go">
         <Icon name="arrow" size={15} />
       </span>
