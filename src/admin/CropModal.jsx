@@ -39,8 +39,8 @@ export default function CropModal({ card, onClose, onDone }) {
     const w = Math.round(nw * scale)
     const h = Math.round(nh * scale)
     setDisp({ w, h, toNatural: nw / w })
-    const inset = Math.round(Math.min(w, h) * 0.06)
-    setCrop({ x: inset, y: inset, w: w - inset * 2, h: h - inset * 2 })
+    // Start at the full image so you only ever pull edges inward.
+    setCrop({ x: 0, y: 0, w, h })
   }
 
   const startDrag = (mode, handle) => (e) => {
@@ -194,19 +194,37 @@ export default function CropModal({ card, onClose, onDone }) {
             draggable={false}
           />
           {crop && disp && (
-            <div
-              className="adm__crop__rect"
-              style={{ left: crop.x, top: crop.y, width: crop.w, height: crop.h }}
-              onPointerDown={startDrag('move', null)}
-            >
-              {handles.map((h) => (
-                <span
-                  key={h}
-                  className={`adm__crop__h adm__crop__h--${h}`}
-                  onPointerDown={startDrag('resize', h)}
-                />
-              ))}
-            </div>
+            <>
+              <div
+                className="adm__crop__mask"
+                style={{ left: 0, top: 0, width: '100%', height: crop.y }}
+              />
+              <div
+                className="adm__crop__mask"
+                style={{ left: 0, top: crop.y + crop.h, width: '100%', bottom: 0 }}
+              />
+              <div
+                className="adm__crop__mask"
+                style={{ left: 0, top: crop.y, width: crop.x, height: crop.h }}
+              />
+              <div
+                className="adm__crop__mask"
+                style={{ left: crop.x + crop.w, top: crop.y, right: 0, height: crop.h }}
+              />
+              <div
+                className="adm__crop__rect"
+                style={{ left: crop.x, top: crop.y, width: crop.w, height: crop.h }}
+                onPointerDown={startDrag('move', null)}
+              >
+                {handles.map((h) => (
+                  <span
+                    key={h}
+                    className={`adm__crop__h adm__crop__h--${h}`}
+                    onPointerDown={startDrag('resize', h)}
+                  />
+                ))}
+              </div>
+            </>
           )}
         </div>
 

@@ -752,10 +752,15 @@ input.adm__input[type='checkbox'] {
 .adm__crop__stage {
   position: relative;
   align-self: center;
-  overflow: hidden;
+  margin: 4px 8px;
   background: var(--blush);
   touch-action: none;
   user-select: none;
+}
+.adm__crop__mask {
+  position: absolute;
+  background: rgba(0, 0, 0, 0.55);
+  pointer-events: none;
 }
 .adm__crop__img {
   display: block;
@@ -767,7 +772,7 @@ input.adm__input[type='checkbox'] {
   position: absolute;
   box-sizing: border-box;
   border: 1px solid #fff;
-  box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.55);
+  outline: 1px solid rgba(0, 0, 0, 0.4);
   cursor: move;
 }
 .adm__crop__h {
