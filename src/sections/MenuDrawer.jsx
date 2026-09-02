@@ -15,6 +15,7 @@ export default function MenuDrawer({
   onGo,
   onAccount,
   onCart,
+  onOrders,
   onHome = () => window.scrollTo({ top: 0, behavior: 'smooth' }),
   cartCount = 0,
   showPhotoPrint = false,
@@ -70,6 +71,7 @@ export default function MenuDrawer({
       badge: cartCount,
       fn: () => (onClose(), onCart?.()),
     },
+    { label: 'Orders', icon: 'package', fn: () => (onClose(), onOrders?.()) },
   ]
 
   const Row = ({ l }) => (

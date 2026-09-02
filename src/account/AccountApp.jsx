@@ -107,6 +107,10 @@ export default function AccountApp() {
           setMenuOpen(false)
           setTab('cart')
         }}
+        onOrders={() => {
+          setMenuOpen(false)
+          setTab('orders')
+        }}
         cartCount={cartCount}
         showPhotoPrint={flags.photoPrint}
         showPostcardGen={flags.postcardGen}

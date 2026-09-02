@@ -6,6 +6,7 @@ export default function Nav({
   onNavigate,
   onAccount,
   onCart,
+  onOrders,
   onGo,
   cartCount = 0,
   showPhotoPrint = false,
@@ -54,6 +55,7 @@ export default function Nav({
         onGo={onGo}
         onAccount={onAccount}
         onCart={onCart}
+        onOrders={onOrders}
         cartCount={cartCount}
         showPhotoPrint={showPhotoPrint}
         showPostcardGen={showPostcardGen}

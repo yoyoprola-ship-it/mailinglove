@@ -71,6 +71,13 @@ const paths = {
       <path d="M9 21v-6h6v6" />
     </>
   ),
+  package: (
+    <>
+      <path d="M21 8l-9-5-9 5v8l9 5 9-5z" />
+      <path d="M3 8l9 5 9-5" />
+      <path d="M12 13v8" />
+    </>
+  ),
   user: (
     <>
       <circle cx="12" cy="8" r="4" />

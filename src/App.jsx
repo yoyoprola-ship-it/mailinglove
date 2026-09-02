@@ -171,6 +171,11 @@ export default function App() {
     else setAuthCtx({ mode: 'account' })
   }
 
+  function openOrders() {
+    if (signedIn) window.location.href = '/account?tab=orders'
+    else setAuthCtx({ mode: 'account' })
+  }
+
   function addPostcard(postcard) {
     if (signedIn) addToCart(postcard)
     else setAuthCtx({ mode: 'add', postcard })
@@ -190,6 +195,7 @@ export default function App() {
         onNavigate={goToPostcards}
         onAccount={openAccount}
         onCart={openCart}
+        onOrders={openOrders}
         onGo={scrollToId}
         cartCount={cartCount}
         showPhotoPrint={hasPhotoPrint}
