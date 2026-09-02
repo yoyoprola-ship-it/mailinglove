@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { api } from './api'
-import CropModal from './CropModal'
+import CropModal from '../components/CropModal'
 
 const EMPTY_NEW = { type: '', sub: '', title: '', file: null }
 
@@ -356,11 +356,21 @@ export default function Gallery({ focusId, onFocusHandled }) {
 
       {cropCard && (
         <CropModal
-          card={{ ...cropCard, image: `${cropCard.image}&r=${rev}` }}
-          onClose={() => setCropCard(null)}
-          onDone={async () => {
+          src={`${cropCard.image}&r=${rev}`}
+          title={`Crop — ${cropCard.title}`}
+          onCancel={() => setCropCard(null)}
+          onApply={async (blob) => {
+            const body = new FormData()
+            body.append('image', blob, `${cropCard.id}.jpg`)
+            const r = await fetch(`/api/admin/catalog/${cropCard.id}/image`, {
+              method: 'POST',
+              credentials: 'same-origin',
+              body,
+            })
+            const j = await r.json().catch(() => ({}))
+            if (!r.ok) throw new Error(j.error || 'Upload failed.')
             setCropCard(null)
-            setRev((r) => r + 1)
+            setRev((v) => v + 1)
             await load()
           }}
         />

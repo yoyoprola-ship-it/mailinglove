@@ -1072,7 +1072,7 @@
   display: block;
 }
 
-.cal__thumb button:not(.cal__thumb--add) {
+.cal__thumb-x {
   position: absolute;
   top: 4px;
   right: 4px;
@@ -1085,6 +1085,24 @@
   font-size: 1rem;
   line-height: 1;
   cursor: pointer;
+}
+
+.cal__thumb-edit {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  border: none;
+  padding: 4px 0;
+  background: rgba(20, 8, 12, 0.62);
+  color: #fff;
+  font-size: 0.72rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.cal__thumb-edit:hover {
+  background: var(--rose);
 }
 
 .cal__thumb--add {

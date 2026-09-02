@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
+import './CropModal.css'
 
-// Admin crop tool. Loads the card's current image, lets you drag a crop
-// box (move + 8-way resize for a free crop, or 4 corners locked to a
-// fixed ratio), then bakes the crop client-side and posts it to the
-// existing hi-res override endpoint.
+// Reusable crop tool: drag a box (move + 8-way free resize, or 4 corners
+// locked to a fixed ratio), then hand the parent a JPEG blob of the crop.
+//   <CropModal src={url} title="…" onCancel={fn} onApply={async (blob) => {…}} />
+// The parent unmounts the modal when onApply resolves.
 
 const MIN = 24 // smallest crop box, in on-screen px
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v))
@@ -11,21 +12,18 @@ const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v))
 const FREE_HANDLES = ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w']
 const LOCK_HANDLES = ['nw', 'ne', 'se', 'sw']
 
-export default function CropModal({ card, onClose, onDone }) {
+export default function CropModal({ src, title = 'Crop', onCancel, onApply }) {
   const imgRef = useRef(null)
   const wrapRef = useRef(null)
   const drag = useRef(null)
 
-  const [disp, setDisp] = useState(null) // { w, h, scale } — displayed size + natural/display ratio
-  const [crop, setCrop] = useState(null) // { x, y, w, h } in displayed px
+  const [disp, setDisp] = useState(null)
+  const [crop, setCrop] = useState(null)
   const [lock, setLock] = useState(false)
-  const [ratio, setRatio] = useState(1) // locked aspect (w / h)
+  const [ratio, setRatio] = useState(1)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
 
-  // One set of window listeners for the component's life. They read the
-  // live drag session from the `drag` ref, so re-renders can never leave a
-  // stale handler registered (that was dropping the vertical resize).
   useEffect(() => {
     function onMove(e) {
       const d = drag.current
@@ -45,7 +43,6 @@ export default function CropModal({ card, onClose, onDone }) {
 
       const h = d.handle
       if (d.lock) {
-        // anchor at the opposite corner, keep the locked ratio
         const ratio = d.ratio
         const right = d.start.x + d.start.w
         const bottom = d.start.y + d.start.h
@@ -92,12 +89,11 @@ export default function CropModal({ card, onClose, onDone }) {
   }, [])
 
   useEffect(() => {
-    const onKey = (e) => e.key === 'Escape' && !busy && onClose()
+    const onKey = (e) => e.key === 'Escape' && !busy && onCancel()
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [busy, onClose])
+  }, [busy, onCancel])
 
-  // If the image was already cached, `load` may never fire — seed from it.
   useEffect(() => {
     const el = imgRef.current
     if (el && el.complete && el.naturalWidth) onImgLoad()
@@ -105,7 +101,6 @@ export default function CropModal({ card, onClose, onDone }) {
   }, [])
 
   function onImgLoad() {
-    // Initialise once — a re-fired load event must not wipe the user's crop.
     if (crop) return
     const el = imgRef.current
     const nw = el.naturalWidth
@@ -116,7 +111,6 @@ export default function CropModal({ card, onClose, onDone }) {
     const w = Math.round(nw * scale)
     const h = Math.round(nh * scale)
     setDisp({ w, h, toNaturalX: nw / w, toNaturalY: nh / h })
-    // Start at the full image so you only ever pull edges inward.
     setCrop({ x: 0, y: 0, w, h })
   }
 
@@ -158,20 +152,15 @@ export default function CropModal({ card, onClose, onDone }) {
       canvas.height = sh
       canvas.getContext('2d').drawImage(imgRef.current, sx, sy, sw, sh, 0, 0, sw, sh)
       const blob = await new Promise((res, rej) =>
-        canvas.toBlob((b) => (b ? res(b) : rej(new Error('Could not render the crop.'))), 'image/jpeg', 0.95)
+        canvas.toBlob(
+          (b) => (b ? res(b) : rej(new Error('Could not render the crop.'))),
+          'image/jpeg',
+          0.95
+        )
       )
-      const body = new FormData()
-      body.append('image', blob, `${card.id}.jpg`)
-      const r = await fetch(`/api/admin/catalog/${card.id}/image`, {
-        method: 'POST',
-        credentials: 'same-origin',
-        body,
-      })
-      const j = await r.json().catch(() => ({}))
-      if (!r.ok) throw new Error(j.error || 'Upload failed.')
-      onDone()
+      await onApply(blob)
     } catch (e) {
-      setError(e.message)
+      setError(e.message || 'Something went wrong.')
       setBusy(false)
     }
   }
@@ -181,57 +170,50 @@ export default function CropModal({ card, onClose, onDone }) {
   const handles = lock ? LOCK_HANDLES : FREE_HANDLES
 
   return (
-    <div className="adm__crop" onClick={busy ? undefined : onClose}>
-      <div className="adm__crop__box" onClick={(e) => e.stopPropagation()}>
-        <div className="adm__crop__head">
-          <strong>Crop — {card.title}</strong>
-          <button className="adm__crop__x" onClick={onClose} disabled={busy}>
+    <div className="cropm" onClick={busy ? undefined : onCancel}>
+      <div className="cropm__box" onClick={(e) => e.stopPropagation()}>
+        <div className="cropm__head">
+          <strong>{title}</strong>
+          <button className="cropm__x" onClick={onCancel} disabled={busy} aria-label="Close">
             ×
           </button>
         </div>
 
         <div
-          className="adm__crop__stage"
+          className="cropm__stage"
           ref={wrapRef}
           style={disp ? { width: disp.w, height: disp.h } : undefined}
         >
-          {/* eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions */}
           <img
             ref={imgRef}
-            src={card.image}
+            src={src}
             alt=""
-            className="adm__crop__img"
+            className="cropm__img"
             onLoad={onImgLoad}
             onError={() => setError('Could not load this image.')}
             draggable={false}
           />
           {crop && disp && (
             <>
+              <div className="cropm__mask" style={{ left: 0, top: 0, width: '100%', height: crop.y }} />
               <div
-                className="adm__crop__mask"
-                style={{ left: 0, top: 0, width: '100%', height: crop.y }}
-              />
-              <div
-                className="adm__crop__mask"
+                className="cropm__mask"
                 style={{ left: 0, top: crop.y + crop.h, width: '100%', bottom: 0 }}
               />
+              <div className="cropm__mask" style={{ left: 0, top: crop.y, width: crop.x, height: crop.h }} />
               <div
-                className="adm__crop__mask"
-                style={{ left: 0, top: crop.y, width: crop.x, height: crop.h }}
-              />
-              <div
-                className="adm__crop__mask"
+                className="cropm__mask"
                 style={{ left: crop.x + crop.w, top: crop.y, right: 0, height: crop.h }}
               />
               <div
-                className="adm__crop__rect"
+                className="cropm__rect"
                 style={{ left: crop.x, top: crop.y, width: crop.w, height: crop.h }}
                 onPointerDown={(e) => startDrag('move', null, e)}
               >
                 {handles.map((h) => (
                   <span
                     key={h}
-                    className={`adm__crop__h adm__crop__h--${h}`}
+                    className={`cropm__h cropm__h--${h}`}
                     onPointerDown={(e) => startDrag('resize', h, e)}
                   />
                 ))}
@@ -240,27 +222,23 @@ export default function CropModal({ card, onClose, onDone }) {
           )}
         </div>
 
-        <label className="adm__crop__lock">
-          <input
-            type="checkbox"
-            checked={lock}
-            onChange={(e) => toggleLock(e.target.checked)}
-          />
+        <label className="cropm__lock">
+          <input type="checkbox" checked={lock} onChange={(e) => toggleLock(e.target.checked)} />
           Keep proportions (lock aspect ratio)
         </label>
 
-        {error && <p className="adm__error">{error}</p>}
+        {error && <p className="cropm__err">{error}</p>}
 
-        <div className="adm__crop__foot">
-          <span className="adm__crop__dims">
+        <div className="cropm__foot">
+          <span className="cropm__dims">
             {natW} × {natH} px
           </span>
-          <span className="adm__crop__spacer" />
-          <button className="adm__chip" onClick={onClose} disabled={busy}>
+          <span className="cropm__spacer" />
+          <button className="cropm__btn cropm__btn--ghost" onClick={onCancel} disabled={busy}>
             Cancel
           </button>
-          <button className="adm__btn" onClick={apply} disabled={busy || !crop}>
-            {busy ? 'Saving…' : 'Apply crop'}
+          <button className="cropm__btn" onClick={apply} disabled={busy || !crop}>
+            {busy ? 'Working…' : 'Apply'}
           </button>
         </div>
       </div>

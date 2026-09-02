@@ -37,10 +37,14 @@ export function buildCalendarPrompt({ year, scene, photoCount }) {
     ? `Set the whole design in this world: ${scene}. Build the colour palette, textures and decorative motifs from that scene.`
     : `Choose one cohesive, imaginative themed world (nature, cosmic, seasonal or whimsical) and build the whole design around it.`
 
-  const photos =
-    photoCount === 1
-      ? `Integrate the one provided photograph into the artwork as a tastefully framed inset — a decorative photo frame, polaroid, or vignette that sits naturally within the scene, with a soft shadow and matching border, not pasted flat on top.`
-      : `Integrate the ${photoCount} provided photographs into the artwork as tastefully framed insets — decorative photo frames, polaroids or vignettes of varied sizes arranged around the layout, each with a soft shadow and a border that matches the scene, blended into the design rather than pasted flat on top. Keep the photos themselves photorealistic and unaltered.`
+  const one = photoCount === 1
+  const photos = [
+    one
+      ? `Include the one provided photograph in the design.`
+      : `Include all ${photoCount} provided photographs in the design.`,
+    `Do NOT crop, zoom into, cut off, stretch, recolour or otherwise alter the photographs — each one must appear complete and photorealistic, exactly as supplied.`,
+    `Only build a decorative frame around each photo — an ornate photo frame, polaroid, taped snapshot or vignette with a soft shadow and a border/style drawn from the scene — and place the framed photos creatively within the layout at varied sizes and slight angles so they feel part of the artwork, never pasted flat on top.`,
+  ].join(' ')
 
   return [
     `A creative, print-ready 8 by 10 inch PORTRAIT wall-calendar poster for the year ${year}.`,

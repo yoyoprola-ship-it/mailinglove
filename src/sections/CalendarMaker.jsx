@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import Reveal from '../components/Reveal'
 import Icon from '../components/Icon'
+import CropModal from '../components/CropModal'
 
 const MAX = 4
 const money = (c) => `$${((c || 0) / 100).toFixed(2)}`
@@ -21,6 +22,7 @@ export default function CalendarMaker({
   const [cartState, setCartState] = useState('idle') // idle | adding | done
   const [cartError, setCartError] = useState('')
   const [dragOver, setDragOver] = useState(false)
+  const [cropId, setCropId] = useState(null)
   const fileRef = useRef(null)
   const photosRef = useRef(photos)
   photosRef.current = photos
@@ -49,6 +51,19 @@ export default function CalendarMaker({
       return cur.filter((p) => p.id !== id)
     })
   }
+
+  function replacePhoto(id, blob) {
+    const url = URL.createObjectURL(blob)
+    setPhotos((cur) =>
+      cur.map((p) => {
+        if (p.id !== id) return p
+        URL.revokeObjectURL(p.url)
+        return { ...p, file: blob, url }
+      })
+    )
+  }
+
+  const cropTarget = photos.find((p) => p.id === cropId) || null
 
   function onDrop(e) {
     e.preventDefault()
@@ -173,10 +188,18 @@ export default function CalendarMaker({
                         <img src={p.url} alt="" />
                         <button
                           type="button"
+                          className="cal__thumb-x"
                           onClick={() => removePhoto(p.id)}
                           aria-label="Remove photo"
                         >
                           ×
+                        </button>
+                        <button
+                          type="button"
+                          className="cal__thumb-edit"
+                          onClick={() => setCropId(p.id)}
+                        >
+                          Adjust
                         </button>
                       </div>
                     ))}
@@ -281,6 +304,18 @@ export default function CalendarMaker({
           </div>
         </Reveal>
       </div>
+
+      {cropTarget && (
+        <CropModal
+          src={cropTarget.url}
+          title="Adjust photo — frame it how you want"
+          onCancel={() => setCropId(null)}
+          onApply={async (blob) => {
+            replacePhoto(cropTarget.id, blob)
+            setCropId(null)
+          }}
+        />
+      )}
     </section>
   )
 }
