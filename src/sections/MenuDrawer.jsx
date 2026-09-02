@@ -18,7 +18,7 @@ export default function MenuDrawer({
   showPostcardGen = false,
   showPhotoRestore = false,
 }) {
-  const [expanded, setExpanded] = useState('birthday')
+  const [expanded, setExpanded] = useState('')
 
   // Lock the page behind the drawer and close on Escape while it's open.
   useEffect(() => {
@@ -102,6 +102,13 @@ export default function MenuDrawer({
 
         <nav className="drawer__nav">
           <div className="drawer__links">
+            {youLinks.map((l) => (
+              <Row key={l.label} l={l} />
+            ))}
+          </div>
+
+          <div className="drawer__section-h">Shop</div>
+          <div className="drawer__links">
             {pageLinks.map((l) => (
               <Row key={l.label} l={l} />
             ))}
@@ -152,13 +159,6 @@ export default function MenuDrawer({
                 </div>
               )
             })}
-          </div>
-
-          <div className="drawer__section-h">You</div>
-          <div className="drawer__links">
-            {youLinks.map((l) => (
-              <Row key={l.label} l={l} />
-            ))}
           </div>
         </nav>
 
