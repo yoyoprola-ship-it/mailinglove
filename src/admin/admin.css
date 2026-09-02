@@ -710,6 +710,103 @@ input.adm__input[type='checkbox'] {
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3);
 }
 
+/* crop tool */
+.adm__crop {
+  position: fixed;
+  inset: 0;
+  z-index: 1100;
+  background: rgba(20, 8, 12, 0.85);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+.adm__crop__box {
+  background: #fff;
+  border-radius: 14px;
+  padding: 16px;
+  max-width: min(94vw, 700px);
+  max-height: 94vh;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.5);
+}
+.adm__crop__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 0.95rem;
+  color: var(--rose-900);
+}
+.adm__crop__x {
+  border: none;
+  background: none;
+  font-size: 1.5rem;
+  line-height: 1;
+  color: var(--muted);
+  cursor: pointer;
+}
+.adm__crop__stage {
+  position: relative;
+  align-self: center;
+  overflow: hidden;
+  background: var(--blush);
+  touch-action: none;
+  user-select: none;
+}
+.adm__crop__img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  -webkit-user-drag: none;
+}
+.adm__crop__rect {
+  position: absolute;
+  box-sizing: border-box;
+  border: 1px solid #fff;
+  box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.55);
+  cursor: move;
+}
+.adm__crop__h {
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  background: #fff;
+  border: 1px solid var(--rose);
+  border-radius: 3px;
+}
+.adm__crop__h--nw { left: -7px; top: -7px; cursor: nwse-resize; }
+.adm__crop__h--ne { right: -7px; top: -7px; cursor: nesw-resize; }
+.adm__crop__h--se { right: -7px; bottom: -7px; cursor: nwse-resize; }
+.adm__crop__h--sw { left: -7px; bottom: -7px; cursor: nesw-resize; }
+.adm__crop__h--n { left: calc(50% - 7px); top: -7px; cursor: ns-resize; }
+.adm__crop__h--s { left: calc(50% - 7px); bottom: -7px; cursor: ns-resize; }
+.adm__crop__h--e { right: -7px; top: calc(50% - 7px); cursor: ew-resize; }
+.adm__crop__h--w { left: -7px; top: calc(50% - 7px); cursor: ew-resize; }
+.adm__crop__lock {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.85rem;
+  color: var(--text-dark);
+}
+.adm__crop__foot {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.adm__crop__spacer {
+  flex: 1;
+}
+.adm__crop__dims {
+  font-size: 0.8rem;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
 /* support chat */
 .adm__tab {
   position: relative;

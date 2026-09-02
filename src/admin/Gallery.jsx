@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { api } from './api'
+import CropModal from './CropModal'
 
 const EMPTY_NEW = { type: '', sub: '', title: '', file: null }
 
@@ -13,6 +14,8 @@ export default function Gallery({ focusId, onFocusHandled }) {
   const [adding, setAdding] = useState(false)
   const [nw, setNw] = useState(EMPTY_NEW)
   const [creating, setCreating] = useState(false)
+  const [rev, setRev] = useState(0) // bumped after any image change, to bust the <img> cache
+  const [cropCard, setCropCard] = useState(null)
   const focusRef = useRef(null)
 
   async function load() {
@@ -79,6 +82,7 @@ export default function Gallery({ focusId, onFocusHandled }) {
       })
       const d = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(d.error || 'Upload failed.')
+      setRev((r) => r + 1)
       await load()
     } catch (e) {
       setError(e.message)
@@ -88,10 +92,14 @@ export default function Gallery({ focusId, onFocusHandled }) {
   }
 
   async function revert(card) {
-    if (!confirm('Remove the uploaded hi-res file and go back to the placeholder?')) return
+    const msg = card.custom
+      ? 'Discard the crop and go back to the image you uploaded for this card?'
+      : 'Remove the uploaded file and go back to the original image?'
+    if (!confirm(msg)) return
     setBusyId(card.id)
     try {
       await api.delete(`/api/admin/catalog/${card.id}/image`)
+      setRev((r) => r + 1)
       await load()
     } catch (e) {
       setError(e.message)
@@ -301,7 +309,12 @@ export default function Gallery({ focusId, onFocusHandled }) {
             key={c.id}
             ref={c.id === focusId ? focusRef : null}
           >
-            <img className="adm__gimg" src={c.image} alt={c.title} loading="lazy" />
+            <img
+              className="adm__gimg"
+              src={`${c.image}?v=${rev}`}
+              alt={c.title}
+              loading="lazy"
+            />
             <div className="adm__gbody">
               <div className="adm__gtitle">{c.title}</div>
               <div className="adm__gtags">
@@ -347,7 +360,14 @@ export default function Gallery({ focusId, onFocusHandled }) {
                         onChange={(e) => upload(c, e.target.files?.[0])}
                       />
                     </label>
-                    {c.hires && !c.custom && (
+                    <button
+                      className="adm__chip"
+                      disabled={busyId === c.id}
+                      onClick={() => setCropCard(c)}
+                    >
+                      Crop
+                    </button>
+                    {c.hires && (
                       <button
                         className="adm__chip"
                         disabled={busyId === c.id}
@@ -371,6 +391,18 @@ export default function Gallery({ focusId, onFocusHandled }) {
         ))}
         {!cards.length && <p className="adm__muted">No designs.</p>}
       </div>
+
+      {cropCard && (
+        <CropModal
+          card={{ ...cropCard, image: `${cropCard.image}?v=${rev}` }}
+          onClose={() => setCropCard(null)}
+          onDone={async () => {
+            setCropCard(null)
+            setRev((r) => r + 1)
+            await load()
+          }}
+        />
+      )}
     </div>
   )
 }
