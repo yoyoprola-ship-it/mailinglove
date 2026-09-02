@@ -33,6 +33,12 @@ export async function hasHiRes(postcardId) {
   return Boolean((await overrides())[postcardId])
 }
 
+// Ids of every card that currently has an admin-uploaded / cropped image,
+// so the storefront can route just those through the image proxy.
+export async function hiResIds() {
+  return new Set(Object.keys(await overrides()))
+}
+
 export async function uploadHiRes(postcardId, buffer, contentType) {
   if (!(await getPostcard(postcardId))) return { ok: false, error: 'Unknown postcard.' }
   const ext = EXT[contentType]
@@ -83,7 +89,9 @@ export async function streamImage(postcardId, res) {
   try {
     const buf = await downloadFile(src.path)
     res.setHeader('Content-Type', src.contentType || 'application/octet-stream')
-    res.setHeader('Cache-Control', 'private, max-age=60')
+    // Catalog art, not per-user — let the CDN hold it so a crop doesn't
+    // mean every visitor hits Cloud Run for the file.
+    res.setHeader('Cache-Control', 'public, max-age=300')
     res.end(buf)
   } catch (err) {
     console.error('[assets] stream failed:', err?.message || err)

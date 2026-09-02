@@ -56,7 +56,7 @@ import {
   validateCustomPostcard,
   generateCustomPostcard,
 } from './server/customPostcard.js'
-import { streamImage, adminCatalog, uploadHiRes, removeHiRes } from './server/assets.js'
+import { streamImage, adminCatalog, uploadHiRes, removeHiRes, hiResIds } from './server/assets.js'
 import {
   getMergedCatalog,
   addPostcard,
@@ -308,7 +308,11 @@ app.get('/api/site-config', async (req, res) => {
 app.get('/api/catalog', async (req, res) => {
   try {
     res.setHeader('Cache-Control', 'public, max-age=60')
-    res.json(await getMergedCatalog())
+    const [cat, overridden] = await Promise.all([getMergedCatalog(), hiResIds()])
+    const postcards = cat.postcards.map((p) =>
+      overridden.has(p.id) ? { ...p, image: `/api/postcard-image/${p.id}` } : p
+    )
+    res.json({ ...cat, postcards })
   } catch (err) {
     console.error('[catalog] merged read failed:', err?.message || err)
     res.status(500).json({ error: 'Could not load the catalog.' })
