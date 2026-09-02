@@ -5,11 +5,22 @@ import Profile from './Profile'
 import Cart from './Cart'
 import Orders from './Orders'
 import SupportChat from '../components/SupportChat'
+import MenuDrawer from '../sections/MenuDrawer'
 import './account.css'
 
 const params = new URLSearchParams(window.location.search)
 const addParam = params.get('add') || ''
 const tabParam = params.get('tab') || ''
+
+// From the account pages the menu links jump back to the storefront.
+const goHome = (id) => {
+  window.location.href = `/#${id}`
+}
+const goCategory = (type, sub) => {
+  const q = new URLSearchParams({ type })
+  if (sub) q.set('sub', sub)
+  window.location.href = `/?${q.toString()}#postcards`
+}
 
 export default function AccountApp() {
   const [state, setState] = useState('loading') // loading | out | in
@@ -18,6 +29,23 @@ export default function AccountApp() {
     addParam || tabParam === 'cart' ? 'cart' : tabParam === 'orders' ? 'orders' : 'profile'
   )
   const [cartCount, setCartCount] = useState(0)
+  const [menuOpen, setMenuOpen] = useState(false)
+  const [flags, setFlags] = useState({ photoPrint: true, postcardGen: true, photoRestore: true })
+
+  useEffect(() => {
+    fetch('/api/site-config')
+      .then((r) => r.json())
+      .then((c) =>
+        setFlags({
+          photoPrint:
+            Boolean(c.photoPrintEnabled) &&
+            (c.photoPrintFormats10?.length || 0) + (c.photoPrintFormatsCatalog?.length || 0) > 0,
+          postcardGen: Boolean(c.postcardDesignEnabled),
+          photoRestore: Boolean(c.photoRedesignEnabled),
+        })
+      )
+      .catch(() => {})
+  }, [])
 
   async function refresh() {
     try {
@@ -42,15 +70,45 @@ export default function AccountApp() {
   return (
     <div className="acc">
       <header className="acc__top">
-        <a className="acc__brand" href="/" aria-label="MailingLove — home">
-          <img src="/logo.png" alt="MailingLove" width="631" height="200" />
-        </a>
+        <div className="acc__top-left">
+          <button
+            className="site-nav__burger"
+            onClick={() => setMenuOpen(true)}
+            aria-label="Open menu"
+          >
+            <span />
+            <span />
+            <span />
+          </button>
+          <a className="acc__brand" href="/" aria-label="MailingLove — home">
+            <img src="/logo.png" alt="MailingLove" width="631" height="200" />
+          </a>
+        </div>
         {state === 'in' && (
           <button className="acc__link" onClick={logout}>
             Sign out
           </button>
         )}
       </header>
+
+      <MenuDrawer
+        open={menuOpen}
+        onClose={() => setMenuOpen(false)}
+        onNavigate={goCategory}
+        onGo={goHome}
+        onAccount={() => {
+          setMenuOpen(false)
+          setTab('profile')
+        }}
+        onCart={() => {
+          setMenuOpen(false)
+          setTab('cart')
+        }}
+        cartCount={cartCount}
+        showPhotoPrint={flags.photoPrint}
+        showPostcardGen={flags.postcardGen}
+        showPhotoRestore={flags.photoRestore}
+      />
 
       <main className="acc__main">
         {state === 'loading' && <p className="acc__muted">Loading…</p>}

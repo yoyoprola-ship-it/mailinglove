@@ -17,6 +17,14 @@ import './App.css'
 
 const countCards = (items) => items.reduce((n, i) => n + (i.qty || 1), 0)
 
+// ?type=&sub= lets the menu (incl. from the account pages) deep-link into
+// a postcard category.
+const urlParams = new URLSearchParams(window.location.search)
+const initialFilter = {
+  type: urlParams.get('type') || 'birthday',
+  sub: urlParams.get('sub') || null,
+}
+
 export default function App() {
   // The AI sections are shown only while the admin has each one enabled.
   // Fail open if the check errors.
@@ -28,7 +36,7 @@ export default function App() {
   const [perPage, setPerPage] = useState(25)
   const [postcardSizes, setPostcardSizes] = useState(null)
   const [postcardPriceCents, setPostcardPriceCents] = useState(0)
-  const [pcFilter, setPcFilter] = useState({ type: 'birthday', sub: null })
+  const [pcFilter, setPcFilter] = useState(initialFilter)
   const [signedIn, setSignedIn] = useState(false)
   const [cartItems, setCartItems] = useState([])
   const [toast, setToast] = useState('')
@@ -62,6 +70,13 @@ export default function App() {
         }
       })
       .catch(() => {})
+
+    // Arrived from a "browse <category>" link — settle the scroll on the
+    // postcards section once the page has laid out.
+    if (urlParams.get('type')) {
+      const t = setTimeout(() => scrollToId('postcards'), 250)
+      return () => clearTimeout(t)
+    }
   }, [])
 
   const cartCount = countCards(cartItems)

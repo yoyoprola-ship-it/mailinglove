@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import Icon from '../components/Icon'
 import catalog from '../data/postcards.json'
+import './MenuDrawer.css'
 
 // Slide-in menu: the main pages first, then the postcard categories
 // (each type expands to its subcategories).
