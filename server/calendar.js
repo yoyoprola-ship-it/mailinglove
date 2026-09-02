@@ -34,27 +34,29 @@ export function validateCalendar(input = {}, cfg = {}) {
 
 export function buildCalendarPrompt({ year, scene, photoCount }) {
   const setting = scene
-    ? `Set the whole design in this world: ${scene}. Build the colour palette, textures and decorative motifs from that scene.`
+    ? `Theme the whole design around this world: ${scene}. Draw the colour palette, textures and decorative motifs from that scene.`
     : `Choose one cohesive, imaginative themed world (nature, cosmic, seasonal or whimsical) and build the whole design around it.`
 
   const one = photoCount === 1
-  const photos = [
-    one
-      ? `Include the one provided photograph in the design.`
-      : `Include all ${photoCount} provided photographs in the design.`,
-    `Do NOT crop, zoom into, cut off, stretch, recolour or otherwise alter the photographs — each one must appear complete and photorealistic, exactly as supplied.`,
-    `Only build a decorative frame around each photo — an ornate photo frame, polaroid, taped snapshot or vignette with a soft shadow and a border/style drawn from the scene — and place the framed photos creatively within the layout at varied sizes and slight angles so they feel part of the artwork, never pasted flat on top.`,
-  ].join(' ')
+  const n = one ? 'the one' : `all ${photoCount}`
 
   return [
-    `A creative, print-ready 8 by 10 inch PORTRAIT wall-calendar poster for the year ${year}.`,
+    `A creative, print-ready PORTRAIT wall-calendar poster (tall 2:3 canvas) for the year ${year}.`,
+
+    // --- hard constraint 1: nothing outside the canvas ---
+    `ABSOLUTE RULE — KEEP EVERYTHING INSIDE THE FRAME: leave a clear empty margin of at least 8% on every side of the poster. No date number, weekday letter, month name, grid line, photo, frame, decoration or border may touch, overlap or extend past any edge of the poster. Every one of the twelve month grids must show its complete 6-row date grid fully within the poster. If space runs short, shrink the month grids and the artwork — never let anything spill outside the canvas or off the bottom of a month.`,
+
+    // --- hard constraint 2: photos untouched ---
+    `ABSOLUTE RULE — DO NOT ALTER THE SUPPLIED PHOTOS: reproduce ${n} provided photograph(s) in full, every edge visible, nothing cut off, not re-framed, not zoomed, not cropped, not stretched, not recoloured, not covered — each stays exactly as supplied and fully photorealistic. Each photo is a small element: it occupies at most a quarter of the poster width, sits well inside the margins, and has a visible gap between the photo and its frame. Give each photo a decorative frame (ornate frame, polaroid, taped snapshot or vignette with a soft shadow, styled from the scene) and place the framed photos at varied sizes and slight angles, woven into the artwork, never pasted flat on top and never bleeding off an edge.`,
+
     setting,
-    `Show all twelve months of ${year} — January through December — as twelve month blocks arranged in a neat, balanced grid.`,
-    `Each month's NAME is large, decorative and clearly readable. Under it, a real calendar grid with weekday column headers and the correct date numbers, all crisp, high-contrast and easily legible even at small size.`,
-    photos,
-    `Add a few short, warm, creative touches of hand-lettered text that fit the theme, but keep the month names, weekdays and dates the clear focus.`,
-    `CRITICAL: the entire composition — every month block, all photos, all text and the border — must sit fully inside the 8×10 canvas with generous safe margins on all sides. Nothing may be cropped, cut off or run past the edges.`,
-    `No watermark, no signature, no rogue gibberish text.`,
+
+    // --- the calendar content ---
+    `Lay out all twelve months of ${year} — January through December — as twelve tidy month blocks in a balanced grid with equal gutters.`,
+    `Each block: the MONTH NAME large, decorative and clearly readable at the top; below it a real calendar grid with a row of weekday column headers (Sun–Sat) and the correct date numbers for ${year}, every number crisp, high-contrast and legible, none touching its neighbours or the block edge.`,
+    `A few short warm hand-lettered touches that fit the theme are welcome, but the month names, weekdays and dates stay the clear focus and must remain fully readable.`,
+
+    `No watermark, no signature, no gibberish text.`,
   ].join(' ')
 }
 
@@ -63,7 +65,7 @@ export async function generateCalendar(openai, calendarCfg, value, images = []) 
   const base = {
     model: calendarCfg.model,
     prompt: buildCalendarPrompt(value),
-    size: '1024x1536', // portrait, ~8×10 ratio
+    size: '1024x1536', // tallest portrait the API offers
     quality: calendarCfg.quality,
   }
   const result = images.length
