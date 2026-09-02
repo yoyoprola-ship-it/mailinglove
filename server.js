@@ -56,6 +56,7 @@ import {
   validateCustomPostcard,
   generateCustomPostcard,
 } from './server/customPostcard.js'
+import { validateCalendar, generateCalendar } from './server/calendar.js'
 import { streamImage, adminCatalog } from './server/assets.js'
 import {
   getMergedCatalog,
@@ -247,6 +248,14 @@ const postcardLimiter = rateLimit({
   message: { error: 'Too many requests — try again in a few minutes.' },
 })
 
+const calendarLimiter = rateLimit({
+  windowMs: RATE_WINDOW_MS,
+  limit: async () => (await getConfig()).calendar.rateLimitMax,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many requests — try again in a few minutes.' },
+})
+
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   limit: 20,
@@ -302,6 +311,9 @@ app.get('/api/site-config', async (req, res) => {
       h: f.h,
       priceCents: f.priceCents,
     })),
+    calendarEnabled: cfg.calendar.enabled,
+    calendarYear: cfg.calendar.year,
+    calendarPriceCents: cfg.calendar.priceCents,
   })
 })
 
@@ -378,7 +390,8 @@ app.post('/api/generate', photoLimiter, (req, res) => {
 
 // --- custom postcard (text-to-image) ----------------------------------
 
-app.post('/api/postcard-generate', postcardLimiter, async (req, res) => {
+// Signed-in only — AI generation is a members feature.
+app.post('/api/postcard-generate', requireUser, postcardLimiter, async (req, res) => {
   const { postcard } = await getConfig()
   const { errors, value } = validateCustomPostcard(req.body || {}, postcard.sizes)
   if (errors.length) return res.status(400).json({ error: errors[0], errors })
@@ -406,6 +419,50 @@ app.post('/api/postcard-generate', postcardLimiter, async (req, res) => {
     const status = err?.status && err.status >= 400 && err.status < 600 ? err.status : 500
     res.status(status).json({ error: 'Could not generate the postcard right now. Try again.' })
   }
+})
+
+// --- photo calendar (2027, 8×10, twelve months) ----------------------
+
+// Signed-in only. Up to 4 photos + a background colour → one 8×10 calendar.
+app.post('/api/calendar-generate', requireUser, calendarLimiter, (req, res) => {
+  upload.array('photos', 4)(req, res, async (uploadErr) => {
+    if (uploadErr) return res.status(400).json({ error: uploadErr.message })
+    try {
+      const { calendar } = await getConfig()
+      const files = req.files || []
+      const { errors, value } = validateCalendar(
+        { bg: req.body.bg, photoCount: files.length },
+        calendar
+      )
+      if (errors.length) return res.status(400).json({ error: errors[0], errors })
+
+      if (!openai) {
+        return res
+          .status(503)
+          .json({ error: 'Image generation is not configured yet. Set OPENAI_API_KEY.' })
+      }
+      if (!calendar.enabled) {
+        return res.status(503).json({ error: 'Calendar generation is paused right now.' })
+      }
+
+      const images = await Promise.all(
+        files.map((f) =>
+          toFile(f.buffer, f.originalname || 'photo.png', { type: f.mimetype })
+        )
+      )
+      const { b64, usage } = await generateCalendar(openai, calendar, value, images)
+      if (!b64) return res.status(502).json({ error: 'The model returned no image. Try again.' })
+      console.log(
+        `[calendar-generate] year=${value.year} bg=${value.bg} photos=${value.photoCount} ` +
+          `model=${calendar.model} quality=${calendar.quality} usage=${JSON.stringify(usage)}`
+      )
+      res.json({ image: imageDataUrl(b64) })
+    } catch (err) {
+      console.error('[calendar-generate] failed:', err?.message || err)
+      const status = err?.status && err.status >= 400 && err.status < 600 ? err.status : 500
+      res.status(status).json({ error: 'Could not generate the calendar right now. Try again.' })
+    }
+  })
 })
 
 // --- visit tracking -----------------------------------------------------
@@ -803,6 +860,49 @@ app.post('/api/cart/custom-postcard', requireUser, (req, res) => {
       res.json({ items: result.cart })
     } catch (err) {
       console.error('[cart] custom postcard add failed:', err?.message || err)
+      res.status(500).json({ error: 'Could not add to cart.' })
+    }
+  })
+})
+
+// Add an AI-generated photo calendar (rendered by /api/calendar-generate).
+app.post('/api/cart/calendar', requireUser, (req, res) => {
+  photoPrintUpload.single('image')(req, res, async (uploadErr) => {
+    if (uploadErr) return res.status(400).json({ error: uploadErr.message })
+    if (!req.file) return res.status(400).json({ error: 'Attach the generated image.' })
+    try {
+      const cfg = await getConfig()
+      if (!cfg.calendar.enabled) {
+        return res.status(403).json({ error: 'Calendars are not available right now.' })
+      }
+      const price = cfg.calendar.priceCents
+      if (!price || price <= 0) {
+        return res.status(400).json({ error: 'Pricing is not set up yet.' })
+      }
+      const label = `${cfg.calendar.year} photo calendar — 8×10 in`
+
+      const saved = await savePhotoPrint({
+        email: req.userEmail,
+        buffer: req.file.buffer,
+        contentType: req.file.mimetype,
+      })
+      if (!saved.ok) return res.status(400).json({ error: saved.error })
+
+      const result = await addPhotoItem(req.userEmail, {
+        photoId: saved.id,
+        storagePath: saved.storagePath,
+        contentType: saved.contentType,
+        formatId: 'calendar-8x10',
+        formatLabel: label,
+        unitPriceCents: price,
+        title: label,
+        width: Number(req.body.width) || 0,
+        height: Number(req.body.height) || 0,
+      })
+      if (!result.ok) return cartErr(res, result)
+      res.json({ items: result.cart })
+    } catch (err) {
+      console.error('[cart] calendar add failed:', err?.message || err)
       res.status(500).json({ error: 'Could not add to cart.' })
     }
   })

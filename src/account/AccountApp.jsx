@@ -30,7 +30,12 @@ export default function AccountApp() {
   )
   const [cartCount, setCartCount] = useState(0)
   const [menuOpen, setMenuOpen] = useState(false)
-  const [flags, setFlags] = useState({ photoPrint: true, postcardGen: true, photoRestore: true })
+  const [flags, setFlags] = useState({
+    photoPrint: true,
+    postcardGen: true,
+    photoRestore: true,
+    calendar: false,
+  })
 
   useEffect(() => {
     fetch('/api/site-config')
@@ -42,6 +47,7 @@ export default function AccountApp() {
             (c.photoPrintFormats10?.length || 0) + (c.photoPrintFormatsCatalog?.length || 0) > 0,
           postcardGen: Boolean(c.postcardDesignEnabled),
           photoRestore: Boolean(c.photoRedesignEnabled),
+          calendar: Boolean(c.calendarEnabled),
         })
       )
       .catch(() => {})
@@ -115,6 +121,7 @@ export default function AccountApp() {
         showPhotoPrint={flags.photoPrint}
         showPostcardGen={flags.postcardGen}
         showPhotoRestore={flags.photoRestore}
+        showCalendar={flags.calendar}
       />
 
       <main className="acc__main">

@@ -1008,6 +1008,122 @@
   font-weight: 500;
 }
 
+/* ---------- photo calendar maker ---------- */
+
+.cal__photos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.cal__photo {
+  position: relative;
+  width: 74px;
+  height: 74px;
+  border-radius: 10px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.cal__photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.cal__photo button {
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  width: 20px;
+  height: 20px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(20, 8, 12, 0.72);
+  color: #fff;
+  font-size: 0.9rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.cal__add {
+  width: 74px;
+  height: 74px;
+  border: 1px dashed rgba(255, 255, 255, 0.35);
+  border-radius: 10px;
+  background: none;
+  color: rgba(255, 255, 255, 0.8);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.cal__add:hover {
+  border-color: var(--rose-light);
+  color: #fff;
+}
+
+.cal__swatches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.cal__swatch {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  padding: 0;
+  cursor: pointer;
+  transition:
+    transform 0.12s ease,
+    border-color 0.12s ease;
+}
+
+.cal__swatch:hover {
+  transform: scale(1.08);
+}
+
+.cal__swatch.is-active {
+  border-color: #fff;
+  box-shadow: 0 0 0 2px var(--rose-light);
+}
+
+.cal__swatch--custom {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.cal__swatch--custom input {
+  position: absolute;
+  inset: -6px;
+  width: calc(100% + 12px);
+  height: calc(100% + 12px);
+  border: none;
+  padding: 0;
+  background: none;
+  cursor: pointer;
+  opacity: 0;
+}
+
+.cal__swatch--custom::after {
+  content: '+';
+  color: #fff;
+  font-weight: 700;
+  mix-blend-mode: difference;
+}
+
 .section--dark .studio__placeholder,
 .section--dark .studio__note {
   color: rgba(255, 255, 255, 0.7);

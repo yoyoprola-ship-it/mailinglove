@@ -8,6 +8,7 @@ import Restore from './sections/Restore'
 import ServiceChooser from './sections/ServiceChooser'
 import Postcards from './sections/Postcards'
 import CustomPostcard from './sections/CustomPostcard'
+import CalendarMaker from './sections/CalendarMaker'
 import PhotoPrint from './sections/PhotoPrint'
 import Products from './sections/Products'
 import Footer from './sections/Footer'
@@ -36,6 +37,9 @@ export default function App() {
   const [perPage, setPerPage] = useState(25)
   const [postcardSizes, setPostcardSizes] = useState(null)
   const [postcardPriceCents, setPostcardPriceCents] = useState(0)
+  const [calendarEnabled, setCalendarEnabled] = useState(false)
+  const [calendarYear, setCalendarYear] = useState(2027)
+  const [calendarPriceCents, setCalendarPriceCents] = useState(0)
   const [pcFilter, setPcFilter] = useState(initialFilter)
   const [signedIn, setSignedIn] = useState(false)
   const [cartItems, setCartItems] = useState([])
@@ -56,6 +60,9 @@ export default function App() {
         if (Number.isFinite(c.postcardsPerPage)) setPerPage(c.postcardsPerPage)
         if (Array.isArray(c.postcardSizes) && c.postcardSizes.length) setPostcardSizes(c.postcardSizes)
         if (Number.isFinite(c.postcardPriceCents)) setPostcardPriceCents(c.postcardPriceCents)
+        setCalendarEnabled(Boolean(c.calendarEnabled))
+        if (Number.isFinite(c.calendarYear)) setCalendarYear(c.calendarYear)
+        if (Number.isFinite(c.calendarPriceCents)) setCalendarPriceCents(c.calendarPriceCents)
       })
       .catch(() => {
         setPhotoEnabled(true)
@@ -201,6 +208,7 @@ export default function App() {
         showPhotoPrint={hasPhotoPrint}
         showPostcardGen={postcardEnabled}
         showPhotoRestore={Boolean(photoEnabled)}
+        showCalendar={calendarEnabled}
       />
       <ServiceChooser showPhotoPrint={hasPhotoPrint} showPostcards onGo={scrollToId} />
       {hasPhotoPrint && (
@@ -224,6 +232,15 @@ export default function App() {
         <CustomPostcard
           sizes={postcardSizes}
           priceCents={postcardPriceCents}
+          signedIn={signedIn}
+          onAdded={(items) => Array.isArray(items) && setCartItems(items)}
+          onRequireAuth={() => setAuthCtx({ mode: 'account' })}
+        />
+      )}
+      {calendarEnabled && (
+        <CalendarMaker
+          year={calendarYear}
+          priceCents={calendarPriceCents}
           signedIn={signedIn}
           onAdded={(items) => Array.isArray(items) && setCartItems(items)}
           onRequireAuth={() => setAuthCtx({ mode: 'account' })}

@@ -62,6 +62,14 @@ const DEFAULTS = {
     formats10: DEFAULT_PHOTO_FORMATS_10,
     formatsCatalog: DEFAULT_PHOTO_FORMATS_CATALOG,
   },
+  calendar: {
+    enabled: false, // off until the admin sets a real price
+    model: envModel,
+    quality: envQuality,
+    rateLimitMax: 5,
+    year: 2027,
+    priceCents: 1999, // 8×10 in photo calendar
+  },
 }
 
 export const CURRENCY = 'usd'
@@ -122,6 +130,23 @@ export const CONFIG_SCHEMA = {
       formatsCatalog: {
         type: 'priceformats',
         label: 'Formats — need a catalog envelope (larger, mailed flat)',
+      },
+    },
+  },
+  calendar: {
+    label: 'Photo calendars',
+    hint: 'The "Make a photo calendar" section and /api/calendar-generate. 8×10 in, all twelve months, AI-generated from the customer’s photos.',
+    fields: {
+      enabled: { type: 'bool', label: 'Section enabled' },
+      model: { type: 'enum', values: MODELS, label: 'OpenAI image model' },
+      quality: { type: 'enum', values: QUALITIES, label: 'Image quality' },
+      rateLimitMax: { type: 'int', min: 1, max: 100, label: 'Rate limit — requests / 15 min per IP' },
+      year: { type: 'int', min: 2025, max: 2035, label: 'Calendar year' },
+      priceCents: {
+        type: 'int',
+        min: 0,
+        max: 100000,
+        label: 'Price per calendar (USD cents, e.g. 1999 = $19.99)',
       },
     },
   },
@@ -263,6 +288,18 @@ function migrate(s = {}) {
       ].find((z) => /^\d{5}$/.test(z)) || DEFAULTS.orders.originZip,
     },
     photoprint: migratePhotoprint(s.photoprint || {}),
+    calendar: migrateCalendar(s.calendar || {}),
+  }
+}
+
+function migrateCalendar(c) {
+  return {
+    enabled: pick(boolv(c.enabled), DEFAULTS.calendar.enabled),
+    model: pick(enumv(c.model, MODELS), DEFAULTS.calendar.model),
+    quality: pick(enumv(c.quality, QUALITIES), DEFAULTS.calendar.quality),
+    rateLimitMax: pick(intv(c.rateLimitMax, 1, 100), DEFAULTS.calendar.rateLimitMax),
+    year: pick(intv(c.year, 2025, 2035), DEFAULTS.calendar.year),
+    priceCents: pick(intv(c.priceCents, 0, 100000), DEFAULTS.calendar.priceCents),
   }
 }
 

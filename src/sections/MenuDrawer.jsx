@@ -21,6 +21,7 @@ export default function MenuDrawer({
   showPhotoPrint = false,
   showPostcardGen = false,
   showPhotoRestore = false,
+  showCalendar = false,
 }) {
   const [expanded, setExpanded] = useState('')
 
@@ -53,6 +54,11 @@ export default function MenuDrawer({
       label: 'Generate a postcard',
       icon: 'sparkles',
       fn: () => goto('custom-postcard'),
+    },
+    showCalendar && {
+      label: 'Make a photo calendar',
+      icon: 'calendar',
+      fn: () => goto('calendar'),
     },
     showPhotoRestore && {
       label: 'Restore old photos',

@@ -80,6 +80,10 @@ export default function CustomPostcard({
 
   async function handleSubmit(e) {
     e.preventDefault()
+    if (!signedIn) {
+      onRequireAuth?.()
+      return
+    }
     if (!name.trim()) {
       setError('Add the name first.')
       return
@@ -233,7 +237,11 @@ export default function CustomPostcard({
                 type="submit"
                 disabled={status === 'working'}
               >
-                {status === 'working' ? 'Generating…' : 'Generate my postcard'}
+                {status === 'working'
+                  ? 'Generating…'
+                  : signedIn
+                    ? 'Generate my postcard'
+                    : 'Sign in to generate'}
               </button>
               {status === 'working' && (
                 <p className="studio__note">This takes 15–30 seconds.</p>
