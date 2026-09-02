@@ -431,7 +431,7 @@ app.post('/api/calendar-generate', requireUser, calendarLimiter, (req, res) => {
       const { calendar } = await getConfig()
       const files = req.files || []
       const { errors, value } = validateCalendar(
-        { bg: req.body.bg, photoCount: files.length },
+        { scene: req.body.scene, photoCount: files.length },
         calendar
       )
       if (errors.length) return res.status(400).json({ error: errors[0], errors })
@@ -453,7 +453,7 @@ app.post('/api/calendar-generate', requireUser, calendarLimiter, (req, res) => {
       const { b64, usage } = await generateCalendar(openai, calendar, value, images)
       if (!b64) return res.status(502).json({ error: 'The model returned no image. Try again.' })
       console.log(
-        `[calendar-generate] year=${value.year} bg=${value.bg} photos=${value.photoCount} ` +
+        `[calendar-generate] year=${value.year} scene="${value.scene || '-'}" photos=${value.photoCount} ` +
           `model=${calendar.model} quality=${calendar.quality} usage=${JSON.stringify(usage)}`
       )
       res.json({ image: imageDataUrl(b64) })

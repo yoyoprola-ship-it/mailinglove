@@ -2,18 +2,6 @@ import { useEffect, useRef, useState } from 'react'
 import Reveal from '../components/Reveal'
 import Icon from '../components/Icon'
 
-const SWATCHES = [
-  { name: 'Cream', hex: '#fff6e9' },
-  { name: 'Blush', hex: '#fbe6ec' },
-  { name: 'Sage', hex: '#dce7da' },
-  { name: 'Sky', hex: '#dce9f5' },
-  { name: 'Lavender', hex: '#e7e0f2' },
-  { name: 'Terracotta', hex: '#e7b7a3' },
-  { name: 'Gold', hex: '#e9d9a8' },
-  { name: 'Navy', hex: '#1e2a44' },
-  { name: 'Charcoal', hex: '#2b2b2e' },
-  { name: 'White', hex: '#ffffff' },
-]
 const MAX = 4
 const money = (c) => `$${((c || 0) / 100).toFixed(2)}`
 let uid = 0
@@ -26,12 +14,13 @@ export default function CalendarMaker({
   onRequireAuth,
 }) {
   const [photos, setPhotos] = useState([]) // { id, file, url }
-  const [bg, setBg] = useState(SWATCHES[0].hex)
+  const [scene, setScene] = useState('')
   const [status, setStatus] = useState('idle') // idle | working | done | error
   const [result, setResult] = useState('')
   const [error, setError] = useState('')
   const [cartState, setCartState] = useState('idle') // idle | adding | done
   const [cartError, setCartError] = useState('')
+  const [dragOver, setDragOver] = useState(false)
   const fileRef = useRef(null)
   const photosRef = useRef(photos)
   photosRef.current = photos
@@ -61,6 +50,12 @@ export default function CalendarMaker({
     })
   }
 
+  function onDrop(e) {
+    e.preventDefault()
+    setDragOver(false)
+    addFiles(e.dataTransfer?.files)
+  }
+
   async function generate() {
     if (!signedIn) {
       onRequireAuth?.()
@@ -76,7 +71,7 @@ export default function CalendarMaker({
     try {
       const body = new FormData()
       photos.forEach((p) => body.append('photos', p.file))
-      body.append('bg', bg)
+      if (scene.trim()) body.append('scene', scene.trim())
       const res = await fetch('/api/calendar-generate', {
         method: 'POST',
         credentials: 'same-origin',
@@ -138,9 +133,10 @@ export default function CalendarMaker({
         </Reveal>
         <Reveal delay={80}>
           <p className="section__lead section__lead--light">
-            Upload your photos, pick a background colour, and AI lays out an
-            8×10&nbsp;in wall calendar with all twelve months of {year}. Printed and
-            mailed like everything else.
+            Add your photos and describe the world you want them in — a field of
+            wildflowers, a galaxy, a children&rsquo;s park. AI builds a creative
+            8×10&nbsp;in wall calendar with all twelve months of {year}, your photos
+            framed into the artwork. Printed and mailed like everything else.
           </p>
         </Reveal>
 
@@ -148,26 +144,53 @@ export default function CalendarMaker({
           <div className="studio">
             <div className="studio__panel cpc__form">
               <label className="studio__label">
-                Your photos <span className="cpc__opt">(1–{MAX})</span>
+                Your photos <span className="cpc__opt">(1–{MAX} — each gets framed into the design)</span>
               </label>
-              <div className="cal__photos">
-                {photos.map((p) => (
-                  <div className="cal__photo" key={p.id}>
-                    <img src={p.url} alt="" />
-                    <button type="button" onClick={() => removePhoto(p.id)} aria-label="Remove">
-                      ×
-                    </button>
-                  </div>
-                ))}
-                {photos.length < MAX && (
+
+              <div
+                className={`cal__drop${dragOver ? ' is-over' : ''}`}
+                onDragOver={(e) => {
+                  e.preventDefault()
+                  setDragOver(true)
+                }}
+                onDragLeave={() => setDragOver(false)}
+                onDrop={onDrop}
+              >
+                {photos.length === 0 ? (
                   <button
                     type="button"
-                    className="cal__add"
+                    className="cal__drop-cta"
                     onClick={() => fileRef.current?.click()}
                   >
-                    <Icon name="upload" size={20} />
-                    <span>Add</span>
+                    <Icon name="upload" size={30} />
+                    <strong>Upload your photos</strong>
+                    <span>Drag them here, or click to choose · JPG or PNG · up to {MAX}</span>
                   </button>
+                ) : (
+                  <div className="cal__grid">
+                    {photos.map((p) => (
+                      <div className="cal__thumb" key={p.id}>
+                        <img src={p.url} alt="" />
+                        <button
+                          type="button"
+                          onClick={() => removePhoto(p.id)}
+                          aria-label="Remove photo"
+                        >
+                          ×
+                        </button>
+                      </div>
+                    ))}
+                    {photos.length < MAX && (
+                      <button
+                        type="button"
+                        className="cal__thumb cal__thumb--add"
+                        onClick={() => fileRef.current?.click()}
+                      >
+                        <Icon name="upload" size={20} />
+                        <span>Add</span>
+                      </button>
+                    )}
+                  </div>
                 )}
               </div>
               <input
@@ -182,31 +205,17 @@ export default function CalendarMaker({
                 }}
               />
 
-              <label className="studio__label">Background colour</label>
-              <div className="cal__swatches">
-                {SWATCHES.map((s) => (
-                  <button
-                    type="button"
-                    key={s.hex}
-                    title={s.name}
-                    className={`cal__swatch${bg === s.hex ? ' is-active' : ''}`}
-                    style={{ background: s.hex }}
-                    onClick={() => setBg(s.hex)}
-                  />
-                ))}
-                <label
-                  className="cal__swatch cal__swatch--custom"
-                  title="Custom colour"
-                  style={{ background: bg }}
-                >
-                  <input
-                    type="color"
-                    value={bg}
-                    onChange={(e) => setBg(e.target.value)}
-                    aria-label="Custom background colour"
-                  />
-                </label>
-              </div>
+              <label className="studio__label" htmlFor="cal-scene">
+                Scene / atmosphere <span className="cpc__opt">(optional — AI picks one if blank)</span>
+              </label>
+              <input
+                id="cal-scene"
+                className="cpc__input"
+                maxLength={120}
+                value={scene}
+                onChange={(e) => setScene(e.target.value)}
+                placeholder="e.g. a field of wildflowers, a starry galaxy, a children's park"
+              />
 
               <button
                 className="btn btn--primary"

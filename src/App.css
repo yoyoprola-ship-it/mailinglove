@@ -1010,118 +1010,97 @@
 
 /* ---------- photo calendar maker ---------- */
 
-.cal__photos {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  margin-bottom: 6px;
+.cal__drop {
+  border: 2px dashed rgba(255, 255, 255, 0.32);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.05);
+  padding: 14px;
+  margin-bottom: 4px;
+  transition:
+    border-color 0.15s ease,
+    background 0.15s ease;
 }
 
-.cal__photo {
+.cal__drop.is-over {
+  border-color: var(--rose-light);
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.cal__drop-cta {
+  width: 100%;
+  border: none;
+  background: none;
+  cursor: pointer;
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 22px 12px;
+}
+
+.cal__drop-cta strong {
+  font-size: 1rem;
+}
+
+.cal__drop-cta span {
+  font-size: 0.82rem;
+  color: rgba(255, 255, 255, 0.65);
+}
+
+.cal__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(92px, 1fr));
+  gap: 10px;
+}
+
+.cal__thumb {
   position: relative;
-  width: 74px;
-  height: 74px;
+  aspect-ratio: 1;
   border-radius: 10px;
   overflow: hidden;
   background: rgba(255, 255, 255, 0.08);
 }
 
-.cal__photo img {
+.cal__thumb img {
   width: 100%;
   height: 100%;
   object-fit: cover;
   display: block;
 }
 
-.cal__photo button {
+.cal__thumb button:not(.cal__thumb--add) {
   position: absolute;
-  top: 3px;
-  right: 3px;
-  width: 20px;
-  height: 20px;
+  top: 4px;
+  right: 4px;
+  width: 22px;
+  height: 22px;
   border: none;
   border-radius: 50%;
-  background: rgba(20, 8, 12, 0.72);
+  background: rgba(20, 8, 12, 0.75);
   color: #fff;
-  font-size: 0.9rem;
+  font-size: 1rem;
   line-height: 1;
   cursor: pointer;
 }
 
-.cal__add {
-  width: 74px;
-  height: 74px;
-  border: 1px dashed rgba(255, 255, 255, 0.35);
-  border-radius: 10px;
+.cal__thumb--add {
+  border: 1px dashed rgba(255, 255, 255, 0.4);
   background: none;
-  color: rgba(255, 255, 255, 0.8);
+  color: rgba(255, 255, 255, 0.85);
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 3px;
-  font-size: 0.72rem;
+  gap: 4px;
+  font-size: 0.74rem;
   font-weight: 600;
   cursor: pointer;
 }
 
-.cal__add:hover {
+.cal__thumb--add:hover {
   border-color: var(--rose-light);
   color: #fff;
-}
-
-.cal__swatches {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.cal__swatch {
-  width: 30px;
-  height: 30px;
-  border-radius: 50%;
-  border: 2px solid rgba(255, 255, 255, 0.3);
-  padding: 0;
-  cursor: pointer;
-  transition:
-    transform 0.12s ease,
-    border-color 0.12s ease;
-}
-
-.cal__swatch:hover {
-  transform: scale(1.08);
-}
-
-.cal__swatch.is-active {
-  border-color: #fff;
-  box-shadow: 0 0 0 2px var(--rose-light);
-}
-
-.cal__swatch--custom {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  overflow: hidden;
-}
-
-.cal__swatch--custom input {
-  position: absolute;
-  inset: -6px;
-  width: calc(100% + 12px);
-  height: calc(100% + 12px);
-  border: none;
-  padding: 0;
-  background: none;
-  cursor: pointer;
-  opacity: 0;
-}
-
-.cal__swatch--custom::after {
-  content: '+';
-  color: #fff;
-  font-weight: 700;
-  mix-blend-mode: difference;
 }
 
 .section--dark .studio__placeholder,

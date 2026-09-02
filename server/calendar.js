@@ -1,33 +1,26 @@
-// AI photo calendar: the customer uploads a few photos, picks a background
-// colour, and we build a controlled prompt for an 8×10 in, twelve-month
-// wall calendar. Like the postcard generator, no free-form text from the
-// customer reaches the model — only a colour and a photo count.
+// AI photo calendar: the customer uploads a few photos and gives a short
+// scene reference ("a field of wildflowers", "a galaxy", "a children's
+// park"). We build a controlled prompt for a creative 8×10 in, twelve-month
+// wall calendar. Like the postcard generator, the customer's text is
+// sanitised and length-capped — nothing free-form reaches the model raw.
 
-const NAMED = {
-  cream: '#fff6e9',
-  blush: '#fbe6ec',
-  sage: '#dce7da',
-  sky: '#dce9f5',
-  lavender: '#e7e0f2',
-  terracotta: '#e7b7a3',
-  gold: '#e9d9a8',
-  charcoal: '#2b2b2e',
-  navy: '#1e2a44',
-  white: '#ffffff',
+const SCENE_MAX = 120
+
+// Keep letters (incl. accents), digits, spaces and mild punctuation. Drop
+// anything that could steer the model.
+function cleanScene(v) {
+  return String(v == null ? '' : v)
+    .replace(/[<>{}[\]|`"\\]/g, ' ')
+    .replace(/[\u0000-\u001f]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, SCENE_MAX)
 }
-
-const isHex = (v) => /^#[0-9a-f]{6}$/i.test(String(v || '').trim())
 
 export function validateCalendar(input = {}, cfg = {}) {
   const errors = []
 
-  let bg = String(input.bg || '').trim().toLowerCase()
-  if (NAMED[bg]) bg = NAMED[bg]
-  if (!isHex(bg)) {
-    errors.push('Pick a background colour.')
-    bg = null
-  }
-
+  const scene = cleanScene(input.scene)
   const photoCount = Math.max(0, Math.min(4, Math.trunc(Number(input.photoCount) || 0)))
   if (!photoCount) errors.push('Add at least one photo.')
 
@@ -35,24 +28,29 @@ export function validateCalendar(input = {}, cfg = {}) {
 
   return {
     errors,
-    value: errors.length ? null : { year, bg, photoCount },
+    value: errors.length ? null : { year, scene, photoCount },
   }
 }
 
-export function buildCalendarPrompt({ year, bg, photoCount }) {
-  const imagery =
+export function buildCalendarPrompt({ year, scene, photoCount }) {
+  const setting = scene
+    ? `Set the whole design in this world: ${scene}. Build the colour palette, textures and decorative motifs from that scene.`
+    : `Choose one cohesive, imaginative themed world (nature, cosmic, seasonal or whimsical) and build the whole design around it.`
+
+  const photos =
     photoCount === 1
-      ? 'Feature the provided photograph prominently as the large header image across the top.'
-      : `Arrange the ${photoCount} provided photographs as a tasteful decorative band or collage across the top and sides, all kept photorealistic and unaltered.`
+      ? `Integrate the one provided photograph into the artwork as a tastefully framed inset — a decorative photo frame, polaroid, or vignette that sits naturally within the scene, with a soft shadow and matching border, not pasted flat on top.`
+      : `Integrate the ${photoCount} provided photographs into the artwork as tastefully framed insets — decorative photo frames, polaroids or vignettes of varied sizes arranged around the layout, each with a soft shadow and a border that matches the scene, blended into the design rather than pasted flat on top. Keep the photos themselves photorealistic and unaltered.`
 
   return [
-    `A polished, print-ready 8 by 10 inch portrait wall calendar poster for the year ${year}.`,
-    `Show all twelve months of ${year} — January through December — as twelve clean, evenly spaced mini month grids arranged in a tidy layout,`,
-    `each grid labelled with its month name and "${year}", with weekday column headers and correctly aligned date numbers.`,
-    imagery,
-    `Solid background colour exactly ${bg}.`,
-    `Elegant modern typography, strong contrast against the background, generous safe margins so nothing is cut off at the edges.`,
-    `No watermark, no signature, no caption text other than the month names, dates and the year.`,
+    `A creative, print-ready 8 by 10 inch PORTRAIT wall-calendar poster for the year ${year}.`,
+    setting,
+    `Show all twelve months of ${year} — January through December — as twelve month blocks arranged in a neat, balanced grid.`,
+    `Each month's NAME is large, decorative and clearly readable. Under it, a real calendar grid with weekday column headers and the correct date numbers, all crisp, high-contrast and easily legible even at small size.`,
+    photos,
+    `Add a few short, warm, creative touches of hand-lettered text that fit the theme, but keep the month names, weekdays and dates the clear focus.`,
+    `CRITICAL: the entire composition — every month block, all photos, all text and the border — must sit fully inside the 8×10 canvas with generous safe margins on all sides. Nothing may be cropped, cut off or run past the edges.`,
+    `No watermark, no signature, no rogue gibberish text.`,
   ].join(' ')
 }
 
