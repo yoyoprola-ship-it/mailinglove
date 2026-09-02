@@ -842,7 +842,9 @@
   width: 100%;
   aspect-ratio: 5 / 7;
   height: auto;
-  object-fit: cover;
+  /* show the whole postcard: fit it to the full height, fill the
+     leftover width with the card background */
+  object-fit: contain;
   display: block;
   background: var(--blush);
 }
