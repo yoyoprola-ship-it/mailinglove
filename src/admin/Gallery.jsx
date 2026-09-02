@@ -91,28 +91,13 @@ export default function Gallery({ focusId, onFocusHandled }) {
     }
   }
 
-  async function revert(card) {
-    const msg = card.custom
-      ? 'Discard the crop and go back to the image you uploaded for this card?'
-      : 'Remove the uploaded file and go back to the original image?'
-    if (!confirm(msg)) return
-    setBusyId(card.id)
-    try {
-      await api.delete(`/api/admin/catalog/${card.id}/image`)
-      setRev((r) => r + 1)
-      await load()
-    } catch (e) {
-      setError(e.message)
-    } finally {
-      setBusyId('')
-    }
-  }
-
   async function removeCard(card) {
-    const msg = card.custom
-      ? `Delete “${card.title}” for good? This removes it from the store and deletes its image.`
-      : `Hide “${card.title}” from the store? You can restore it later.`
-    if (!confirm(msg)) return
+    if (
+      !confirm(
+        `Permanently delete “${card.title}”? This removes it from the store and deletes its image for good — this cannot be undone.`
+      )
+    )
+      return
     setBusyId(card.id)
     setError('')
     try {
@@ -125,11 +110,11 @@ export default function Gallery({ focusId, onFocusHandled }) {
     }
   }
 
-  async function restore(card) {
+  async function toggleHidden(card) {
     setBusyId(card.id)
     setError('')
     try {
-      await api.post(`/api/admin/catalog/${card.id}/restore`)
+      await api.post(`/api/admin/catalog/${card.id}/hidden`, { hidden: !card.hidden })
       await load()
     } catch (e) {
       setError(e.message)
@@ -181,8 +166,8 @@ export default function Gallery({ focusId, onFocusHandled }) {
     <div className="adm__panel">
       <h2 className="adm__h2">Postcard library</h2>
       <p className="adm__muted adm__hint--top">
-        Add or remove designs, download one to print, or upload a higher-quality
-        file to replace it everywhere.
+        Add designs, crop or replace an image (it takes over everywhere at
+        once), hide one from the store, or delete it for good.
       </p>
 
       <button className="adm__btn" onClick={() => setAdding((v) => !v)}>
@@ -311,80 +296,57 @@ export default function Gallery({ focusId, onFocusHandled }) {
           >
             <img
               className="adm__gimg"
-              src={`${c.image}?v=${rev}`}
+              src={`${c.image}&r=${rev}`}
               alt={c.title}
               loading="lazy"
             />
             <div className="adm__gbody">
               <div className="adm__gtitle">{c.title}</div>
-              <div className="adm__gtags">
-                {c.hidden ? (
+              {c.hidden && (
+                <div className="adm__gtags">
                   <span className="adm__gtag">hidden</span>
-                ) : (
-                  <span className={`adm__gtag${c.hires || c.custom ? ' is-hires' : ''}`}>
-                    {c.custom ? 'custom' : c.hires ? 'hi-res on file' : 'placeholder'}
-                  </span>
-                )}
-              </div>
+                </div>
+              )}
               <div className="adm__gactions">
-                {c.hidden ? (
-                  <button
-                    className="adm__chip"
+                <a
+                  className="adm__chip"
+                  href={`${c.image}&download=1`}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  Download
+                </a>
+                <label className="adm__chip adm__chip--file">
+                  {busyId === c.id ? 'Uploading…' : 'Replace'}
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    hidden
                     disabled={busyId === c.id}
-                    onClick={() => restore(c)}
-                  >
-                    Restore
-                  </button>
-                ) : (
-                  <>
-                    <a
-                      className="adm__chip"
-                      href={c.image}
-                      target="_blank"
-                      rel="noreferrer"
-                      download
-                    >
-                      Download
-                    </a>
-                    <label className="adm__chip adm__chip--file">
-                      {busyId === c.id
-                        ? 'Uploading…'
-                        : c.hires || c.custom
-                          ? 'Replace'
-                          : 'Upload hi-res'}
-                      <input
-                        type="file"
-                        accept="image/jpeg,image/png,image/webp,application/pdf"
-                        hidden
-                        disabled={busyId === c.id}
-                        onChange={(e) => upload(c, e.target.files?.[0])}
-                      />
-                    </label>
-                    <button
-                      className="adm__chip"
-                      disabled={busyId === c.id}
-                      onClick={() => setCropCard(c)}
-                    >
-                      Crop
-                    </button>
-                    {c.hires && (
-                      <button
-                        className="adm__chip"
-                        disabled={busyId === c.id}
-                        onClick={() => revert(c)}
-                      >
-                        Revert
-                      </button>
-                    )}
-                    <button
-                      className="adm__chip adm__chip--danger"
-                      disabled={busyId === c.id}
-                      onClick={() => removeCard(c)}
-                    >
-                      {c.custom ? 'Delete' : 'Hide'}
-                    </button>
-                  </>
-                )}
+                    onChange={(e) => upload(c, e.target.files?.[0])}
+                  />
+                </label>
+                <button
+                  className="adm__chip"
+                  disabled={busyId === c.id}
+                  onClick={() => setCropCard(c)}
+                >
+                  Crop
+                </button>
+                <button
+                  className="adm__chip"
+                  disabled={busyId === c.id}
+                  onClick={() => toggleHidden(c)}
+                >
+                  {c.hidden ? 'Show' : 'Hide'}
+                </button>
+                <button
+                  className="adm__chip adm__chip--danger"
+                  disabled={busyId === c.id}
+                  onClick={() => removeCard(c)}
+                >
+                  Delete
+                </button>
               </div>
             </div>
           </div>
@@ -394,7 +356,7 @@ export default function Gallery({ focusId, onFocusHandled }) {
 
       {cropCard && (
         <CropModal
-          card={{ ...cropCard, image: `${cropCard.image}?v=${rev}` }}
+          card={{ ...cropCard, image: `${cropCard.image}&r=${rev}` }}
           onClose={() => setCropCard(null)}
           onDone={async () => {
             setCropCard(null)

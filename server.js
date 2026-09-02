@@ -56,12 +56,13 @@ import {
   validateCustomPostcard,
   generateCustomPostcard,
 } from './server/customPostcard.js'
-import { streamImage, adminCatalog, uploadHiRes, removeHiRes } from './server/assets.js'
+import { streamImage, adminCatalog } from './server/assets.js'
 import {
   getMergedCatalog,
   addPostcard,
   deletePostcard,
-  restorePostcard,
+  setPostcardHidden,
+  replacePostcardImage,
 } from './server/catalog.js'
 import {
   getThread,
@@ -528,24 +529,25 @@ app.post('/api/admin/catalog', requireAdmin, (req, res) => {
   })
 })
 
+// Replace a card's image — used by both "Replace" and the crop tool. The
+// new file overwrites postcards/<id>.<ext> and bumps updatedAt.
 app.post('/api/admin/catalog/:id/image', requireAdmin, (req, res) => {
   hiresUpload.single('image')(req, res, async (uploadErr) => {
     if (uploadErr) return res.status(400).json({ error: uploadErr.message })
     if (!req.file) return res.status(400).json({ error: 'Attach a file.' })
     try {
-      const r = await uploadHiRes(req.params.id, req.file.buffer, req.file.mimetype)
+      const r = await replacePostcardImage(req.params.id, req.file.buffer, req.file.mimetype)
       if (!r.ok) return res.status(400).json({ error: r.error })
-      console.log(`[admin] ${req.adminEmail} uploaded hi-res for ${req.params.id}`)
-      res.json({ hires: true })
+      console.log(`[admin] ${req.adminEmail} replaced image for ${req.params.id}`)
+      res.json({ ok: true, updatedAt: r.updatedAt })
     } catch (err) {
-      console.error('[admin] hi-res upload failed:', err?.message || err)
+      console.error('[admin] image replace failed:', err?.message || err)
       res.status(500).json({ error: 'Upload failed.' })
     }
   })
 })
 
-// Remove a card from the storefront: hide a base card, or delete an
-// admin-created one outright.
+// Permanently delete a postcard (document + image object).
 app.delete('/api/admin/catalog/:id', requireAdmin, async (req, res) => {
   try {
     const r = await deletePostcard(req.params.id)
@@ -558,35 +560,28 @@ app.delete('/api/admin/catalog/:id', requireAdmin, async (req, res) => {
   }
 })
 
-// Bring a hidden base card back.
-app.post('/api/admin/catalog/:id/restore', requireAdmin, async (req, res) => {
+// Hide / show a postcard on the storefront (reversible).
+app.post('/api/admin/catalog/:id/hidden', requireAdmin, async (req, res) => {
   try {
-    const r = await restorePostcard(req.params.id)
+    const r = await setPostcardHidden(req.params.id, Boolean((req.body || {}).hidden))
     if (!r.ok) return res.status(400).json({ error: r.error })
-    console.log(`[admin] ${req.adminEmail} restored postcard ${req.params.id}`)
+    console.log(`[admin] ${req.adminEmail} ${req.body.hidden ? 'hid' : 'showed'} ${req.params.id}`)
     res.json({ ok: true })
   } catch (err) {
-    console.error('[admin] restore postcard failed:', err?.message || err)
-    res.status(500).json({ error: 'Could not restore the postcard.' })
+    console.error('[admin] hide toggle failed:', err?.message || err)
+    res.status(500).json({ error: 'Could not update.' })
   }
 })
 
-app.delete('/api/admin/catalog/:id/image', requireAdmin, async (req, res) => {
-  try {
-    await removeHiRes(req.params.id)
-    res.json({ hires: false })
-  } catch (err) {
-    console.error('[admin] hi-res remove failed:', err?.message || err)
-    res.status(500).json({ error: 'Could not remove.' })
-  }
-})
-
-// Public: current best image for a postcard — the admin-cropped / hi-res
-// file if one exists, otherwise the original bundled JPEG. `?download=1`
-// forces an attachment (admin print file).
+// Public: a postcard's image, straight from Cloud Storage. The catalog
+// carries ?v=<updatedAt> so a replacement busts caches; ?download=1 forces
+// an attachment for the admin print file.
 app.get('/api/postcard-image/:id', async (req, res) => {
   try {
-    await streamImage(req.params.id, res, { download: String(req.query.download) === '1' })
+    await streamImage(req.params.id, res, {
+      download: String(req.query.download) === '1',
+      versioned: 'v' in req.query,
+    })
   } catch (err) {
     console.error('[assets] image route failed:', err?.message || err)
     if (!res.headersSent) res.status(500).end()

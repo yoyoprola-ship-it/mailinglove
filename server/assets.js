@@ -1,125 +1,59 @@
-import { readFile } from 'node:fs/promises'
 import path from 'node:path'
-import { getDb } from './firebaseAdmin.js'
-import { saveFile, downloadFile, deleteFile, EXT } from './bucket.js'
+import { readFile } from 'node:fs/promises'
+import { downloadFile } from './bucket.js'
 import { getPostcard, adminList, catalog } from './catalog.js'
 
-// Hi-res print files the admin uploads to replace a catalog card's image.
-// Stored in Cloud Storage under postcards-hires/<id>.<ext>; an override map
-// in Firestore (config/overrides) points each postcardId at its stored file.
-// Images are streamed through /api/postcard-image/:id so the bucket can stay
-// private. Admin-created ("custom") cards keep their own image in the bucket
-// too — that path lives on the card itself (see catalog.js).
+// Postcard images live one-per-card in Cloud Storage (see catalog.js). This
+// module just streams them out through /api/postcard-image/:id so the bucket
+// can stay private.
 
-let cache = null
-let cacheAt = 0
-
-async function overrides() {
-  if (cache && Date.now() - cacheAt < 20_000) return cache
-  const db = getDb()
-  let map = {}
-  if (db) {
-    try {
-      const snap = await db.collection('config').doc('overrides').get()
-      if (snap.exists) map = snap.data().map || {}
-    } catch (err) {
-      console.warn('[assets] overrides read failed:', err?.message || err)
-    }
-  }
-  cache = map
-  cacheAt = Date.now()
-  return map
-}
-
-export async function hasHiRes(postcardId) {
-  return Boolean((await overrides())[postcardId])
-}
-
-export async function uploadHiRes(postcardId, buffer, contentType) {
-  if (!(await getPostcard(postcardId))) return { ok: false, error: 'Unknown postcard.' }
-  const ext = EXT[contentType]
-  if (!ext) return { ok: false, error: 'Use JPEG, PNG, WebP, or PDF.' }
-  const path = `postcards-hires/${postcardId}.${ext}`
-  await saveFile(path, buffer, contentType)
-
-  const db = getDb()
-  await db
-    .collection('config')
-    .doc('overrides')
-    .set({ map: { [postcardId]: { path, contentType, updatedAt: Date.now() } } }, { merge: true })
-  cache = null
-  return { ok: true }
-}
-
-export async function removeHiRes(postcardId) {
-  const map = await overrides()
-  const entry = map[postcardId]
-  if (!entry) return { ok: true }
-  await deleteFile(entry.path)
-  const db = getDb()
-  const { FieldValue } = await import('firebase-admin/firestore')
-  await db
-    .collection('config')
-    .doc('overrides')
-    .set({ map: { [postcardId]: FieldValue.delete() } }, { merge: true })
-  cache = null
-  return { ok: true }
-}
-
-// Stream the current best image for a postcard: an uploaded hi-res file if
-// there is one, then the card's own stored file (admin-created cards),
-// otherwise redirect to the static placeholder.
-export async function streamImage(postcardId, res, { download = false } = {}) {
+// Stream a card's image. `versioned` (the URL carried ?v=<updatedAt>) means
+// the URL changes whenever the image is replaced, so it's safe to cache it
+// hard. `download` sends it as an attachment for the admin print file.
+export async function streamImage(postcardId, res, { download = false, versioned = false } = {}) {
   const card = await getPostcard(postcardId)
   if (!card) return res.status(404).end()
 
-  const entry = (await overrides())[postcardId]
-  const src =
-    entry ||
-    (card.storagePath ? { path: card.storagePath, contentType: card.contentType } : null)
-
-  // No override and no stored file: the original bundled JPEG. Serve it as
-  // an attachment when a download was asked for (admin print file),
-  // otherwise just redirect to the static asset.
-  if (!src) {
-    if (download) {
-      try {
-        const buf = await readFile(path.join(process.cwd(), 'dist', card.image.replace(/^\/+/, '')))
-        res.setHeader('Content-Type', 'image/jpeg')
+  // Safety net for the migration window: a card with no bucket image yet
+  // still has its bundled static path — serve that.
+  if (!card.storagePath) {
+    if (!card.image) return res.status(404).end()
+    try {
+      const buf = await readFile(path.join(process.cwd(), 'dist', card.image.replace(/^\/+/, '')))
+      res.setHeader('Content-Type', 'image/jpeg')
+      if (download) {
         res.setHeader('Content-Disposition', `attachment; filename="${postcardId}.jpg"`)
-        res.setHeader('Cache-Control', 'private, max-age=0')
-        return res.end(buf)
-      } catch (err) {
-        console.error('[assets] static read failed:', err?.message || err)
+        res.setHeader('Cache-Control', 'no-store')
+      } else {
+        res.setHeader('Cache-Control', 'public, max-age=60')
       }
+      return res.end(buf)
+    } catch {
+      return res.status(404).end()
     }
-    res.setHeader('Cache-Control', 'public, max-age=300')
-    return res.redirect(302, card.image)
   }
+
   try {
-    const buf = await downloadFile(src.path)
-    res.setHeader('Content-Type', src.contentType || 'application/octet-stream')
+    const buf = await downloadFile(card.storagePath)
+    res.setHeader('Content-Type', card.contentType || 'application/octet-stream')
     if (download) {
-      const ext = (path.extname(src.path) || '.jpg').slice(1) || 'jpg'
+      const ext = (path.extname(card.storagePath) || '.jpg').slice(1) || 'jpg'
       res.setHeader('Content-Disposition', `attachment; filename="${postcardId}.${ext}"`)
-      res.setHeader('Cache-Control', 'private, max-age=0')
+      res.setHeader('Cache-Control', 'no-store')
+    } else if (versioned) {
+      res.setHeader('Cache-Control', 'public, max-age=31536000, immutable')
     } else {
-      // Catalog art, not per-user — let the CDN hold it so a crop doesn't
-      // mean every visitor hits Cloud Run for the file.
-      res.setHeader('Cache-Control', 'public, max-age=300')
+      res.setHeader('Cache-Control', 'public, max-age=60')
     }
     res.end(buf)
   } catch (err) {
     console.error('[assets] stream failed:', err?.message || err)
-    if (card.storagePath && !entry) return res.status(404).end()
-    res.redirect(302, card.image)
+    if (!res.headersSent) res.status(404).end()
   }
 }
 
-// Catalog for the admin gallery: every card with its proxy image URL, whether
-// a hi-res file is on file, and whether it is a custom / hidden card.
+// Catalog for the admin gallery.
 export async function adminCatalog() {
-  const map = await overrides()
   const list = await adminList()
   return {
     types: catalog.types,
@@ -128,10 +62,9 @@ export async function adminCatalog() {
       type: p.type,
       subcategory: p.subcategory || null,
       title: p.title,
-      image: `/api/postcard-image/${p.id}`,
-      hires: Boolean(map[p.id]),
-      custom: p.custom,
+      image: p.image,
       hidden: p.hidden,
+      updatedAt: p.updatedAt,
     })),
   }
 }

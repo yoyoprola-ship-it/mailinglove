@@ -1,90 +1,119 @@
 import crypto from 'node:crypto'
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
-import { FieldValue } from 'firebase-admin/firestore'
 import { getDb } from './firebaseAdmin.js'
 import { saveFile, deleteFile, EXT } from './bucket.js'
 
-// Base catalog: src/data/postcards.json, bundled with the frontend and the
-// seed for the server. The admin panel can extend it (new cards, images in
-// Cloud Storage) or hide base cards; those edits live in Firestore
-// (config/catalog) and are merged in here at runtime — no rebuild needed.
-const path = fileURLToPath(new URL('../src/data/postcards.json', import.meta.url))
-const base = JSON.parse(readFileSync(path, 'utf8'))
+// Every postcard is a document in the Firestore `postcards` collection, and
+// its image is a single object in Cloud Storage (postcards/<id>.<ext>).
+// Cropping or replacing overwrites that object and bumps `updatedAt`; the
+// storefront URL carries ?v=<updatedAt> so a replacement is picked up
+// everywhere at once. No static files, no override map.
+//
+// postcards/<id> = {
+//   id, type, subcategory|null, title,
+//   storagePath, contentType, hidden, order, createdAt, updatedAt
+// }
+//
+// Categories (types + their subcategories) stay static — see src/data.
 
-// Types (and their subcategories) stay static — only individual cards are
-// editable at runtime.
-export const catalog = base
+const typesPath = fileURLToPath(new URL('../src/data/postcards.json', import.meta.url))
+const base = JSON.parse(readFileSync(typesPath, 'utf8'))
+export const catalog = { types: base.types }
+
+const COLL = 'postcards'
+
+// --- cached full list ------------------------------------------------
 
 let cache = null
 let cacheAt = 0
-
-async function overlay() {
-  if (cache && Date.now() - cacheAt < 20_000) return cache
-  let o = { added: [], removed: [] }
-  const db = getDb()
-  if (db) {
-    try {
-      const snap = await db.collection('config').doc('catalog').get()
-      if (snap.exists) {
-        const d = snap.data() || {}
-        o = {
-          added: Array.isArray(d.added) ? d.added : [],
-          removed: Array.isArray(d.removed) ? d.removed : [],
-        }
-      }
-    } catch (err) {
-      console.warn('[catalog] overlay read failed:', err?.message || err)
-    }
-  }
-  cache = o
-  cacheAt = Date.now()
-  return o
-}
 
 export function invalidateCatalog() {
   cache = null
 }
 
-// Storefront cards always point at the image proxy (never the raw static
-// file), so an admin crop / hi-res replace takes over the same URL the
-// page already loaded — no "original first, then the crop" swap. The
-// proxy redirects to the static file when there's no override.
+async function listAll() {
+  if (cache && Date.now() - cacheAt < 30_000) return cache
+  const db = getDb()
+  let rows = []
+  if (db) {
+    try {
+      const snap = await db.collection(COLL).get()
+      rows = snap.docs
+        .map((d) => d.data())
+        .sort((a, b) => (a.order || 0) - (b.order || 0))
+    } catch (err) {
+      console.warn('[catalog] list failed:', err?.message || err)
+    }
+  }
+  cache = rows
+  cacheAt = Date.now()
+  return rows
+}
+
+// --- projections ---------------------------------------------------
+
 const publicCard = (p) => ({
   id: p.id,
   type: p.type,
   subcategory: p.subcategory || null,
   title: p.title,
-  image: `/api/postcard-image/${p.id}`,
+  image: `/api/postcard-image/${p.id}?v=${p.updatedAt || 0}`,
 })
 
-// Storefront catalog: base cards minus hidden ones, plus admin-created cards.
+// Storefront catalog: visible cards only.
 export async function getMergedCatalog() {
-  const { added, removed } = await overlay()
-  const hidden = new Set(removed)
-  const postcards = [...base.postcards.filter((p) => !hidden.has(p.id)), ...added].map(publicCard)
+  const rows = await listAll()
+  const postcards = rows.filter((p) => !p.hidden).map(publicCard)
+
+  // Safety net during/after the one-time migration: if the collection is
+  // empty, fall back to the bundled list so the storefront is never blank.
+  if (!postcards.length && Array.isArray(base.postcards) && base.postcards.length) {
+    return {
+      types: base.types,
+      postcards: base.postcards.map((p) => ({
+        id: p.id,
+        type: p.type,
+        subcategory: p.subcategory || null,
+        title: p.title,
+        image: `/api/postcard-image/${p.id}`,
+      })),
+    }
+  }
   return { types: base.types, postcards }
 }
 
-// Resolve a single card for order snapshots / image streaming. Returns the
-// raw object (admin-created cards also carry storagePath/contentType).
-// Hidden base cards resolve to null — they can't be added to a cart.
+// Single card — read straight from Firestore so image streaming and cart
+// snapshots always see the current storagePath / updatedAt.
 export async function getPostcard(id) {
-  const { added, removed } = await overlay()
-  if (removed.includes(id)) return null
-  return base.postcards.find((p) => p.id === id) || added.find((p) => p.id === id) || null
+  const db = getDb()
+  if (!db || !id) return null
+  try {
+    const snap = await db.collection(COLL).doc(String(id)).get()
+    if (snap.exists) return snap.data()
+  } catch (err) {
+    console.warn('[catalog] getPostcard failed:', err?.message || err)
+  }
+  // migration fallback
+  const b = base.postcards?.find((p) => p.id === id)
+  return b ? { ...b, storagePath: null } : null
 }
 
-// Full list for the admin gallery: every base card (flagged hidden or not)
-// plus every admin-created card.
+// Admin gallery: every card, hidden included.
 export async function adminList() {
-  const { added, removed } = await overlay()
-  const hidden = new Set(removed)
-  return [
-    ...base.postcards.map((p) => ({ ...publicCard(p), custom: false, hidden: hidden.has(p.id) })),
-    ...added.map((p) => ({ ...publicCard(p), custom: true, hidden: false })),
-  ]
+  const rows = await listAll()
+  return rows.map((p) => ({
+    id: p.id,
+    type: p.type,
+    subcategory: p.subcategory || null,
+    title: p.title,
+    image: `/api/postcard-image/${p.id}?v=${p.updatedAt || 0}`,
+    hidden: Boolean(p.hidden),
+    updatedAt: p.updatedAt || 0,
+  }))
 }
+
+// --- writes ------------------------------------------------------
 
 const slugify = (s) =>
   String(s)
@@ -92,6 +121,12 @@ const slugify = (s) =>
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-|-$/g, '')
     .slice(0, 40) || 'card'
+
+function checkImage(contentType) {
+  const ext = EXT[contentType]
+  if (!ext || ext === 'pdf') return null
+  return ext
+}
 
 export async function addPostcard({ type, subcategory, title, buffer, contentType }) {
   const db = getDb()
@@ -104,62 +139,75 @@ export async function addPostcard({ type, subcategory, title, buffer, contentTyp
   }
   const ttl = String(title || '').trim().slice(0, 120)
   if (!ttl) return { ok: false, error: 'A title is required.' }
-  const ext = EXT[contentType]
-  if (!ext || ext === 'pdf') return { ok: false, error: 'Use a JPEG, PNG, or WebP image.' }
+  const ext = checkImage(contentType)
+  if (!ext) return { ok: false, error: 'Use a JPEG, PNG, or WebP image.' }
 
-  const id = `custom-${slugify(ttl)}-${crypto.randomBytes(3).toString('hex')}`
-  const storagePath = `postcards-custom/${id}.${ext}`
+  const id = `${slugify(ttl)}-${crypto.randomBytes(3).toString('hex')}`
+  const storagePath = `${COLL}/${id}.${ext}`
   await saveFile(storagePath, buffer, contentType)
 
-  const card = {
+  const rows = await listAll()
+  const now = Date.now()
+  const doc = {
     id,
     type,
     subcategory: subcategory || null,
     title: ttl,
-    image: `/api/postcard-image/${id}`,
     storagePath,
     contentType,
-    createdAt: Date.now(),
+    hidden: false,
+    order: (rows.reduce((m, p) => Math.max(m, p.order || 0), 0) || 0) + 1,
+    createdAt: now,
+    updatedAt: now,
   }
-  await db
-    .collection('config')
-    .doc('catalog')
-    .set({ added: FieldValue.arrayUnion(card) }, { merge: true })
+  await db.collection(COLL).doc(id).set(doc)
   invalidateCatalog()
-  return { ok: true, card: publicCard(card) }
+  return { ok: true, card: publicCard(doc) }
 }
 
-export async function deletePostcard(id) {
+// Crop and "Replace" both land here: overwrite the card's image object.
+export async function replacePostcardImage(id, buffer, contentType) {
   const db = getDb()
   if (!db) return { ok: false, error: 'Storage is not available right now.' }
+  const ref = db.collection(COLL).doc(String(id))
+  const snap = await ref.get()
+  if (!snap.exists) return { ok: false, error: 'Unknown postcard.' }
+  const ext = checkImage(contentType)
+  if (!ext) return { ok: false, error: 'Use a JPEG, PNG, or WebP image.' }
 
-  const { added } = await overlay()
-  const custom = added.find((p) => p.id === id)
-  if (custom) {
-    if (custom.storagePath) await deleteFile(custom.storagePath)
-    await db
-      .collection('config')
-      .doc('catalog')
-      .set({ added: FieldValue.arrayRemove(custom) }, { merge: true })
-  } else if (base.postcards.some((p) => p.id === id)) {
-    await db
-      .collection('config')
-      .doc('catalog')
-      .set({ removed: FieldValue.arrayUnion(id) }, { merge: true })
-  } else {
-    return { ok: false, error: 'Unknown postcard.' }
+  const prev = snap.data()
+  const storagePath = `${COLL}/${id}.${ext}`
+  await saveFile(storagePath, buffer, contentType)
+  if (prev.storagePath && prev.storagePath !== storagePath) {
+    await deleteFile(prev.storagePath)
   }
+  const updatedAt = Date.now()
+  await ref.set({ storagePath, contentType, updatedAt }, { merge: true })
+  invalidateCatalog()
+  return { ok: true, updatedAt }
+}
+
+export async function setPostcardHidden(id, hidden) {
+  const db = getDb()
+  if (!db) return { ok: false, error: 'Storage is not available right now.' }
+  const ref = db.collection(COLL).doc(String(id))
+  const snap = await ref.get()
+  if (!snap.exists) return { ok: false, error: 'Unknown postcard.' }
+  await ref.set({ hidden: Boolean(hidden), updatedAt: Date.now() }, { merge: true })
   invalidateCatalog()
   return { ok: true }
 }
 
-export async function restorePostcard(id) {
+// Permanent: the document and its image object are gone for good.
+export async function deletePostcard(id) {
   const db = getDb()
   if (!db) return { ok: false, error: 'Storage is not available right now.' }
-  await db
-    .collection('config')
-    .doc('catalog')
-    .set({ removed: FieldValue.arrayRemove(id) }, { merge: true })
+  const ref = db.collection(COLL).doc(String(id))
+  const snap = await ref.get()
+  if (!snap.exists) return { ok: false, error: 'Unknown postcard.' }
+  const { storagePath } = snap.data()
+  if (storagePath) await deleteFile(storagePath)
+  await ref.delete()
   invalidateCatalog()
   return { ok: true }
 }
