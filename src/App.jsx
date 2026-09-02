@@ -79,14 +79,33 @@ export default function App() {
       .catch(() => {})
 
     // Arrived from a menu link (e.g. from the account pages): settle the
-    // scroll on the target section once the page has laid out.
+    // scroll on the target section once the page has laid out, then strip
+    // the #hash / ?type params so a later refresh doesn't jump back here.
     const target = urlParams.get('type')
       ? 'postcards'
       : (window.location.hash || '').replace(/^#/, '')
     if (target) {
       const t = setTimeout(() => scrollToId(target), 250)
+      const u = new URL(window.location.href)
+      u.hash = ''
+      u.searchParams.delete('type')
+      u.searchParams.delete('sub')
+      history.replaceState(null, '', u.pathname + u.search)
       return () => clearTimeout(t)
     }
+  }, [])
+
+  // In-page anchor links (Hero, etc.): scroll there, then drop the #hash
+  // so refreshing doesn't force the page back to that section.
+  useEffect(() => {
+    function onHash() {
+      const id = window.location.hash.replace(/^#/, '')
+      if (!id) return
+      scrollToId(id)
+      history.replaceState(null, '', window.location.pathname + window.location.search)
+    }
+    window.addEventListener('hashchange', onHash)
+    return () => window.removeEventListener('hashchange', onHash)
   }, [])
 
   const cartCount = countCards(cartItems)
