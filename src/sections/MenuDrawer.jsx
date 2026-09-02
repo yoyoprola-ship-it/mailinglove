@@ -15,6 +15,7 @@ export default function MenuDrawer({
   onGo,
   onAccount,
   onCart,
+  onHome = () => window.scrollTo({ top: 0, behavior: 'smooth' }),
   cartCount = 0,
   showPhotoPrint = false,
   showPostcardGen = false,
@@ -60,7 +61,8 @@ export default function MenuDrawer({
     { label: 'How it works', icon: 'info', fn: () => goto('how-it-works') },
   ].filter(Boolean)
 
-  const youLinks = [
+  const topLinks = [
+    { label: 'Home', icon: 'home', fn: () => (onClose(), onHome?.()) },
     { label: 'Your account', icon: 'user', fn: () => (onClose(), onAccount?.()) },
     {
       label: 'Cart',
@@ -110,7 +112,7 @@ export default function MenuDrawer({
 
         <nav className="drawer__nav">
           <div className="drawer__links">
-            {youLinks.map((l) => (
+            {topLinks.map((l) => (
               <Row key={l.label} l={l} />
             ))}
           </div>

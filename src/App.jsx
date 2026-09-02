@@ -71,10 +71,13 @@ export default function App() {
       })
       .catch(() => {})
 
-    // Arrived from a "browse <category>" link — settle the scroll on the
-    // postcards section once the page has laid out.
-    if (urlParams.get('type')) {
-      const t = setTimeout(() => scrollToId('postcards'), 250)
+    // Arrived from a menu link (e.g. from the account pages): settle the
+    // scroll on the target section once the page has laid out.
+    const target = urlParams.get('type')
+      ? 'postcards'
+      : (window.location.hash || '').replace(/^#/, '')
+    if (target) {
+      const t = setTimeout(() => scrollToId(target), 250)
       return () => clearTimeout(t)
     }
   }, [])

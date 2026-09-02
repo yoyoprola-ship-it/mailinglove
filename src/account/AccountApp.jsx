@@ -96,6 +96,9 @@ export default function AccountApp() {
         onClose={() => setMenuOpen(false)}
         onNavigate={goCategory}
         onGo={goHome}
+        onHome={() => {
+          window.location.href = '/'
+        }}
         onAccount={() => {
           setMenuOpen(false)
           setTab('profile')
