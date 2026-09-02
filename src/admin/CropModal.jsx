@@ -23,13 +23,90 @@ export default function CropModal({ card, onClose, onDone }) {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
 
+  // One set of window listeners for the component's life. They read the
+  // live drag session from the `drag` ref, so re-renders can never leave a
+  // stale handler registered (that was dropping the vertical resize).
+  useEffect(() => {
+    function onMove(e) {
+      const d = drag.current
+      if (!d) return
+      const disp = d.disp
+      const dx = e.clientX - d.px
+      const dy = e.clientY - d.py
+
+      if (d.mode === 'move') {
+        setCrop({
+          ...d.start,
+          x: clamp(d.start.x + dx, 0, disp.w - d.start.w),
+          y: clamp(d.start.y + dy, 0, disp.h - d.start.h),
+        })
+        return
+      }
+
+      const h = d.handle
+      if (d.lock) {
+        // anchor at the opposite corner, keep the locked ratio
+        const ratio = d.ratio
+        const right = d.start.x + d.start.w
+        const bottom = d.start.y + d.start.h
+        const ax = h.includes('e') ? d.start.x : right
+        const ay = h.includes('s') ? d.start.y : bottom
+        const pointerX = clamp(e.clientX - d.rect.left, 0, disp.w)
+        const pointerY = clamp(e.clientY - d.rect.top, 0, disp.h)
+        let nw = Math.abs(pointerX - ax)
+        let nh = Math.abs(pointerY - ay)
+        if (nw / nh > ratio) nh = nw / ratio
+        else nw = nh * ratio
+        const dirX = h.includes('e') ? 1 : -1
+        const dirY = h.includes('s') ? 1 : -1
+        nw = Math.min(nw, dirX > 0 ? disp.w - ax : ax)
+        nh = Math.min(nh, dirY > 0 ? disp.h - ay : ay)
+        if (nw / nh > ratio) nw = nh * ratio
+        else nh = nw / ratio
+        if (nw < MIN || nh < MIN) return
+        setCrop({ x: dirX > 0 ? ax : ax - nw, y: dirY > 0 ? ay : ay - nh, w: nw, h: nh })
+        return
+      }
+
+      let nx = d.start.x
+      let ny = d.start.y
+      let nr = d.start.x + d.start.w
+      let nb = d.start.y + d.start.h
+      if (h.includes('w')) nx = clamp(d.start.x + dx, 0, nr - MIN)
+      if (h.includes('e')) nr = clamp(nr + dx, nx + MIN, disp.w)
+      if (h.includes('n')) ny = clamp(d.start.y + dy, 0, nb - MIN)
+      if (h.includes('s')) nb = clamp(nb + dy, ny + MIN, disp.h)
+      setCrop({ x: nx, y: ny, w: nr - nx, h: nb - ny })
+    }
+    function endDrag() {
+      drag.current = null
+    }
+    window.addEventListener('pointermove', onMove)
+    window.addEventListener('pointerup', endDrag)
+    window.addEventListener('pointercancel', endDrag)
+    return () => {
+      window.removeEventListener('pointermove', onMove)
+      window.removeEventListener('pointerup', endDrag)
+      window.removeEventListener('pointercancel', endDrag)
+    }
+  }, [])
+
   useEffect(() => {
     const onKey = (e) => e.key === 'Escape' && !busy && onClose()
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [busy, onClose])
 
+  // If the image was already cached, `load` may never fire — seed from it.
+  useEffect(() => {
+    const el = imgRef.current
+    if (el && el.complete && el.naturalWidth) onImgLoad()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   function onImgLoad() {
+    // Initialise once — a re-fired load event must not wipe the user's crop.
+    if (crop) return
     const el = imgRef.current
     const nw = el.naturalWidth
     const nh = el.naturalHeight
@@ -38,15 +115,16 @@ export default function CropModal({ card, onClose, onDone }) {
     const scale = Math.min(maxW / nw, maxH / nh, 1)
     const w = Math.round(nw * scale)
     const h = Math.round(nh * scale)
-    setDisp({ w, h, toNatural: nw / w })
+    setDisp({ w, h, toNaturalX: nw / w, toNaturalY: nh / h })
     // Start at the full image so you only ever pull edges inward.
     setCrop({ x: 0, y: 0, w, h })
   }
 
-  const startDrag = (mode, handle) => (e) => {
+  function startDrag(mode, handle, e) {
     e.preventDefault()
     e.stopPropagation()
     if (!disp || !crop) return
+    e.currentTarget.setPointerCapture?.(e.pointerId)
     drag.current = {
       mode,
       handle,
@@ -58,72 +136,6 @@ export default function CropModal({ card, onClose, onDone }) {
       ratio,
       rect: wrapRef.current.getBoundingClientRect(),
     }
-    window.addEventListener('pointermove', onMove)
-    window.addEventListener('pointerup', endDrag)
-  }
-
-  function onMove(e) {
-    const d = drag.current
-    if (!d) return
-    const disp = d.disp
-    const dx = e.clientX - d.px
-    const dy = e.clientY - d.py
-
-    if (d.mode === 'move') {
-      setCrop({
-        ...d.start,
-        x: clamp(d.start.x + dx, 0, disp.w - d.start.w),
-        y: clamp(d.start.y + dy, 0, disp.h - d.start.h),
-      })
-      return
-    }
-
-    // resize
-    const h = d.handle
-    if (d.lock) {
-      // anchor at the opposite corner, keep the locked ratio
-      const ratio = d.ratio
-      const right = d.start.x + d.start.w
-      const bottom = d.start.y + d.start.h
-      const ax = h.includes('e') ? d.start.x : right
-      const ay = h.includes('s') ? d.start.y : bottom
-      const pointerX = clamp(e.clientX - d.rect.left, 0, disp.w)
-      const pointerY = clamp(e.clientY - d.rect.top, 0, disp.h)
-      let nw = Math.abs(pointerX - ax)
-      let nh = Math.abs(pointerY - ay)
-      if (nw / nh > ratio) nh = nw / ratio
-      else nw = nh * ratio
-      const dirX = h.includes('e') ? 1 : -1
-      const dirY = h.includes('s') ? 1 : -1
-      nw = Math.min(nw, dirX > 0 ? disp.w - ax : ax)
-      nh = Math.min(nh, dirY > 0 ? disp.h - ay : ay)
-      if (nw / nh > ratio) nw = nh * ratio
-      else nh = nw / ratio
-      if (nw < MIN || nh < MIN) return
-      setCrop({
-        x: dirX > 0 ? ax : ax - nw,
-        y: dirY > 0 ? ay : ay - nh,
-        w: nw,
-        h: nh,
-      })
-      return
-    }
-
-    let nx = d.start.x
-    let ny = d.start.y
-    let nr = d.start.x + d.start.w
-    let nb = d.start.y + d.start.h
-    if (h.includes('w')) nx = clamp(d.start.x + dx, 0, nr - MIN)
-    if (h.includes('e')) nr = clamp(nr + dx, nx + MIN, disp.w)
-    if (h.includes('n')) ny = clamp(d.start.y + dy, 0, nb - MIN)
-    if (h.includes('s')) nb = clamp(nb + dy, ny + MIN, disp.h)
-    setCrop({ x: nx, y: ny, w: nr - nx, h: nb - ny })
-  }
-
-  function endDrag() {
-    drag.current = null
-    window.removeEventListener('pointermove', onMove)
-    window.removeEventListener('pointerup', endDrag)
   }
 
   function toggleLock(on) {
@@ -136,11 +148,11 @@ export default function CropModal({ card, onClose, onDone }) {
     setBusy(true)
     setError('')
     try {
-      const k = disp.toNatural
-      const sw = Math.max(1, Math.round(crop.w * k))
-      const sh = Math.max(1, Math.round(crop.h * k))
-      const sx = clamp(Math.round(crop.x * k), 0, imgRef.current.naturalWidth - sw)
-      const sy = clamp(Math.round(crop.y * k), 0, imgRef.current.naturalHeight - sh)
+      const { toNaturalX: kx, toNaturalY: ky } = disp
+      const sw = Math.max(1, Math.round(crop.w * kx))
+      const sh = Math.max(1, Math.round(crop.h * ky))
+      const sx = clamp(Math.round(crop.x * kx), 0, imgRef.current.naturalWidth - sw)
+      const sy = clamp(Math.round(crop.y * ky), 0, imgRef.current.naturalHeight - sh)
       const canvas = document.createElement('canvas')
       canvas.width = sw
       canvas.height = sh
@@ -164,8 +176,8 @@ export default function CropModal({ card, onClose, onDone }) {
     }
   }
 
-  const natW = crop && disp ? Math.round(crop.w * disp.toNatural) : 0
-  const natH = crop && disp ? Math.round(crop.h * disp.toNatural) : 0
+  const natW = crop && disp ? Math.round(crop.w * disp.toNaturalX) : 0
+  const natH = crop && disp ? Math.round(crop.h * disp.toNaturalY) : 0
   const handles = lock ? LOCK_HANDLES : FREE_HANDLES
 
   return (
@@ -214,13 +226,13 @@ export default function CropModal({ card, onClose, onDone }) {
               <div
                 className="adm__crop__rect"
                 style={{ left: crop.x, top: crop.y, width: crop.w, height: crop.h }}
-                onPointerDown={startDrag('move', null)}
+                onPointerDown={(e) => startDrag('move', null, e)}
               >
                 {handles.map((h) => (
                   <span
                     key={h}
                     className={`adm__crop__h adm__crop__h--${h}`}
-                    onPointerDown={startDrag('resize', h)}
+                    onPointerDown={(e) => startDrag('resize', h, e)}
                   />
                 ))}
               </div>
