@@ -33,12 +33,6 @@ export async function hasHiRes(postcardId) {
   return Boolean((await overrides())[postcardId])
 }
 
-// Ids of every card that currently has an admin-uploaded / cropped image,
-// so the storefront can route just those through the image proxy.
-export async function hiResIds() {
-  return new Set(Object.keys(await overrides()))
-}
-
 export async function uploadHiRes(postcardId, buffer, contentType) {
   if (!(await getPostcard(postcardId))) return { ok: false, error: 'Unknown postcard.' }
   const ext = EXT[contentType]

@@ -1,6 +1,17 @@
 import { useEffect, useMemo, useState } from 'react'
 import Reveal from '../components/Reveal'
-import bundledCatalog from '../data/postcards.json'
+import rawBundledCatalog from '../data/postcards.json'
+
+// Match what /api/catalog serves: every card points at the image proxy,
+// so the first paint and the live catalog request the same URL and an
+// admin crop never flashes the old image first.
+const bundledCatalog = {
+  ...rawBundledCatalog,
+  postcards: rawBundledCatalog.postcards.map((p) => ({
+    ...p,
+    image: `/api/postcard-image/${p.id}`,
+  })),
+}
 
 // Deterministic shuffle: same order all day for every visitor, a fresh
 // order tomorrow — so the catalog feels like it's restocked daily. Stable

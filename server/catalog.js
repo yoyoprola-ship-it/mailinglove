@@ -46,12 +46,16 @@ export function invalidateCatalog() {
   cache = null
 }
 
+// Storefront cards always point at the image proxy (never the raw static
+// file), so an admin crop / hi-res replace takes over the same URL the
+// page already loaded — no "original first, then the crop" swap. The
+// proxy redirects to the static file when there's no override.
 const publicCard = (p) => ({
   id: p.id,
   type: p.type,
   subcategory: p.subcategory || null,
   title: p.title,
-  image: p.image,
+  image: `/api/postcard-image/${p.id}`,
 })
 
 // Storefront catalog: base cards minus hidden ones, plus admin-created cards.
