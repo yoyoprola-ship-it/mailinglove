@@ -179,6 +179,15 @@ export default function App() {
         showPhotoRestore={Boolean(photoEnabled)}
       />
       <ServiceChooser showPhotoPrint={hasPhotoPrint} showPostcards onGo={scrollToId} />
+      {hasPhotoPrint && (
+        <PhotoPrint
+          formats10={photoPrintFormats10}
+          formatsCatalog={photoPrintFormatsCatalog}
+          signedIn={signedIn}
+          onAdded={(items) => Array.isArray(items) && setCartItems(items)}
+          onRequireAuth={() => setAuthCtx({ mode: 'account' })}
+        />
+      )}
       <Postcards
         filter={pcFilter}
         onFilter={setPcFilter}
@@ -191,15 +200,6 @@ export default function App() {
         <CustomPostcard
           sizes={postcardSizes}
           priceCents={postcardPriceCents}
-          signedIn={signedIn}
-          onAdded={(items) => Array.isArray(items) && setCartItems(items)}
-          onRequireAuth={() => setAuthCtx({ mode: 'account' })}
-        />
-      )}
-      {hasPhotoPrint && (
-        <PhotoPrint
-          formats10={photoPrintFormats10}
-          formatsCatalog={photoPrintFormatsCatalog}
           signedIn={signedIn}
           onAdded={(items) => Array.isArray(items) && setCartItems(items)}
           onRequireAuth={() => setAuthCtx({ mode: 'account' })}

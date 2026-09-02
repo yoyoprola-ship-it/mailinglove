@@ -33,7 +33,7 @@ export default function ServiceChooser({ showPhotoPrint = true, showPostcards = 
     <section className="section chooser" id="start">
       <div className="section-inner">
         <Reveal>
-          <p className="eyebrow">Photos &amp; postcards, printed and mailed</p>
+          <p className="eyebrow">Photos, postcards &amp; calendars — printed and mailed</p>
           <h1 className="chooser__title">What do you want to send?</h1>
         </Reveal>
         <Reveal delay={80}>

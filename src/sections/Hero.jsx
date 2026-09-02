@@ -7,27 +7,26 @@ export default function Hero() {
       <div className="hero__glow" />
       <div className="section-inner hero__inner">
         <Reveal>
-          <p className="eyebrow">AI-designed keepsakes, delivered by mail</p>
+          <p className="eyebrow">Photo prints, postcards &amp; calendars, delivered by mail</p>
         </Reveal>
         <Reveal delay={80}>
           <h2 className="hero__title">
-            Your photos, <em>reimagined</em>.
+            Your photos, <em>printed</em>.
             <br />
             Mailed to the people you love.
           </h2>
         </Reveal>
         <Reveal delay={160}>
           <p className="hero__subtitle">
-            Upload a photo. We redesign it with AI — new backgrounds, styles, and
-            layouts — and turn it into a postcard, calendar, or keepsake print.
-            Then we print it and mail it, so someone you love finds it in their
-            actual mailbox.
+            Upload your photos and we print them at full quality and mail them —
+            to you or straight to someone you love. Rather send a ready-made
+            design? Pick a postcard or a calendar and we print and mail that too.
           </p>
         </Reveal>
         <Reveal delay={240}>
           <div className="hero__actions">
-            <a className="btn btn--primary" href="#postcards">
-              Shop postcards
+            <a className="btn btn--primary" href="#photo-print">
+              Print your photos
             </a>
             <a className="btn btn--ghost" href="#how-it-works">
               See how it works
