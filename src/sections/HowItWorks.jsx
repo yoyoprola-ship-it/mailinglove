@@ -30,6 +30,16 @@ export default function HowItWorks() {
             </Reveal>
           ))}
         </div>
+        <Reveal delay={steps.length * 90}>
+          <p className="steps__eta">
+            <Icon name="mail" size={16} />
+            <span>
+              Once your envelope is on its way, it usually reaches the mailbox in{' '}
+              <strong>3–9 business days</strong> — anywhere in the US. We hand every
+              order to USPS within one business day of printing.
+            </span>
+          </p>
+        </Reveal>
       </div>
     </section>
   )
