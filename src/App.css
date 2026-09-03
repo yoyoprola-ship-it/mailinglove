@@ -1587,8 +1587,6 @@
   .chooser__body {
     order: 2;
     width: 100%;
-    align-items: center;
-    text-align: center;
     padding: 4px 24px 26px;
   }
 }
