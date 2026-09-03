@@ -15,6 +15,7 @@ import {
 
 const money = (c) => `$${((c || 0) / 100).toFixed(2)}`
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v))
+const BG_AR = 8 / 10 // the calendar print format
 let uid = 0
 
 const mctx = document.createElement('canvas').getContext('2d')
@@ -38,6 +39,7 @@ export default function CalendarMaker({
   const [scene, setScene] = useState('')
   const [bg, setBg] = useState('')
   const [bgImg, setBgImg] = useState(null)
+  const [bgCrop, setBgCrop] = useState('') // objectURL of an upload awaiting the 8×10 fit
   const [gen, setGen] = useState('idle') // idle | working
   const [genErr, setGenErr] = useState('')
 
@@ -157,8 +159,15 @@ export default function CalendarMaker({
 
   function uploadBg(file) {
     if (!file || !file.type.startsWith('image/')) return
+    setGenErr('')
+    setBgCrop(URL.createObjectURL(file)) // opens the "fit to 8 × 10" window
+  }
+
+  function applyBgCrop(blob) {
+    if (bgCrop) URL.revokeObjectURL(bgCrop)
+    setBgCrop('')
     setStatus('idle')
-    setBg(URL.createObjectURL(file))
+    setBg(URL.createObjectURL(blob))
   }
 
   function resetEditor() {
@@ -382,7 +391,10 @@ export default function CalendarMaker({
                   type="file"
                   accept="image/jpeg,image/png,image/webp"
                   hidden
-                  onChange={(e) => uploadBg(e.target.files?.[0])}
+                  onChange={(e) => {
+                    uploadBg(e.target.files?.[0])
+                    e.target.value = ''
+                  }}
                 />
               </div>
               {gen === 'working' && <p className="studio__note">This takes 15–30 seconds.</p>}
@@ -723,6 +735,19 @@ export default function CalendarMaker({
           title="Adjust photo — frame it how you want"
           onCancel={() => setCropId(null)}
           onApply={async (blob) => applyCrop(cropTarget.id, blob)}
+        />
+      )}
+
+      {bgCrop && (
+        <CropModal
+          src={bgCrop}
+          aspect={BG_AR}
+          title="Fit your background to 8 × 10 in"
+          onCancel={() => {
+            URL.revokeObjectURL(bgCrop)
+            setBgCrop('')
+          }}
+          onApply={async (blob) => applyBgCrop(blob)}
         />
       )}
     </section>

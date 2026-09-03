@@ -12,15 +12,17 @@ const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v))
 const FREE_HANDLES = ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w']
 const LOCK_HANDLES = ['nw', 'ne', 'se', 'sw']
 
-export default function CropModal({ src, title = 'Crop', onCancel, onApply }) {
+// `aspect` (w / h) forces every crop to that ratio — used to fit an
+// uploaded image to a fixed print format.
+export default function CropModal({ src, title = 'Crop', aspect = null, onCancel, onApply }) {
   const imgRef = useRef(null)
   const wrapRef = useRef(null)
   const drag = useRef(null)
 
   const [disp, setDisp] = useState(null)
   const [crop, setCrop] = useState(null)
-  const [lock, setLock] = useState(false)
-  const [ratio, setRatio] = useState(1)
+  const [lock, setLock] = useState(aspect != null)
+  const [ratio, setRatio] = useState(aspect != null ? aspect : 1)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
 
@@ -111,7 +113,17 @@ export default function CropModal({ src, title = 'Crop', onCancel, onApply }) {
     const w = Math.round(nw * scale)
     const h = Math.round(nh * scale)
     setDisp({ w, h, toNaturalX: nw / w, toNaturalY: nh / h })
-    setCrop({ x: 0, y: 0, w, h })
+    if (aspect != null) {
+      let cw = w
+      let ch = w / aspect
+      if (ch > h) {
+        ch = h
+        cw = h * aspect
+      }
+      setCrop({ x: (w - cw) / 2, y: (h - ch) / 2, w: cw, h: ch })
+    } else {
+      setCrop({ x: 0, y: 0, w, h })
+    }
   }
 
   function startDrag(mode, handle, e) {
@@ -222,10 +234,12 @@ export default function CropModal({ src, title = 'Crop', onCancel, onApply }) {
           )}
         </div>
 
-        <label className="cropm__lock">
-          <input type="checkbox" checked={lock} onChange={(e) => toggleLock(e.target.checked)} />
-          Keep proportions (lock aspect ratio)
-        </label>
+        {aspect == null && (
+          <label className="cropm__lock">
+            <input type="checkbox" checked={lock} onChange={(e) => toggleLock(e.target.checked)} />
+            Keep proportions (lock aspect ratio)
+          </label>
+        )}
 
         {error && <p className="cropm__err">{error}</p>}
 
