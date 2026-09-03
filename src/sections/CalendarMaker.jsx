@@ -40,8 +40,9 @@ export default function CalendarMaker({
   const [genErr, setGenErr] = useState('')
 
   // --- calendar placement (customer's choice) ---
-  const [position, setPosition] = useState('bottom')
+  const [position, setPosition] = useState('left')
   const [panel, setPanel] = useState('light')
+  const [panelAlpha, setPanelAlpha] = useState(0.86)
   const [gridUrl, setGridUrl] = useState('')
 
   // --- editor ---
@@ -71,10 +72,11 @@ export default function CalendarMaker({
     if (!bgImg) return
     const r = bgImg.naturalWidth / bgImg.naturalHeight
     const w = 900
-    const draw = () => setGridUrl(renderGridDataUrl(w, Math.round(w / r), year, position, panel))
+    const draw = () =>
+      setGridUrl(renderGridDataUrl(w, Math.round(w / r), year, position, panel, panelAlpha))
     draw()
     if (document.fonts?.ready) document.fonts.ready.then(draw).catch(() => {})
-  }, [bgImg, position, panel, year])
+  }, [bgImg, position, panel, panelAlpha, year])
 
   useEffect(() => {
     function move(e) {
@@ -141,7 +143,8 @@ export default function CalendarMaker({
       })
       const d = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(d.error || 'Something went wrong.')
-      resetEditor()
+      // swap the background; keep the photos, text and placement
+      setStatus('idle')
       setBg(d.image)
     } catch (err) {
       setGenErr(err.message)
@@ -152,7 +155,7 @@ export default function CalendarMaker({
 
   function uploadBg(file) {
     if (!file || !file.type.startsWith('image/')) return
-    resetEditor()
+    setStatus('idle')
     setBg(URL.createObjectURL(file))
   }
 
@@ -295,7 +298,12 @@ export default function CalendarMaker({
     setError('')
     setSelId(null)
     try {
-      const blob = await renderCalendar(bgImg, layers, photoEls.current, { year, position, panel })
+      const blob = await renderCalendar(bgImg, layers, photoEls.current, {
+        year,
+        position,
+        panel,
+        panelAlpha,
+      })
       const body = new FormData()
       body.append('image', blob, 'calendar.jpg')
       body.append('width', String(bgImg.naturalWidth))
@@ -442,11 +450,50 @@ export default function CalendarMaker({
                 </div>
 
                 <button type="button" className="cme__change" onClick={changeBg}>
-                  ← New background
+                  ↺ Start over
                 </button>
               </div>
 
               <div className="cme__side">
+                <div className="cme__group">
+                  <span className="cme__group-t">Background</span>
+                  <input
+                    className="cpc__input"
+                    maxLength={120}
+                    value={scene}
+                    onChange={(e) => setScene(e.target.value)}
+                    placeholder="describe a new background…"
+                  />
+                  <div className="cme__seg">
+                    <button
+                      type="button"
+                      className="cme__seg-b"
+                      onClick={generate}
+                      disabled={gen === 'working'}
+                    >
+                      {gen === 'working' ? 'Generating…' : 'Regenerate'}
+                    </button>
+                    <button
+                      type="button"
+                      className="cme__seg-b"
+                      onClick={() => bgFileRef.current?.click()}
+                    >
+                      Upload image
+                    </button>
+                  </div>
+                  <input
+                    ref={bgFileRef}
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    hidden
+                    onChange={(e) => {
+                      uploadBg(e.target.files?.[0])
+                      e.target.value = ''
+                    }}
+                  />
+                  {genErr && <p className="studio__error">{genErr}</p>}
+                </div>
+
                 <div className="cme__group">
                   <span className="cme__group-t">Calendar placement</span>
                   <div className="cme__seg">
@@ -473,6 +520,17 @@ export default function CalendarMaker({
                       </button>
                     ))}
                   </div>
+                  <label className="cme__field">
+                    Panel opacity
+                    <input
+                      type="range"
+                      min={0}
+                      max={1}
+                      step={0.02}
+                      value={panelAlpha}
+                      onChange={(e) => setPanelAlpha(Number(e.target.value))}
+                    />
+                  </label>
                 </div>
 
                 <div className="cme__add">

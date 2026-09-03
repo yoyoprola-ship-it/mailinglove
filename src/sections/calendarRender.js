@@ -105,10 +105,15 @@ function drawMonth(ctx, box, year, m, o) {
   ctx.restore()
 }
 
-// position: 'bottom' | 'top' | 'left' | 'right'; panel: 'light' | 'dark'
-export function drawCalendarGrid(ctx, { year, W, H, position = 'bottom', panel = 'light' }) {
+// position: 'bottom' | 'top' | 'left' | 'right'; panel: 'light' | 'dark';
+// panelAlpha: 0..1 opacity of the backing panel behind the dates.
+export function drawCalendarGrid(
+  ctx,
+  { year, W, H, position = 'bottom', panel = 'light', panelAlpha }
+) {
   const ink = INK[panel] || INK.light
   const accent = ACCENT[panel] || ACCENT.light
+  const a = Number.isFinite(panelAlpha) ? Math.max(0, Math.min(1, panelAlpha)) : panel === 'dark' ? 0.62 : 0.86
 
   let area
   let cols
@@ -141,11 +146,13 @@ export function drawCalendarGrid(ctx, { year, W, H, position = 'bottom', panel =
   const py = Math.min(area.y, yearRect.y) - pad
   const pw = Math.max(area.x + area.w, yearRect.x + yearRect.w) - px + pad
   const ph = Math.max(area.y + area.h, yearRect.y + yearRect.h) - py + pad
-  ctx.save()
-  ctx.fillStyle = panel === 'dark' ? 'rgba(16,9,13,0.62)' : 'rgba(255,255,255,0.86)'
-  roundRect(ctx, px, py, pw, ph, Math.min(W, H) * 0.02)
-  ctx.fill()
-  ctx.restore()
+  if (a > 0.001) {
+    ctx.save()
+    ctx.fillStyle = panel === 'dark' ? `rgba(16,9,13,${a})` : `rgba(255,255,255,${a})`
+    roundRect(ctx, px, py, pw, ph, Math.min(W, H) * 0.02)
+    ctx.fill()
+    ctx.restore()
+  }
 
   ctx.save()
   ctx.fillStyle = accent
@@ -172,7 +179,7 @@ export function drawCalendarGrid(ctx, { year, W, H, position = 'bottom', panel =
 }
 
 // A PNG data URL of just the grid, for the live editor preview.
-export function renderGridDataUrl(w, h, year, position, panel) {
+export function renderGridDataUrl(w, h, year, position, panel, panelAlpha) {
   const canvas = document.createElement('canvas')
   canvas.width = Math.round(w)
   canvas.height = Math.round(h)
@@ -182,6 +189,7 @@ export function renderGridDataUrl(w, h, year, position, panel) {
     H: canvas.height,
     position,
     panel,
+    panelAlpha,
   })
   return canvas.toDataURL('image/png')
 }
@@ -284,7 +292,7 @@ async function ensureFonts(layers) {
 
 // bgImg: loaded HTMLImageElement (the AI/uploaded background).
 // layers: normalized (0..1) coords.
-export async function renderCalendar(bgImg, layers, photoImgs, { year, position, panel }) {
+export async function renderCalendar(bgImg, layers, photoImgs, { year, position, panel, panelAlpha }) {
   await ensureFonts(layers)
   const templateImg = bgImg
   const W = templateImg.naturalWidth || 2400
@@ -309,7 +317,7 @@ export async function renderCalendar(bgImg, layers, photoImgs, { year, position,
   }
 
   // the calendar grid always sits on top, so it can never be covered
-  drawCalendarGrid(ctx, { year, W, H, position, panel })
+  drawCalendarGrid(ctx, { year, W, H, position, panel, panelAlpha })
 
   return new Promise((res, rej) =>
     canvas.toBlob(
