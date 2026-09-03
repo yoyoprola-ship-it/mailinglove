@@ -3,8 +3,8 @@ import Reveal from '../components/Reveal'
 
 const products = [
   { icon: 'image', title: 'Photo prints', text: 'Upload one photo or a whole stack. Crop each to size, pick the format, and we print them at full quality and mail them.' },
-  { icon: 'mail', title: 'Postcards', text: 'Hundreds of ready-made designs — or generate a one-of-a-kind card from a name and occasion. We print it and mail it.' },
-  { icon: 'calendar', title: 'Photo calendars', text: 'Build a 2027 wall calendar: pick a background, drop in your framed photos, add a line of your own. 8×10 in, printed and mailed.' },
+  { icon: 'mail', title: 'Ready-made postcards', text: 'Hundreds of designs across every occasion. Add your message and who it\'s for, and we print it and mail it.' },
+  { icon: 'sparkles', title: 'Design your own postcard', text: 'Give us a name and an occasion and AI creates a one-of-a-kind card — printed and mailed like the rest.' },
 ]
 
 export default function Products() {

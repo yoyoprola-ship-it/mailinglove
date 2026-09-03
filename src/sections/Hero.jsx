@@ -7,7 +7,7 @@ export default function Hero() {
       <div className="hero__glow" />
       <div className="section-inner hero__inner">
         <Reveal>
-          <p className="eyebrow">Photo prints, postcards &amp; calendars, delivered by mail</p>
+          <p className="eyebrow">Photo prints &amp; postcards, delivered by mail</p>
         </Reveal>
         <Reveal delay={80}>
           <h2 className="hero__title">
@@ -20,7 +20,7 @@ export default function Hero() {
           <p className="hero__subtitle">
             Upload your photos and we print them at full quality and mail them —
             to you or straight to someone you love. Rather send a ready-made
-            postcard, or build a photo calendar? We print and mail those too.
+            postcard? Pick one and we print and mail that too.
           </p>
         </Reveal>
         <Reveal delay={240}>

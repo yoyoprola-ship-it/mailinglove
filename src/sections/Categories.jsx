@@ -3,9 +3,9 @@ import Reveal from '../components/Reveal'
 
 const categories = [
   { icon: 'heart', title: 'Love', text: 'Anniversaries, "thinking of you," or just because — a card that lands in the mailbox, not the group chat.' },
-  { icon: 'family', title: 'Family', text: 'Your favorite family photo, printed and mailed — or a whole year of them on a photo calendar.' },
+  { icon: 'family', title: 'Family', text: 'Your favorite family photo, printed at full quality and mailed — to frame, gift, or just keep.' },
   { icon: 'cake', title: 'Birthday', text: 'A birthday card that actually shows up, not another notification.' },
-  { icon: 'snowflake', title: 'Christmas', text: 'Holiday postcards and photo calendars, ready before the rush.' },
+  { icon: 'snowflake', title: 'Christmas', text: 'Holiday postcards for the whole list, ready before the rush.' },
 ]
 
 export default function Categories() {

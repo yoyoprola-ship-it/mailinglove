@@ -5,7 +5,7 @@ export default function Footer() {
         <a className="brand" href="#top" aria-label="MailingLove — home">
           <img className="brand__logo" src="/logo.png" alt="MailingLove" width="631" height="200" />
         </a>
-        <p className="footer__text">Your photos, postcards &amp; calendars — printed and mailed.</p>
+        <p className="footer__text">Your photos &amp; postcards — printed and mailed.</p>
         <nav className="footer__links">
           <a href="/terms">Terms &amp; Conditions</a>
           <a href="/privacy">Privacy Policy</a>

@@ -2,7 +2,7 @@ import Icon from '../components/Icon'
 import Reveal from '../components/Reveal'
 
 const steps = [
-  { icon: 'image', title: 'Pick what to send', text: 'Print your own photos, choose a ready-made postcard, or build a photo calendar.' },
+  { icon: 'image', title: 'Pick what to send', text: 'Print your own photos, or choose a ready-made postcard.' },
   { icon: 'upload', title: 'Make it yours', text: 'Upload and crop your photos, add a message and a size — or let AI design a postcard from a name and occasion.' },
   { icon: 'mail', title: 'Say who it’s for', text: 'Your address or theirs. US addresses, checked as you type.' },
   { icon: 'check', title: 'We print & mail it', text: 'Real paper in a real envelope, straight to a real mailbox. No app for them to install.' },
