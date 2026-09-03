@@ -1494,9 +1494,9 @@
 .chooser__media {
   position: absolute;
   z-index: 1;
-  left: 50%;
-  transform: translateX(-50%);
-  bottom: -6px;
+  right: -26px;
+  top: 50%;
+  transform: translateY(-50%);
   width: 48%;
   pointer-events: none;
 }
