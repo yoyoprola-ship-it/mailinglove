@@ -1133,6 +1133,7 @@
 }
 
 .pp__drop {
+  position: relative;
   width: 340px;
   max-width: 100%;
   aspect-ratio: 4 / 5;
@@ -1146,9 +1147,25 @@
   color: var(--rose-900);
   cursor: pointer;
   background: var(--blush);
+  overflow: hidden;
+}
+.pp__drop::before {
+  content: '';
+  position: absolute;
+  inset: 6%;
+  background: url('/photos-collage.webp') center/contain no-repeat;
+  opacity: 0.14;
+  pointer-events: none;
+}
+.pp__drop > * {
+  position: relative;
+  z-index: 1;
 }
 .pp__drop:hover {
   border-color: var(--rose);
+}
+.pp__drop:hover::before {
+  opacity: 0.22;
 }
 
 .pp__zoom {
