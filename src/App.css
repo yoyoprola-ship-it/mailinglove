@@ -1154,18 +1154,30 @@
   position: absolute;
   inset: 0;
   background: url('/photos-collage.webp') center/cover no-repeat;
-  opacity: 0.22;
+  opacity: 0.18;
   pointer-events: none;
 }
 .pp__drop > * {
   position: relative;
   z-index: 1;
 }
+/* keep the instruction readable over the collage */
+.pp__drop > svg {
+  filter: drop-shadow(0 1px 3px rgba(255, 248, 245, 0.9));
+}
+.pp__drop span {
+  font-weight: 700;
+  font-size: 0.95rem;
+  padding: 7px 16px;
+  border-radius: 999px;
+  background: rgba(255, 248, 245, 0.9);
+  box-shadow: 0 4px 14px rgba(74, 22, 38, 0.14);
+}
 .pp__drop:hover {
   border-color: var(--rose);
 }
 .pp__drop:hover::before {
-  opacity: 0.32;
+  opacity: 0.26;
 }
 
 .pp__zoom {
