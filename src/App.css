@@ -1152,9 +1152,9 @@
 .pp__drop::before {
   content: '';
   position: absolute;
-  inset: 6%;
-  background: url('/photos-collage.webp') center/contain no-repeat;
-  opacity: 0.14;
+  inset: 0;
+  background: url('/photos-collage.webp') center/cover no-repeat;
+  opacity: 0.22;
   pointer-events: none;
 }
 .pp__drop > * {
@@ -1165,7 +1165,7 @@
   border-color: var(--rose);
 }
 .pp__drop:hover::before {
-  opacity: 0.22;
+  opacity: 0.32;
 }
 
 .pp__zoom {
