@@ -1510,6 +1510,16 @@
   transform: scale(1.04) translateY(-3px);
 }
 
+/* "Send a postcard" art: 15% taller, growing upward (bottom-anchored) */
+.chooser__card--postcards .chooser__media img {
+  transform: scale(1.15);
+  transform-origin: center bottom;
+}
+.chooser__card--postcards:hover .chooser__media img {
+  transform: scale(1.2) translateY(-3px);
+  transform-origin: center bottom;
+}
+
 .chooser__eyebrow {
   font-size: 0.72rem;
   font-weight: 700;
@@ -1568,6 +1578,10 @@
   .chooser__media img {
     object-fit: contain;
     object-position: center;
+  }
+  .chooser__card--postcards .chooser__media img,
+  .chooser__card--postcards:hover .chooser__media img {
+    transform: none;
   }
 }
 

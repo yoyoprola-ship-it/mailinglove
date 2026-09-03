@@ -45,7 +45,11 @@ export default function ServiceChooser({ showPhotoPrint = true, showPostcards = 
         <div className={`chooser__grid${cards.length === 1 ? ' is-single' : ''}`}>
           {cards.map((c, i) => (
             <Reveal key={c.id} delay={120 + i * 90}>
-              <button type="button" className="chooser__card" onClick={() => onGo(c.id)}>
+              <button
+                type="button"
+                className={`chooser__card chooser__card--${c.id}`}
+                onClick={() => onGo(c.id)}
+              >
                 <span className="chooser__body">
                   <span className="chooser__icon">
                     <Icon name={c.icon} size={26} />
