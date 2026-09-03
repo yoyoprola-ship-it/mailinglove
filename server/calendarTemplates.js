@@ -9,10 +9,37 @@ import { saveFile, downloadFile, deleteFile, EXT } from './bucket.js'
 // on top in the browser; the flattened result goes to the cart.
 //
 // calendarTemplates/<id> = {
-//   id, name, storagePath, contentType, hidden, order, createdAt, updatedAt
+//   id, name, storagePath, contentType, hidden, order, createdAt, updatedAt,
+//   layout: { position:'bottom'|'side', ink, accent, titleFont, panel }
 // }
 
 const COLL = 'calendarTemplates'
+
+const POSITIONS = ['bottom', 'side']
+const PANELS = ['light', 'dark', 'none']
+const FONTS = [
+  'Playfair Display', 'Cormorant Garamond', 'Marcellus', 'Prata',
+  'Cinzel', 'Great Vibes', 'Parisienne',
+]
+const DEFAULT_LAYOUT = {
+  position: 'bottom',
+  ink: '#2b2b2e',
+  accent: '#b8355f',
+  titleFont: 'Cinzel',
+  panel: 'light',
+}
+const hex = (v, fallback) => (/^#[0-9a-fA-F]{6}$/.test(String(v || '')) ? String(v) : fallback)
+
+function validLayout(input) {
+  const l = input && typeof input === 'object' ? input : {}
+  return {
+    position: POSITIONS.includes(l.position) ? l.position : DEFAULT_LAYOUT.position,
+    ink: hex(l.ink, DEFAULT_LAYOUT.ink),
+    accent: hex(l.accent, DEFAULT_LAYOUT.accent),
+    titleFont: FONTS.includes(l.titleFont) ? l.titleFont : DEFAULT_LAYOUT.titleFont,
+    panel: PANELS.includes(l.panel) ? l.panel : DEFAULT_LAYOUT.panel,
+  }
+}
 
 let cache = null
 let cacheAt = 0
@@ -42,6 +69,7 @@ const pub = (t) => ({
   id: t.id,
   name: t.name,
   image: `/api/calendar-template-image/${t.id}?v=${t.updatedAt || 0}`,
+  layout: validLayout(t.layout),
 })
 
 export async function listTemplates() {
@@ -76,7 +104,7 @@ function checkImage(contentType) {
   return ext
 }
 
-export async function addTemplate({ name, buffer, contentType }) {
+export async function addTemplate({ name, layout, buffer, contentType }) {
   const db = getDb()
   if (!db) return { ok: false, error: 'Storage is not available right now.' }
   const nm = String(name || '').trim().slice(0, 80)
@@ -96,6 +124,7 @@ export async function addTemplate({ name, buffer, contentType }) {
     storagePath,
     contentType,
     hidden: false,
+    layout: validLayout(layout),
     order: (rows.reduce((m, t) => Math.max(m, t.order || 0), 0) || 0) + 1,
     createdAt: now,
     updatedAt: now,
@@ -124,24 +153,23 @@ export async function replaceTemplateImage(id, buffer, contentType) {
   return { ok: true, updatedAt }
 }
 
-export async function renameTemplate(id, name) {
+export async function updateTemplate(id, patch = {}) {
   const db = getDb()
   if (!db) return { ok: false, error: 'Storage is not available right now.' }
-  const nm = String(name || '').trim().slice(0, 80)
-  if (!nm) return { ok: false, error: 'A name is required.' }
   const ref = db.collection(COLL).doc(String(id))
   if (!(await ref.get()).exists) return { ok: false, error: 'Unknown template.' }
-  await ref.set({ name: nm, updatedAt: Date.now() }, { merge: true })
-  invalidateTemplates()
-  return { ok: true }
-}
 
-export async function setTemplateHidden(id, hidden) {
-  const db = getDb()
-  if (!db) return { ok: false, error: 'Storage is not available right now.' }
-  const ref = db.collection(COLL).doc(String(id))
-  if (!(await ref.get()).exists) return { ok: false, error: 'Unknown template.' }
-  await ref.set({ hidden: Boolean(hidden), updatedAt: Date.now() }, { merge: true })
+  const set = { updatedAt: Date.now() }
+  if (typeof patch.name === 'string') {
+    const nm = patch.name.trim().slice(0, 80)
+    if (!nm) return { ok: false, error: 'A name is required.' }
+    set.name = nm
+  }
+  if (typeof patch.hidden === 'boolean') set.hidden = patch.hidden
+  if (patch.layout) set.layout = validLayout(patch.layout)
+  if (Object.keys(set).length === 1) return { ok: false, error: 'Nothing to update.' }
+
+  await ref.set(set, { merge: true })
   invalidateTemplates()
   return { ok: true }
 }

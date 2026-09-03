@@ -1065,3 +1065,45 @@ input.adm__input[type='checkbox'] {
   background: #faf0e6;
   border-color: #ecd9c2;
 }
+
+/* calendar template layout form */
+.adm__cal-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 4px 0 12px;
+}
+.adm__cal-colors {
+  display: flex;
+  gap: 18px;
+  margin-top: 6px;
+}
+.adm__cal-colors label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.adm__cal-colors input[type='color'] {
+  width: 34px;
+  height: 26px;
+  padding: 0;
+  border: 1px solid rgba(74, 22, 38, 0.2);
+  border-radius: 6px;
+}
+.adm__cal-edit {
+  margin-top: 10px;
+  padding: 12px;
+  border: 1px solid rgba(74, 22, 38, 0.15);
+  border-radius: 8px;
+  background: #faf7f8;
+}
+.adm__cal-edit-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 8px;
+}
+.adm__btn--sm {
+  padding: 6px 14px;
+  font-size: 0.82rem;
+}

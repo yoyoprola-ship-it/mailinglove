@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import Reveal from '../components/Reveal'
 import Icon from '../components/Icon'
-import { FRAMES, FONTS, renderCalendar } from './calendarRender'
+import { FRAMES, FONTS, renderCalendar, renderGridDataUrl } from './calendarRender'
 
 const money = (c) => `$${((c || 0) / 100).toFixed(2)}`
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v))
@@ -27,6 +27,7 @@ export default function CalendarMaker({
   const [templates, setTemplates] = useState(null)
   const [tpl, setTpl] = useState(null)
   const [tplImg, setTplImg] = useState(null)
+  const [gridUrl, setGridUrl] = useState('')
   const [layers, setLayers] = useState([])
   const [selId, setSelId] = useState(null)
   const [status, setStatus] = useState('idle') // idle | adding | done
@@ -50,10 +51,22 @@ export default function CalendarMaker({
   useEffect(() => {
     if (!tpl) return
     setTplImg(null)
+    setGridUrl('')
     const im = new Image()
     im.onload = () => setTplImg(im)
     im.src = tpl.image
   }, [tpl])
+
+  // Render the (accurate) grid preview once we know the template's aspect;
+  // re-render when the display fonts finish loading.
+  useEffect(() => {
+    if (!tplImg || !tpl) return
+    const r = tplImg.naturalWidth / tplImg.naturalHeight
+    const w = 900
+    const draw = () => setGridUrl(renderGridDataUrl(w, Math.round(w / r), year, tpl.layout))
+    draw()
+    if (document.fonts?.ready) document.fonts.ready.then(draw).catch(() => {})
+  }, [tplImg, tpl, year])
 
   useEffect(() => {
     function move(e) {
@@ -206,7 +219,10 @@ export default function CalendarMaker({
     setError('')
     setSelId(null)
     try {
-      const blob = await renderCalendar(tplImg, layers, photoEls.current)
+      const blob = await renderCalendar(tplImg, layers, photoEls.current, {
+        year,
+        layout: tpl.layout,
+      })
       const body = new FormData()
       body.append('image', blob, 'calendar.jpg')
       body.append('width', String(tplImg.naturalWidth))
@@ -315,6 +331,7 @@ export default function CalendarMaker({
                       )}
                     </div>
                   ))}
+                  {gridUrl && <img className="cme__grid" src={gridUrl} alt="" draggable={false} />}
                 </div>
 
                 <button type="button" className="cme__change" onClick={changeTemplate}>
@@ -327,9 +344,11 @@ export default function CalendarMaker({
                   <button type="button" className="btn btn--ghost btn--sm" onClick={() => fileRef.current?.click()}>
                     <Icon name="image" size={15} /> Add photo
                   </button>
-                  <button type="button" className="btn btn--ghost btn--sm" onClick={addText}>
-                    <Icon name="sparkles" size={15} /> Add text
-                  </button>
+                  {!layers.some((l) => l.kind === 'text') && (
+                    <button type="button" className="btn btn--ghost btn--sm" onClick={addText}>
+                      <Icon name="sparkles" size={15} /> Add text
+                    </button>
+                  )}
                   <input
                     ref={fileRef}
                     type="file"

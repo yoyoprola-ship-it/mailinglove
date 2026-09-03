@@ -61,8 +61,7 @@ import {
   adminListTemplates,
   addTemplate,
   replaceTemplateImage,
-  renameTemplate,
-  setTemplateHidden,
+  updateTemplate,
   deleteTemplate,
   streamTemplateImage,
 } from './server/calendarTemplates.js'
@@ -458,8 +457,15 @@ app.post('/api/admin/calendar-templates', requireAdmin, (req, res) => {
     if (uploadErr) return res.status(400).json({ error: uploadErr.message })
     if (!req.file) return res.status(400).json({ error: 'Attach an image.' })
     try {
+      let layout
+      try {
+        layout = req.body.layout ? JSON.parse(req.body.layout) : undefined
+      } catch {
+        layout = undefined
+      }
       const r = await addTemplate({
         name: req.body.name,
+        layout,
         buffer: req.file.buffer,
         contentType: req.file.mimetype,
       })
@@ -490,11 +496,7 @@ app.post('/api/admin/calendar-templates/:id/image', requireAdmin, (req, res) => 
 
 app.put('/api/admin/calendar-templates/:id', requireAdmin, async (req, res) => {
   try {
-    const b = req.body || {}
-    const r =
-      typeof b.hidden === 'boolean'
-        ? await setTemplateHidden(req.params.id, b.hidden)
-        : await renameTemplate(req.params.id, b.name)
+    const r = await updateTemplate(req.params.id, req.body || {})
     if (!r.ok) return res.status(400).json({ error: r.error })
     res.json({ ok: true })
   } catch (err) {

@@ -1604,7 +1604,8 @@
   user-select: none;
 }
 
-.cme__bg {
+.cme__bg,
+.cme__grid {
   position: absolute;
   inset: 0;
   width: 100%;
@@ -1612,6 +1613,10 @@
   object-fit: fill;
   display: block;
   pointer-events: none;
+}
+
+.cme__grid {
+  z-index: 9000;
 }
 
 .cme__layer {
