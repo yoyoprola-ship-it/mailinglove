@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import Reveal from '../components/Reveal'
 import Icon from '../components/Icon'
+import CropModal from '../components/CropModal'
 import {
   FRAMES,
   FONTS,
@@ -46,6 +47,7 @@ export default function CalendarMaker({
   // --- editor ---
   const [layers, setLayers] = useState([])
   const [selId, setSelId] = useState(null)
+  const [cropId, setCropId] = useState(null)
   const [status, setStatus] = useState('idle') // idle | adding | done
   const [error, setError] = useState('')
 
@@ -88,7 +90,11 @@ export default function CalendarMaker({
             return { ...l, x: clamp(d.s.x + dxN, -0.25, 1.25), y: clamp(d.s.y + dyN, -0.25, 1.25) }
           }
           if (d.mode === 'resize') {
-            return { ...l, w: Math.max(0.06, d.s.w + dxN), h: Math.max(0.06, d.s.h + dyN) }
+            // scale proportionally — keep the box at the photo's aspect ratio
+            // so the picture is never cropped or squashed
+            const ar = d.s.w / d.s.h
+            const nw = Math.max(0.06, d.s.w + dxN)
+            return { ...l, w: nw, h: nw / ar }
           }
           if (d.mode === 'rotate') {
             const cx = rr.left + (l.x + l.w / 2) * rr.width
@@ -185,8 +191,14 @@ export default function CalendarMaker({
       const im = new Image()
       im.onload = () => {
         photoEls.current[id] = im
-        const w = 0.34
-        const h = clamp(w * ratio * (im.naturalHeight / im.naturalWidth), 0.1, 0.7)
+        // start at the photo's true aspect ratio; shrink w if it'd be too tall
+        const par = (im.naturalHeight / im.naturalWidth) * ratio
+        let w = 0.34
+        let h = w * par
+        if (h > 0.62) {
+          h = 0.62
+          w = h / par
+        }
         setLayers((ls) => [
           ...ls,
           {
@@ -246,6 +258,26 @@ export default function CalendarMaker({
     delete photoEls.current[selId]
     setSelId(null)
   }
+
+  function applyCrop(id, blob) {
+    const url = URL.createObjectURL(blob)
+    const im = new Image()
+    im.onload = () => {
+      photoEls.current[id] = im
+      setLayers((ls) =>
+        ls.map((l) => {
+          if (l.id !== id) return l
+          if (l.src?.startsWith('blob:')) URL.revokeObjectURL(l.src)
+          // keep the width, re-fit the height to the new aspect (no crop)
+          return { ...l, src: url, h: l.w * ratio * (im.naturalHeight / im.naturalWidth) }
+        })
+      )
+    }
+    im.src = url
+    setCropId(null)
+  }
+
+  const cropTarget = layers.find((l) => l.id === cropId) || null
   function bringFront() {
     patchSel({ z: nextZ() })
   }
@@ -502,6 +534,16 @@ export default function CalendarMaker({
                     </label>
 
                     {sel.kind === 'photo' && (
+                      <button
+                        type="button"
+                        className="cme__chip"
+                        onClick={() => setCropId(sel.id)}
+                      >
+                        Adjust photo…
+                      </button>
+                    )}
+
+                    {sel.kind === 'photo' && (
                       <div className="cme__frames">
                         {FRAMES.map((f) => (
                           <button
@@ -604,6 +646,15 @@ export default function CalendarMaker({
           )}
         </Reveal>
       </div>
+
+      {cropTarget && (
+        <CropModal
+          src={cropTarget.src}
+          title="Adjust photo — frame it how you want"
+          onCancel={() => setCropId(null)}
+          onApply={async (blob) => applyCrop(cropTarget.id, blob)}
+        />
+      )}
     </section>
   )
 }

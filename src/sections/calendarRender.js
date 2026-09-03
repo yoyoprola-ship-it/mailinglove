@@ -188,16 +188,13 @@ export function renderGridDataUrl(w, h, year, position, panel) {
 
 // --- photo frames --------------------------------------------------
 
-function drawCover(ctx, img, ix, iy, iw, ih) {
-  const s = Math.max(iw / img.naturalWidth, ih / img.naturalHeight)
+// Fit the whole photo inside the rect (contain) — the layer box is kept at
+// the photo's aspect ratio, so this never crops and never leaves a gap.
+function drawFit(ctx, img, ix, iy, iw, ih) {
+  const s = Math.min(iw / img.naturalWidth, ih / img.naturalHeight)
   const dw = img.naturalWidth * s
   const dh = img.naturalHeight * s
-  ctx.save()
-  ctx.beginPath()
-  ctx.rect(ix, iy, iw, ih)
-  ctx.clip()
   ctx.drawImage(img, ix + (iw - dw) / 2, iy + (ih - dh) / 2, dw, dh)
-  ctx.restore()
 }
 
 function drawFrame(ctx, frame, img, w, h) {
@@ -206,11 +203,11 @@ function drawFrame(ctx, frame, img, w, h) {
   const s = Math.min(w, h)
 
   if (frame === 'none') {
-    drawCover(ctx, img, x, y, w, h)
+    drawFit(ctx, img, x, y, w, h)
     return
   }
   if (frame === 'thin') {
-    drawCover(ctx, img, x, y, w, h)
+    drawFit(ctx, img, x, y, w, h)
     ctx.strokeStyle = '#2b2b2e'
     ctx.lineWidth = Math.max(2, s * 0.014)
     ctx.strokeRect(x + ctx.lineWidth / 2, y + ctx.lineWidth / 2, w - ctx.lineWidth, h - ctx.lineWidth)
@@ -232,7 +229,7 @@ function drawFrame(ctx, frame, img, w, h) {
   const iy = y + pad
   const iw = w - pad * 2
   const ih = h - pad - padBottom
-  drawCover(ctx, img, ix, iy, iw, ih)
+  drawFit(ctx, img, ix, iy, iw, ih)
 
   if (frame === 'double') {
     ctx.strokeStyle = 'rgba(43,43,46,0.55)'
