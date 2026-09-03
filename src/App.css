@@ -1072,6 +1072,10 @@
   color: var(--muted);
   font-size: 0.8rem;
 }
+.footer__copy--fine {
+  font-size: 0.72rem;
+  opacity: 0.8;
+}
 
 /* ---------- responsive ---------- */
 

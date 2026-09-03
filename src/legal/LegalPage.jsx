@@ -21,10 +21,11 @@ function Header() {
 function Footer() {
   return (
     <footer className="lgl__foot">
-      <p>© {new Date().getFullYear()} MailingLove. All rights reserved.</p>
+      <p>© {new Date().getFullYear()} Joe Software USA LLC. All rights reserved.</p>
       <p>
-        Questions? Use the Help chat at <a href="/">mailinglove.com</a> or email{' '}
-        <a href="mailto:support@mailinglove.com">support@mailinglove.com</a>.
+        MailingLove is a service operated by Joe Software USA LLC. Questions? Use
+        the Help chat at <a href="/">mailinglove.com</a> or email{' '}
+        <a href="mailto:joesoftwareusallc@gmail.com">joesoftwareusallc@gmail.com</a>.
       </p>
     </footer>
   )
@@ -38,8 +39,10 @@ function Terms() {
 
       <p>
         These Terms &amp; Conditions ("Terms") govern your use of the MailingLove
-        website and services ("MailingLove", "we", "us"). MailingLove prints
-        photos and postcards and mails them within the United States. By creating
+        website and services ("MailingLove", "we", "us"). MailingLove is a
+        service operated by <strong>Joe Software USA LLC</strong>. MailingLove
+        prints photos and postcards and mails them within the United States. By
+        creating
         an account, placing an order, or otherwise using the service, you agree to
         these Terms.
       </p>
@@ -170,15 +173,15 @@ function Terms() {
 
       <h2>10. Governing law</h2>
       <p>
-        These Terms are governed by the laws of the United States and of the state
-        in which MailingLove is organized, without regard to conflict-of-laws
-        rules.
+        These Terms are governed by the laws of the United States and of the
+        state in which Joe Software USA LLC is organized, without regard to
+        conflict-of-laws rules.
       </p>
 
       <h2>11. Contact</h2>
       <p>
         Use the Help chat at <a href="/">mailinglove.com</a> or email{' '}
-        <a href="mailto:support@mailinglove.com">support@mailinglove.com</a>.
+        <a href="mailto:joesoftwareusallc@gmail.com">joesoftwareusallc@gmail.com</a>.
       </p>
     </article>
   )
@@ -191,9 +194,10 @@ function Privacy() {
       <p className="lgl__eff">Effective {EFFECTIVE}</p>
 
       <p>
-        This Privacy Policy explains what MailingLove ("we", "us") collects when
-        you use our website and print-and-mail service, how we use it, and the
-        choices you have.
+        This Privacy Policy explains what MailingLove ("we", "us") — a service
+        operated by <strong>Joe Software USA LLC</strong> — collects when you use
+        our website and print-and-mail service, how we use it, and the choices
+        you have.
       </p>
 
       <h2>1. Information we collect</h2>
@@ -331,7 +335,7 @@ function Privacy() {
       <h2>10. Contact</h2>
       <p>
         Use the Help chat at <a href="/">mailinglove.com</a> or email{' '}
-        <a href="mailto:support@mailinglove.com">support@mailinglove.com</a>.
+        <a href="mailto:joesoftwareusallc@gmail.com">joesoftwareusallc@gmail.com</a>.
       </p>
     </article>
   )
