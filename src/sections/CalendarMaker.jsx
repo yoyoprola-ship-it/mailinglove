@@ -1,11 +1,21 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import Reveal from '../components/Reveal'
 import Icon from '../components/Icon'
-import CropModal from '../components/CropModal'
+import { FRAMES, FONTS, renderCalendar } from './calendarRender'
 
-const MAX = 4
 const money = (c) => `$${((c || 0) / 100).toFixed(2)}`
+const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v))
 let uid = 0
+
+const mctx = document.createElement('canvas').getContext('2d')
+function sizeTextLayer(l, ratio) {
+  const refH = 1000
+  const px = l.size * refH
+  mctx.font = `600 ${px}px "${l.font}", serif`
+  const lines = String(l.text || ' ').split('\n')
+  const wpx = Math.max(1, ...lines.map((s) => mctx.measureText(s || ' ').width))
+  return { ...l, w: (wpx * 1.06) / (refH * ratio), h: l.size * 1.18 * lines.length }
+}
 
 export default function CalendarMaker({
   year = 2027,
@@ -14,116 +24,193 @@ export default function CalendarMaker({
   onAdded,
   onRequireAuth,
 }) {
-  const [photos, setPhotos] = useState([]) // { id, file, url }
-  const [scene, setScene] = useState('')
-  const [status, setStatus] = useState('idle') // idle | working | done | error
-  const [result, setResult] = useState('')
+  const [templates, setTemplates] = useState(null)
+  const [tpl, setTpl] = useState(null)
+  const [tplImg, setTplImg] = useState(null)
+  const [layers, setLayers] = useState([])
+  const [selId, setSelId] = useState(null)
+  const [status, setStatus] = useState('idle') // idle | adding | done
   const [error, setError] = useState('')
-  const [cartState, setCartState] = useState('idle') // idle | adding | done
-  const [cartError, setCartError] = useState('')
-  const [dragOver, setDragOver] = useState(false)
-  const [cropId, setCropId] = useState(null)
+
+  const stageRef = useRef(null)
   const fileRef = useRef(null)
-  const photosRef = useRef(photos)
-  photosRef.current = photos
+  const drag = useRef(null)
+  const photoEls = useRef({})
 
-  useEffect(() => () => photosRef.current.forEach((p) => URL.revokeObjectURL(p.url)), [])
+  const ratio = tplImg ? tplImg.naturalWidth / tplImg.naturalHeight : 0.8
+  const sel = layers.find((l) => l.id === selId) || null
 
-  function addFiles(list) {
-    const incoming = [...(list || [])].filter((f) => f.type.startsWith('image/'))
-    if (!incoming.length) return
-    setError('')
-    setPhotos((cur) => {
-      const room = MAX - cur.length
-      const add = incoming.slice(0, room).map((f) => ({
-        id: `c${++uid}`,
-        file: f,
-        url: URL.createObjectURL(f),
-      }))
-      return [...cur, ...add]
+  useEffect(() => {
+    fetch('/api/calendar-templates')
+      .then((r) => r.json())
+      .then((d) => setTemplates(d.templates || []))
+      .catch(() => setTemplates([]))
+  }, [])
+
+  useEffect(() => {
+    if (!tpl) return
+    setTplImg(null)
+    const im = new Image()
+    im.onload = () => setTplImg(im)
+    im.src = tpl.image
+  }, [tpl])
+
+  useEffect(() => {
+    function move(e) {
+      const d = drag.current
+      if (!d || !stageRef.current) return
+      const r = stageRef.current.getBoundingClientRect()
+      const dxN = (e.clientX - d.px) / r.width
+      const dyN = (e.clientY - d.py) / r.height
+      setLayers((ls) =>
+        ls.map((l) => {
+          if (l.id !== d.id) return l
+          if (d.mode === 'move') {
+            return { ...l, x: clamp(d.s.x + dxN, -0.25, 1.25), y: clamp(d.s.y + dyN, -0.25, 1.25) }
+          }
+          if (d.mode === 'resize') {
+            const nw = Math.max(0.06, d.s.w + dxN)
+            const nh = Math.max(0.06, d.s.h + dyN)
+            return { ...l, w: nw, h: nh }
+          }
+          if (d.mode === 'rotate') {
+            const cx = r.left + (l.x + l.w / 2) * r.width
+            const cy = r.top + (l.y + l.h / 2) * r.height
+            const ang = (Math.atan2(e.clientY - cy, e.clientX - cx) * 180) / Math.PI + 90
+            return { ...l, rot: Math.round(ang) }
+          }
+          return l
+        })
+      )
+    }
+    function up() {
+      drag.current = null
+    }
+    window.addEventListener('pointermove', move)
+    window.addEventListener('pointerup', up)
+    window.addEventListener('pointercancel', up)
+    return () => {
+      window.removeEventListener('pointermove', move)
+      window.removeEventListener('pointerup', up)
+      window.removeEventListener('pointercancel', up)
+    }
+  }, [])
+
+  function startDrag(mode, l, e) {
+    e.preventDefault()
+    e.stopPropagation()
+    e.currentTarget.setPointerCapture?.(e.pointerId)
+    setSelId(l.id)
+    drag.current = { mode, id: l.id, px: e.clientX, py: e.clientY, s: { x: l.x, y: l.y, w: l.w, h: l.h } }
+  }
+
+  const nextZ = () => (layers.length ? Math.max(...layers.map((l) => l.z)) + 1 : 1)
+
+  function addPhotos(list) {
+    const files = [...(list || [])].filter((f) => f.type.startsWith('image/'))
+    files.forEach((file, i) => {
+      const id = `l${++uid}`
+      const url = URL.createObjectURL(file)
+      const im = new Image()
+      im.onload = () => {
+        photoEls.current[id] = im
+        const w = 0.34
+        const h = clamp(w * ratio * (im.naturalHeight / im.naturalWidth), 0.1, 0.7)
+        setLayers((ls) => [
+          ...ls,
+          {
+            id,
+            kind: 'photo',
+            src: url,
+            frame: 'white',
+            x: 0.5 - w / 2 + i * 0.03,
+            y: 0.32 + i * 0.03,
+            w,
+            h,
+            rot: 0,
+            z: nextZ() + i,
+          },
+        ])
+        setSelId(id)
+      }
+      im.src = url
     })
   }
 
-  function removePhoto(id) {
-    setPhotos((cur) => {
-      const gone = cur.find((p) => p.id === id)
-      if (gone) URL.revokeObjectURL(gone.url)
-      return cur.filter((p) => p.id !== id)
-    })
+  function addText() {
+    const id = `l${++uid}`
+    const base = {
+      id,
+      kind: 'text',
+      text: 'Your text',
+      font: 'Great Vibes',
+      size: 0.07,
+      color: '#ffffff',
+      shadow: true,
+      outline: false,
+      x: 0.5,
+      y: 0.5,
+      w: 0.3,
+      h: 0.08,
+      rot: 0,
+      z: nextZ(),
+    }
+    const sized = sizeTextLayer(base, ratio)
+    sized.x = 0.5 - sized.w / 2
+    setLayers((ls) => [...ls, sized])
+    setSelId(id)
   }
 
-  function replacePhoto(id, blob) {
-    const url = URL.createObjectURL(blob)
-    setPhotos((cur) =>
-      cur.map((p) => {
-        if (p.id !== id) return p
-        URL.revokeObjectURL(p.url)
-        return { ...p, file: blob, url }
+  function patchSel(patch) {
+    setLayers((ls) =>
+      ls.map((l) => {
+        if (l.id !== selId) return l
+        const next = { ...l, ...patch }
+        return next.kind === 'text' ? sizeTextLayer(next, ratio) : next
       })
     )
   }
 
-  const cropTarget = photos.find((p) => p.id === cropId) || null
-
-  function onDrop(e) {
-    e.preventDefault()
-    setDragOver(false)
-    addFiles(e.dataTransfer?.files)
+  function removeSel() {
+    setLayers((ls) => ls.filter((l) => l.id !== selId))
+    if (photoEls.current[selId]) delete photoEls.current[selId]
+    setSelId(null)
   }
 
-  async function generate() {
-    if (!signedIn) {
-      onRequireAuth?.()
-      return
-    }
-    if (!photos.length) {
-      setError('Add at least one photo.')
-      return
-    }
-    setStatus('working')
-    setError('')
-    setResult('')
-    try {
-      const body = new FormData()
-      photos.forEach((p) => body.append('photos', p.file))
-      if (scene.trim()) body.append('scene', scene.trim())
-      const res = await fetch('/api/calendar-generate', {
-        method: 'POST',
-        credentials: 'same-origin',
-        body,
-      })
-      const data = await res.json().catch(() => ({}))
-      if (!res.ok) throw new Error(data.error || 'Something went wrong.')
-      setResult(data.image)
-      setStatus('done')
-      setCartState('idle')
-      setCartError('')
-    } catch (err) {
-      setError(err.message)
-      setStatus('error')
-    }
+  function bringFront() {
+    patchSel({ z: nextZ() })
+  }
+  function sendBack() {
+    const minZ = Math.min(...layers.map((l) => l.z))
+    patchSel({ z: minZ - 1 })
+  }
+
+  function changeTemplate() {
+    setTpl(null)
+    setLayers([])
+    setSelId(null)
+    setStatus('idle')
+    photoEls.current = {}
   }
 
   async function addToCart() {
-    if (!result) return
     if (!signedIn) {
       onRequireAuth?.()
       return
     }
-    setCartState('adding')
-    setCartError('')
+    if (!tplImg || !layers.length) {
+      setError('Add at least one photo or text first.')
+      return
+    }
+    setStatus('adding')
+    setError('')
+    setSelId(null)
     try {
-      const blob = await (await fetch(result)).blob()
-      const dims = await new Promise((resolve) => {
-        const im = new Image()
-        im.onload = () => resolve({ w: im.naturalWidth, h: im.naturalHeight })
-        im.onerror = () => resolve({ w: 0, h: 0 })
-        im.src = result
-      })
+      const blob = await renderCalendar(tplImg, layers, photoEls.current)
       const body = new FormData()
-      body.append('image', blob, 'calendar.png')
-      body.append('width', String(dims.w))
-      body.append('height', String(dims.h))
+      body.append('image', blob, 'calendar.jpg')
+      body.append('width', String(tplImg.naturalWidth))
+      body.append('height', String(tplImg.naturalHeight))
       const res = await fetch('/api/cart/calendar', {
         method: 'POST',
         credentials: 'same-origin',
@@ -131,191 +218,264 @@ export default function CalendarMaker({
       })
       const d = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(d.error || 'Could not add to cart.')
-      setCartState('done')
+      setStatus('done')
       onAdded?.(d.items)
     } catch (err) {
-      setCartError(err.message)
-      setCartState('idle')
+      setError(err.message)
+      setStatus('idle')
     }
   }
+
+  const ordered = useMemo(() => [...layers].sort((a, b) => a.z - b.z), [layers])
 
   return (
     <section className="section section--dark" id="calendar">
       <div className="section-inner">
         <Reveal>
           <p className="eyebrow eyebrow--light">Make your own</p>
-          <h2 className="section__title section__title--light">Design a {year} photo calendar</h2>
+          <h2 className="section__title section__title--light">Build a {year} photo calendar</h2>
         </Reveal>
         <Reveal delay={80}>
           <p className="section__lead section__lead--light">
-            Add your photos and describe the world you want them in — a field of
-            wildflowers, a galaxy, a children&rsquo;s park. AI builds a creative
-            8×10&nbsp;in wall calendar with all twelve months of {year}, your photos
-            framed into the artwork. Printed and mailed like everything else.
+            Pick a design, drop your photos in, frame them, and add your own words.
+            8×10&nbsp;in — printed and mailed like everything else.
           </p>
         </Reveal>
 
         <Reveal delay={120}>
-          <div className="studio">
-            <div className="studio__panel cpc__form">
-              <label className="studio__label">
-                Your photos <span className="cpc__opt">(1–{MAX} — each gets framed into the design)</span>
-              </label>
+          {templates && !templates.length ? (
+            <p className="section__lead section__lead--light">Calendars are coming soon.</p>
+          ) : !tpl ? (
+            <div className="cme__pick">
+              {(templates || []).map((t) => (
+                <button key={t.id} type="button" className="cme__pick-card" onClick={() => setTpl(t)}>
+                  <img src={t.image} alt={t.name} loading="lazy" />
+                  <span>{t.name}</span>
+                </button>
+              ))}
+              {!templates && <p className="section__lead section__lead--light">Loading…</p>}
+            </div>
+          ) : (
+            <div className="cme">
+              <div className="cme__main">
+                <div
+                  className="cme__stage"
+                  ref={stageRef}
+                  style={{ aspectRatio: String(ratio) }}
+                  onPointerDown={() => setSelId(null)}
+                >
+                  {tpl && <img className="cme__bg" src={tpl.image} alt="" draggable={false} />}
+                  {ordered.map((l) => (
+                    <div
+                      key={l.id}
+                      className={`cme__layer${l.id === selId ? ' is-sel' : ''}`}
+                      style={{
+                        left: `${l.x * 100}%`,
+                        top: `${l.y * 100}%`,
+                        width: `${l.w * 100}%`,
+                        height: `${l.h * 100}%`,
+                        transform: `rotate(${l.rot}deg)`,
+                        zIndex: l.z + 10,
+                      }}
+                      onPointerDown={(e) => startDrag('move', l, e)}
+                    >
+                      {l.kind === 'photo' ? (
+                        <div className={`cme__photo cme__photo--${l.frame}`}>
+                          <img src={l.src} alt="" draggable={false} />
+                        </div>
+                      ) : (
+                        <span
+                          className="cme__text"
+                          style={{
+                            fontFamily: `"${l.font}", serif`,
+                            fontSize: `${l.size * 100}cqh`,
+                            color: l.color,
+                            textShadow: l.shadow ? '0 0.4cqh 1.2cqh rgba(0,0,0,0.5)' : 'none',
+                            WebkitTextStroke: l.outline
+                              ? `0.12cqh ${l.color === '#ffffff' ? 'rgba(0,0,0,0.65)' : '#ffffff'}`
+                              : '0',
+                          }}
+                        >
+                          {l.text}
+                        </span>
+                      )}
+                      {l.id === selId && (
+                        <>
+                          <span
+                            className="cme__handle cme__handle--rot"
+                            onPointerDown={(e) => startDrag('rotate', l, e)}
+                          />
+                          {l.kind === 'photo' && (
+                            <span
+                              className="cme__handle cme__handle--se"
+                              onPointerDown={(e) => startDrag('resize', l, e)}
+                            />
+                          )}
+                        </>
+                      )}
+                    </div>
+                  ))}
+                </div>
 
-              <div
-                className={`cal__drop${dragOver ? ' is-over' : ''}`}
-                onDragOver={(e) => {
-                  e.preventDefault()
-                  setDragOver(true)
-                }}
-                onDragLeave={() => setDragOver(false)}
-                onDrop={onDrop}
-              >
-                {photos.length === 0 ? (
-                  <button
-                    type="button"
-                    className="cal__drop-cta"
-                    onClick={() => fileRef.current?.click()}
-                  >
-                    <Icon name="upload" size={30} />
-                    <strong>Upload your photos</strong>
-                    <span>Drag them here, or click to choose · JPG or PNG · up to {MAX}</span>
+                <button type="button" className="cme__change" onClick={changeTemplate}>
+                  ← Change design
+                </button>
+              </div>
+
+              <div className="cme__side">
+                <div className="cme__add">
+                  <button type="button" className="btn btn--ghost btn--sm" onClick={() => fileRef.current?.click()}>
+                    <Icon name="image" size={15} /> Add photo
                   </button>
-                ) : (
-                  <div className="cal__grid">
-                    {photos.map((p) => (
-                      <div className="cal__thumb" key={p.id}>
-                        <img src={p.url} alt="" />
-                        <button
-                          type="button"
-                          className="cal__thumb-x"
-                          onClick={() => removePhoto(p.id)}
-                          aria-label="Remove photo"
-                        >
-                          ×
-                        </button>
-                        <button
-                          type="button"
-                          className="cal__thumb-edit"
-                          onClick={() => setCropId(p.id)}
-                        >
-                          Adjust
-                        </button>
-                      </div>
-                    ))}
-                    {photos.length < MAX && (
-                      <button
-                        type="button"
-                        className="cal__thumb cal__thumb--add"
-                        onClick={() => fileRef.current?.click()}
-                      >
-                        <Icon name="upload" size={20} />
-                        <span>Add</span>
+                  <button type="button" className="btn btn--ghost btn--sm" onClick={addText}>
+                    <Icon name="sparkles" size={15} /> Add text
+                  </button>
+                  <input
+                    ref={fileRef}
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    multiple
+                    hidden
+                    onChange={(e) => {
+                      addPhotos(e.target.files)
+                      e.target.value = ''
+                    }}
+                  />
+                </div>
+
+                {!sel && <p className="cme__hint">Tap a photo or text to edit it. Drag to move, corner to resize, top dot to rotate.</p>}
+
+                {sel && (
+                  <div className="cme__tools">
+                    <div className="cme__tool-row">
+                      <button type="button" className="cme__chip" onClick={bringFront}>
+                        Front
                       </button>
+                      <button type="button" className="cme__chip" onClick={sendBack}>
+                        Back
+                      </button>
+                      <button type="button" className="cme__chip cme__chip--danger" onClick={removeSel}>
+                        Delete
+                      </button>
+                    </div>
+
+                    <label className="cme__field">
+                      Rotation
+                      <input
+                        type="range"
+                        min={-180}
+                        max={180}
+                        value={sel.rot}
+                        onChange={(e) => patchSel({ rot: Number(e.target.value) })}
+                      />
+                    </label>
+
+                    {sel.kind === 'photo' && (
+                      <div className="cme__frames">
+                        {FRAMES.map((f) => (
+                          <button
+                            key={f.id}
+                            type="button"
+                            title={f.label}
+                            className={`cme__frame cme__frame--${f.id}${sel.frame === f.id ? ' is-active' : ''}`}
+                            onClick={() => patchSel({ frame: f.id })}
+                          >
+                            <span />
+                          </button>
+                        ))}
+                      </div>
+                    )}
+
+                    {sel.kind === 'text' && (
+                      <>
+                        <textarea
+                          className="cme__textarea"
+                          rows={2}
+                          value={sel.text}
+                          onChange={(e) => patchSel({ text: e.target.value })}
+                        />
+                        <label className="cme__field">
+                          Font
+                          <select
+                            value={sel.font}
+                            onChange={(e) => patchSel({ font: e.target.value })}
+                          >
+                            {FONTS.map((f) => (
+                              <option key={f.id} value={f.id} style={{ fontFamily: `"${f.id}"` }}>
+                                {f.label}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                        <label className="cme__field">
+                          Size
+                          <input
+                            type="range"
+                            min={0.03}
+                            max={0.16}
+                            step={0.005}
+                            value={sel.size}
+                            onChange={(e) => patchSel({ size: Number(e.target.value) })}
+                          />
+                        </label>
+                        <div className="cme__tool-row">
+                          <label className="cme__color">
+                            <input
+                              type="color"
+                              value={sel.color}
+                              onChange={(e) => patchSel({ color: e.target.value })}
+                            />
+                            Colour
+                          </label>
+                          <label className="cme__toggle">
+                            <input
+                              type="checkbox"
+                              checked={sel.shadow}
+                              onChange={(e) => patchSel({ shadow: e.target.checked })}
+                            />
+                            Shadow
+                          </label>
+                          <label className="cme__toggle">
+                            <input
+                              type="checkbox"
+                              checked={sel.outline}
+                              onChange={(e) => patchSel({ outline: e.target.checked })}
+                            />
+                            Outline
+                          </label>
+                        </div>
+                      </>
                     )}
                   </div>
                 )}
+
+                <button
+                  className="btn btn--primary cme__cta"
+                  type="button"
+                  onClick={addToCart}
+                  disabled={status === 'adding' || status === 'done'}
+                >
+                  {status === 'adding'
+                    ? 'Adding…'
+                    : status === 'done'
+                      ? 'Added ✓'
+                      : !signedIn
+                        ? 'Sign in to add to cart'
+                        : priceCents > 0
+                          ? `Add to cart · ${money(priceCents)}`
+                          : 'Add to cart'}
+                </button>
+                {status === 'done' && (
+                  <p className="cme__ok">
+                    In your cart. <a href="/account?tab=cart">View cart</a>
+                  </p>
+                )}
+                {error && <p className="studio__error">{error}</p>}
               </div>
-              <input
-                ref={fileRef}
-                type="file"
-                accept="image/jpeg,image/png,image/webp"
-                multiple
-                hidden
-                onChange={(e) => {
-                  addFiles(e.target.files)
-                  e.target.value = ''
-                }}
-              />
-
-              <label className="studio__label" htmlFor="cal-scene">
-                Scene / atmosphere <span className="cpc__opt">(optional — AI picks one if blank)</span>
-              </label>
-              <input
-                id="cal-scene"
-                className="cpc__input"
-                maxLength={120}
-                value={scene}
-                onChange={(e) => setScene(e.target.value)}
-                placeholder="e.g. a field of wildflowers, a starry galaxy, a children's park"
-              />
-
-              <button
-                className="btn btn--primary"
-                type="button"
-                onClick={generate}
-                disabled={status === 'working'}
-              >
-                {status === 'working'
-                  ? 'Generating…'
-                  : signedIn
-                    ? `Generate my ${year} calendar`
-                    : 'Sign in to generate'}
-              </button>
-              {status === 'working' && <p className="studio__note">This takes 20–40 seconds.</p>}
-              {error && <p className="studio__error">{error}</p>}
             </div>
-
-            <div className="studio__panel studio__panel--result">
-              {result ? (
-                <>
-                  <img src={result} alt={`${year} calendar`} className="studio__img" />
-                  <div className="studio__result-actions">
-                    <a
-                      className="btn btn--ghost btn--sm"
-                      href={result}
-                      download={`mailinglove-${year}-calendar.png`}
-                    >
-                      Download
-                    </a>
-                    {cartState === 'done' ? (
-                      <a className="btn btn--primary btn--sm" href="/account?tab=cart">
-                        In your cart · view
-                      </a>
-                    ) : (
-                      <button
-                        type="button"
-                        className="btn btn--primary btn--sm"
-                        onClick={addToCart}
-                        disabled={cartState === 'adding'}
-                      >
-                        {cartState === 'adding'
-                          ? 'Adding…'
-                          : priceCents > 0
-                            ? `Add to cart · ${money(priceCents)}`
-                            : 'Add to cart'}
-                      </button>
-                    )}
-                  </div>
-                  {cartError && <p className="studio__error">{cartError}</p>}
-                </>
-              ) : status === 'working' ? (
-                <span className="studio__placeholder">
-                  <span className="spinner" />
-                  Generating your calendar…
-                </span>
-              ) : (
-                <span className="studio__placeholder">
-                  <Icon name="calendar" size={26} />
-                  Your calendar shows up here
-                </span>
-              )}
-            </div>
-          </div>
+          )}
         </Reveal>
       </div>
-
-      {cropTarget && (
-        <CropModal
-          src={cropTarget.url}
-          title="Adjust photo — frame it how you want"
-          onCancel={() => setCropId(null)}
-          onApply={async (blob) => {
-            replacePhoto(cropTarget.id, blob)
-            setCropId(null)
-          }}
-        />
-      )}
     </section>
   )
 }

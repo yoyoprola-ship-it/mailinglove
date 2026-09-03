@@ -1008,122 +1008,6 @@
   font-weight: 500;
 }
 
-/* ---------- photo calendar maker ---------- */
-/* The form panel is a white card even in the dark section, so this is
-   styled dark-on-light like the rest of .cpc__form. */
-
-.cal__drop {
-  border: 2px dashed rgba(184, 53, 95, 0.4);
-  border-radius: 14px;
-  background: var(--blush);
-  padding: 12px;
-  margin-bottom: 4px;
-  transition:
-    border-color 0.15s ease,
-    background 0.15s ease;
-}
-
-.cal__drop.is-over {
-  border-color: var(--rose);
-  background: #fbdfe8;
-}
-
-.cal__drop-cta {
-  width: 100%;
-  border: none;
-  background: none;
-  cursor: pointer;
-  color: var(--rose-900);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 6px;
-  padding: 26px 12px;
-}
-
-.cal__drop-cta strong {
-  font-size: 1rem;
-}
-
-.cal__drop-cta span {
-  font-size: 0.82rem;
-  color: var(--muted);
-}
-
-.cal__grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(88px, 1fr));
-  gap: 10px;
-}
-
-.cal__thumb {
-  position: relative;
-  aspect-ratio: 1;
-  border-radius: 10px;
-  overflow: hidden;
-  background: #fff;
-  border: 1px solid rgba(74, 22, 38, 0.12);
-}
-
-.cal__thumb img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-}
-
-.cal__thumb-x {
-  position: absolute;
-  top: 4px;
-  right: 4px;
-  width: 22px;
-  height: 22px;
-  border: none;
-  border-radius: 50%;
-  background: rgba(20, 8, 12, 0.75);
-  color: #fff;
-  font-size: 1rem;
-  line-height: 1;
-  cursor: pointer;
-}
-
-.cal__thumb-edit {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  border: none;
-  padding: 4px 0;
-  background: rgba(20, 8, 12, 0.62);
-  color: #fff;
-  font-size: 0.72rem;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.cal__thumb-edit:hover {
-  background: var(--rose);
-}
-
-.cal__thumb--add {
-  border: 1px dashed rgba(184, 53, 95, 0.45);
-  background: #fff;
-  color: var(--rose-900);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
-  font-size: 0.74rem;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.cal__thumb--add:hover {
-  border-color: var(--rose);
-  background: var(--blush);
-}
-
 .section--dark .studio__placeholder,
 .section--dark .studio__note {
   color: rgba(255, 255, 255, 0.7);
@@ -1655,5 +1539,355 @@
   .chooser__media img {
     object-fit: contain;
     object-position: center;
+  }
+}
+
+/* ---------- calendar maker (editor) ---------- */
+
+.cme__pick {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 16px;
+  margin-top: 34px;
+}
+
+.cme__pick-card {
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+  padding: 10px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  color: #fff;
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.cme__pick-card:hover {
+  border-color: var(--rose-light);
+}
+
+.cme__pick-card img {
+  width: 100%;
+  border-radius: 8px;
+  display: block;
+  background: #fff;
+}
+
+.cme {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 300px;
+  gap: 28px;
+  margin-top: 34px;
+}
+
+.cme__main {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.cme__stage {
+  position: relative;
+  width: 100%;
+  max-width: 460px;
+  align-self: center;
+  container-type: size;
+  background: #fff;
+  border-radius: 6px;
+  overflow: hidden;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.4);
+  touch-action: none;
+  user-select: none;
+}
+
+.cme__bg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: fill;
+  display: block;
+  pointer-events: none;
+}
+
+.cme__layer {
+  position: absolute;
+  cursor: move;
+}
+
+.cme__layer.is-sel {
+  outline: 1.5px dashed var(--rose);
+  outline-offset: 2px;
+}
+
+.cme__photo {
+  width: 100%;
+  height: 100%;
+}
+
+.cme__photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.cme__photo--white,
+.cme__photo--double,
+.cme__photo--shadowbox {
+  background: #fff;
+  box-shadow: 0 0.6cqmin 1.8cqmin rgba(0, 0, 0, 0.3);
+}
+
+.cme__photo--white {
+  padding: 6%;
+}
+.cme__photo--double {
+  padding: 6%;
+}
+.cme__photo--double img {
+  outline: 0.15cqmin solid rgba(43, 43, 46, 0.55);
+  outline-offset: 0.14cqmin;
+}
+.cme__photo--shadowbox {
+  padding: 4%;
+  box-shadow: 0 1cqmin 3cqmin rgba(0, 0, 0, 0.38);
+}
+.cme__photo--polaroid {
+  background: #fff;
+  padding: 6% 6% 20% 6%;
+  box-shadow: 0 0.6cqmin 1.8cqmin rgba(0, 0, 0, 0.3);
+}
+.cme__photo--thin img {
+  outline: 0.35cqmin solid #2b2b2e;
+  outline-offset: -0.35cqmin;
+}
+
+.cme__text {
+  display: block;
+  width: 100%;
+  text-align: center;
+  line-height: 1.18;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.cme__handle {
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  background: #fff;
+  border: 2px solid var(--rose);
+  border-radius: 50%;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+}
+.cme__handle--se {
+  right: -8px;
+  bottom: -8px;
+  cursor: nwse-resize;
+  border-radius: 3px;
+}
+.cme__handle--rot {
+  left: calc(50% - 8px);
+  top: -30px;
+  cursor: grab;
+}
+.cme__handle--rot::after {
+  content: '';
+  position: absolute;
+  left: calc(50% - 1px);
+  top: 14px;
+  width: 2px;
+  height: 16px;
+  background: var(--rose);
+}
+
+.cme__change {
+  border: none;
+  background: none;
+  color: rgba(255, 255, 255, 0.75);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0;
+}
+.cme__change:hover {
+  color: #fff;
+}
+
+.cme__side {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.cme__add {
+  display: flex;
+  gap: 8px;
+}
+.cme__add .btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.cme__hint {
+  font-size: 0.82rem;
+  color: rgba(255, 255, 255, 0.6);
+  line-height: 1.5;
+}
+
+.cme__tools {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.cme__tool-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.cme__chip {
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  background: none;
+  color: #fff;
+  border-radius: 999px;
+  padding: 5px 12px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.cme__chip:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+.cme__chip--danger {
+  border-color: rgba(224, 36, 94, 0.6);
+  color: #ff9bb7;
+}
+
+.cme__field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.7);
+}
+.cme__field select,
+.cme__textarea {
+  font-family: inherit;
+  font-size: 0.9rem;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(74, 22, 38, 0.2);
+  background: #fff;
+  color: var(--text-dark);
+  text-transform: none;
+  letter-spacing: 0;
+  font-weight: 400;
+}
+.cme__field input[type='range'] {
+  width: 100%;
+}
+
+.cme__frames {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.cme__frame {
+  width: 42px;
+  height: 42px;
+  padding: 0;
+  border: 2px solid rgba(255, 255, 255, 0.25);
+  border-radius: 8px;
+  background: #6b6b6b;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.cme__frame.is-active {
+  border-color: #fff;
+  box-shadow: 0 0 0 2px var(--rose-light);
+}
+.cme__frame span {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: #9aa;
+}
+.cme__frame--white span {
+  border: 5px solid #fff;
+}
+.cme__frame--polaroid span {
+  border: 4px solid #fff;
+  border-bottom-width: 12px;
+}
+.cme__frame--thin span {
+  outline: 2px solid #2b2b2e;
+  outline-offset: -2px;
+}
+.cme__frame--double span {
+  border: 5px solid #fff;
+  outline: 1px solid #2b2b2e;
+  outline-offset: -7px;
+}
+.cme__frame--shadowbox span {
+  border: 3px solid #fff;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.2);
+}
+.cme__frame--none span {
+  background: #9aa;
+}
+
+.cme__color,
+.cme__toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.85);
+  text-transform: none;
+  letter-spacing: 0;
+}
+.cme__color input {
+  width: 30px;
+  height: 26px;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 6px;
+  background: none;
+}
+
+.cme__cta {
+  margin-top: 4px;
+}
+
+.cme__ok {
+  font-size: 0.85rem;
+  color: #7fe0b0;
+}
+.cme__ok a {
+  color: #fff;
+}
+
+@media (max-width: 780px) {
+  .cme {
+    grid-template-columns: 1fr;
   }
 }
