@@ -1643,13 +1643,32 @@
 
 .cme__photo--white,
 .cme__photo--double,
-.cme__photo--shadowbox {
+.cme__photo--shadowbox,
+.cme__photo--hearts,
+.cme__photo--floral,
+.cme__photo--vine,
+.cme__photo--stars,
+.cme__photo--lace {
   background: #fff;
   box-shadow: 0 0.6cqmin 1.8cqmin rgba(0, 0, 0, 0.3);
 }
 
-.cme__photo--white {
+.cme__photo--white,
+.cme__photo--hearts,
+.cme__photo--floral,
+.cme__photo--vine,
+.cme__photo--stars,
+.cme__photo--lace {
   padding: 6%;
+}
+
+.cme__frame-ovl {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: fill;
+  pointer-events: none;
 }
 .cme__photo--double {
   padding: 6%;
@@ -1857,6 +1876,39 @@
 }
 .cme__frame--none span {
   background: #9aa;
+}
+
+.cme__frame--hearts span,
+.cme__frame--floral span,
+.cme__frame--vine span,
+.cme__frame--stars span,
+.cme__frame--lace span {
+  border: 4px solid #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  line-height: 1;
+}
+.cme__frame--hearts span::after {
+  content: '♥';
+  color: #e07a9c;
+}
+.cme__frame--floral span::after {
+  content: '❀';
+  color: #f2a9bf;
+}
+.cme__frame--vine span::after {
+  content: '❧';
+  color: #6ba368;
+}
+.cme__frame--stars span::after {
+  content: '★';
+  color: #e6c46a;
+}
+.cme__frame--lace span::after {
+  content: '❁';
+  color: #cfcfcf;
 }
 
 .cme__color,

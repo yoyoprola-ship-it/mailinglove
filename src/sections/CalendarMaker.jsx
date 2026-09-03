@@ -7,8 +7,10 @@ import {
   FONTS,
   POSITIONS,
   PANELS,
+  DECOR_FRAMES,
   renderCalendar,
   renderGridDataUrl,
+  renderFrameOverlay,
 } from './calendarRender'
 
 const money = (c) => `$${((c || 0) / 100).toFixed(2)}`
@@ -411,9 +413,19 @@ export default function CalendarMaker({
                       onPointerDown={(e) => startDrag('move', l, e)}
                     >
                       {l.kind === 'photo' ? (
-                        <div className={`cme__photo cme__photo--${l.frame}`}>
-                          <img src={l.src} alt="" draggable={false} />
-                        </div>
+                        <>
+                          <div className={`cme__photo cme__photo--${l.frame}`}>
+                            <img src={l.src} alt="" draggable={false} />
+                          </div>
+                          {DECOR_FRAMES.has(l.frame) && (
+                            <img
+                              className="cme__frame-ovl"
+                              src={renderFrameOverlay(l.frame, (l.w / l.h) * ratio)}
+                              alt=""
+                              draggable={false}
+                            />
+                          )}
+                        </>
                       ) : (
                         <span
                           className="cme__text"

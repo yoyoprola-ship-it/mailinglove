@@ -14,7 +14,14 @@ export const FRAMES = [
   { id: 'double', label: 'Double mat' },
   { id: 'shadowbox', label: 'Shadow box' },
   { id: 'none', label: 'None' },
+  { id: 'hearts', label: 'Hearts' },
+  { id: 'floral', label: 'Floral' },
+  { id: 'vine', label: 'Vine' },
+  { id: 'stars', label: 'Stars' },
+  { id: 'lace', label: 'Lace' },
 ]
+
+export const DECOR_FRAMES = new Set(['hearts', 'floral', 'vine', 'stars', 'lace'])
 
 export const FONTS = [
   { id: 'Playfair Display', label: 'Playfair' },
@@ -205,6 +212,137 @@ function drawFit(ctx, img, ix, iy, iw, ih) {
   ctx.drawImage(img, ix + (iw - dw) / 2, iy + (ih - dh) / 2, dw, dh)
 }
 
+// --- decorative motifs ------------------------------------------------
+
+function heartPath(ctx, cx, cy, s) {
+  ctx.beginPath()
+  ctx.moveTo(cx, cy + s * 0.35)
+  ctx.bezierCurveTo(cx + s * 1.05, cy - s * 0.45, cx + s * 0.55, cy - s * 1.05, cx, cy - s * 0.4)
+  ctx.bezierCurveTo(cx - s * 0.55, cy - s * 1.05, cx - s * 1.05, cy - s * 0.45, cx, cy + s * 0.35)
+  ctx.closePath()
+}
+function starPath(ctx, cx, cy, r) {
+  ctx.beginPath()
+  for (let i = 0; i < 10; i++) {
+    const rad = i % 2 ? r * 0.42 : r
+    const a = (Math.PI / 5) * i - Math.PI / 2
+    const fn = i ? 'lineTo' : 'moveTo'
+    ctx[fn](cx + Math.cos(a) * rad, cy + Math.sin(a) * rad)
+  }
+  ctx.closePath()
+}
+function flower(ctx, cx, cy, r, petal, mid) {
+  ctx.fillStyle = petal
+  for (let i = 0; i < 6; i++) {
+    const a = (Math.PI / 3) * i
+    ctx.save()
+    ctx.translate(cx + Math.cos(a) * r * 0.55, cy + Math.sin(a) * r * 0.55)
+    ctx.rotate(a)
+    ctx.beginPath()
+    ctx.ellipse(0, 0, r * 0.55, r * 0.3, 0, 0, Math.PI * 2)
+    ctx.fill()
+    ctx.restore()
+  }
+  ctx.fillStyle = mid
+  ctx.beginPath()
+  ctx.arc(cx, cy, r * 0.3, 0, Math.PI * 2)
+  ctx.fill()
+}
+function leaf(ctx, cx, cy, s, rot, color) {
+  ctx.save()
+  ctx.translate(cx, cy)
+  ctx.rotate(rot)
+  ctx.fillStyle = color
+  ctx.beginPath()
+  ctx.ellipse(0, 0, s, s * 0.4, 0, 0, Math.PI * 2)
+  ctx.fill()
+  ctx.restore()
+}
+
+// Motifs sit on the white mat, just inside the outer edge. Called with the
+// box top-left at (x, y).
+function drawDecor(ctx, frame, x, y, w, h) {
+  const s = Math.min(w, h)
+  const m = s * 0.03 // inset from the outer edge
+  const corners = [
+    [x + m, y + m],
+    [x + w - m, y + m],
+    [x + w - m, y + h - m],
+    [x + m, y + h - m],
+  ]
+  const mids = [
+    [x + w / 2, y + m],
+    [x + w - m, y + h / 2],
+    [x + w / 2, y + h - m],
+    [x + m, y + h / 2],
+  ]
+
+  ctx.save()
+  if (frame === 'hearts') {
+    const r = s * 0.055
+    ;[...corners, ...mids].forEach(([cx, cy], i) => {
+      ctx.fillStyle = i % 2 ? '#f4b8cb' : '#e07a9c'
+      heartPath(ctx, cx, cy, r)
+      ctx.fill()
+    })
+  } else if (frame === 'stars') {
+    const r = s * 0.05
+    ;[...corners, ...mids].forEach(([cx, cy], i) => {
+      ctx.fillStyle = i % 2 ? '#efd9a0' : '#e6c46a'
+      starPath(ctx, cx, cy, r)
+      ctx.fill()
+    })
+  } else if (frame === 'lace') {
+    const dot = s * 0.022
+    const step = s * 0.09
+    ctx.fillStyle = '#ffffff'
+    ctx.shadowColor = 'rgba(0,0,0,0.18)'
+    ctx.shadowBlur = dot * 0.8
+    const ring = (px, py) => {
+      ctx.beginPath()
+      ctx.arc(px, py, dot, 0, Math.PI * 2)
+      ctx.fill()
+    }
+    for (let px = x + m; px <= x + w - m + 1; px += step) {
+      ring(px, y + m)
+      ring(px, y + h - m)
+    }
+    for (let py = y + m + step; py <= y + h - m - step + 1; py += step) {
+      ring(x + m, py)
+      ring(x + w - m, py)
+    }
+  } else if (frame === 'vine') {
+    ctx.strokeStyle = '#6ba368'
+    ctx.lineWidth = Math.max(1.5, s * 0.012)
+    ctx.strokeRect(x + m, y + m, w - m * 2, h - m * 2)
+    const step = s * 0.11
+    let flip = 1
+    const put = (px, py, rot) => {
+      leaf(ctx, px, py, s * 0.03, rot + (flip > 0 ? 0.5 : -0.5), '#7cb87a')
+      flip *= -1
+    }
+    for (let px = x + m + step; px < x + w - m; px += step) {
+      put(px, y + m, 0)
+      put(px, y + h - m, Math.PI)
+    }
+    for (let py = y + m + step; py < y + h - m; py += step) {
+      put(x + m, py, -Math.PI / 2)
+      put(x + w - m, py, Math.PI / 2)
+    }
+  } else if (frame === 'floral') {
+    corners.forEach(([cx, cy]) => {
+      const dir = [cx < x + w / 2 ? 1 : -1, cy < y + h / 2 ? 1 : -1]
+      leaf(ctx, cx + dir[0] * s * 0.06, cy + dir[1] * s * 0.02, s * 0.05, 0.4 * dir[0] * dir[1], '#8fc78c')
+      leaf(ctx, cx + dir[0] * s * 0.02, cy + dir[1] * s * 0.06, s * 0.045, 1.2 * dir[0] * dir[1], '#a8d6a3')
+      flower(ctx, cx, cy, s * 0.06, '#f2a9bf', '#efc873')
+      flower(ctx, cx + dir[0] * s * 0.07, cy + dir[1] * s * 0.07, s * 0.04, '#f6c9d6', '#efc873')
+    })
+  }
+  ctx.restore()
+}
+
+// --- frame (mat + optional decoration) ------------------------------
+
 function drawFrame(ctx, frame, img, w, h) {
   const x = -w / 2
   const y = -h / 2
@@ -222,6 +360,7 @@ function drawFrame(ctx, frame, img, w, h) {
     return
   }
 
+  const decor = DECOR_FRAMES.has(frame)
   const pad = frame === 'shadowbox' ? s * 0.04 : s * 0.06
   const padBottom = frame === 'polaroid' ? s * 0.2 : pad
 
@@ -245,6 +384,24 @@ function drawFrame(ctx, frame, img, w, h) {
     const g = pad * 0.4
     ctx.strokeRect(ix - g, iy - g, iw + g * 2, ih + g * 2)
   }
+  if (decor) drawDecor(ctx, frame, x, y, w, h)
+}
+
+// Data URL of just the decoration, for the live editor overlay.
+const _ovlCache = new Map()
+export function renderFrameOverlay(frame, aspect) {
+  const ar = Math.max(0.3, Math.min(3, aspect || 1))
+  const key = `${frame}|${ar.toFixed(2)}`
+  if (_ovlCache.has(key)) return _ovlCache.get(key)
+  const w = 520
+  const h = Math.round(w / ar)
+  const canvas = document.createElement('canvas')
+  canvas.width = w
+  canvas.height = h
+  drawDecor(canvas.getContext('2d'), frame, 0, 0, w, h)
+  const url = canvas.toDataURL('image/png')
+  _ovlCache.set(key, url)
+  return url
 }
 
 function drawText(ctx, layer, W, H) {
