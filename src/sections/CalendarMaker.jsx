@@ -1,7 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import Reveal from '../components/Reveal'
 import Icon from '../components/Icon'
-import { FRAMES, FONTS, renderCalendar, renderGridDataUrl } from './calendarRender'
+import {
+  FRAMES,
+  FONTS,
+  POSITIONS,
+  PANELS,
+  renderCalendar,
+  renderGridDataUrl,
+} from './calendarRender'
 
 const money = (c) => `$${((c || 0) / 100).toFixed(2)}`
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v))
@@ -24,10 +31,19 @@ export default function CalendarMaker({
   onAdded,
   onRequireAuth,
 }) {
-  const [templates, setTemplates] = useState(null)
-  const [tpl, setTpl] = useState(null)
-  const [tplImg, setTplImg] = useState(null)
+  // --- background (AI or uploaded) ---
+  const [scene, setScene] = useState('')
+  const [bg, setBg] = useState('')
+  const [bgImg, setBgImg] = useState(null)
+  const [gen, setGen] = useState('idle') // idle | working
+  const [genErr, setGenErr] = useState('')
+
+  // --- calendar placement (customer's choice) ---
+  const [position, setPosition] = useState('bottom')
+  const [panel, setPanel] = useState('light')
   const [gridUrl, setGridUrl] = useState('')
+
+  // --- editor ---
   const [layers, setLayers] = useState([])
   const [selId, setSelId] = useState(null)
   const [status, setStatus] = useState('idle') // idle | adding | done
@@ -35,46 +51,36 @@ export default function CalendarMaker({
 
   const stageRef = useRef(null)
   const fileRef = useRef(null)
+  const bgFileRef = useRef(null)
   const drag = useRef(null)
   const photoEls = useRef({})
 
-  const ratio = tplImg ? tplImg.naturalWidth / tplImg.naturalHeight : 0.8
+  const ratio = bgImg ? bgImg.naturalWidth / bgImg.naturalHeight : 0.8
   const sel = layers.find((l) => l.id === selId) || null
 
   useEffect(() => {
-    fetch('/api/calendar-templates')
-      .then((r) => r.json())
-      .then((d) => setTemplates(d.templates || []))
-      .catch(() => setTemplates([]))
-  }, [])
-
-  useEffect(() => {
-    if (!tpl) return
-    setTplImg(null)
-    setGridUrl('')
+    if (!bg) return setBgImg(null)
     const im = new Image()
-    im.onload = () => setTplImg(im)
-    im.src = tpl.image
-  }, [tpl])
+    im.onload = () => setBgImg(im)
+    im.src = bg
+  }, [bg])
 
-  // Render the (accurate) grid preview once we know the template's aspect;
-  // re-render when the display fonts finish loading.
   useEffect(() => {
-    if (!tplImg || !tpl) return
-    const r = tplImg.naturalWidth / tplImg.naturalHeight
+    if (!bgImg) return
+    const r = bgImg.naturalWidth / bgImg.naturalHeight
     const w = 900
-    const draw = () => setGridUrl(renderGridDataUrl(w, Math.round(w / r), year, tpl.layout))
+    const draw = () => setGridUrl(renderGridDataUrl(w, Math.round(w / r), year, position, panel))
     draw()
     if (document.fonts?.ready) document.fonts.ready.then(draw).catch(() => {})
-  }, [tplImg, tpl, year])
+  }, [bgImg, position, panel, year])
 
   useEffect(() => {
     function move(e) {
       const d = drag.current
       if (!d || !stageRef.current) return
-      const r = stageRef.current.getBoundingClientRect()
-      const dxN = (e.clientX - d.px) / r.width
-      const dyN = (e.clientY - d.py) / r.height
+      const rr = stageRef.current.getBoundingClientRect()
+      const dxN = (e.clientX - d.px) / rr.width
+      const dyN = (e.clientY - d.py) / rr.height
       setLayers((ls) =>
         ls.map((l) => {
           if (l.id !== d.id) return l
@@ -82,13 +88,11 @@ export default function CalendarMaker({
             return { ...l, x: clamp(d.s.x + dxN, -0.25, 1.25), y: clamp(d.s.y + dyN, -0.25, 1.25) }
           }
           if (d.mode === 'resize') {
-            const nw = Math.max(0.06, d.s.w + dxN)
-            const nh = Math.max(0.06, d.s.h + dyN)
-            return { ...l, w: nw, h: nh }
+            return { ...l, w: Math.max(0.06, d.s.w + dxN), h: Math.max(0.06, d.s.h + dyN) }
           }
           if (d.mode === 'rotate') {
-            const cx = r.left + (l.x + l.w / 2) * r.width
-            const cy = r.top + (l.y + l.h / 2) * r.height
+            const cx = rr.left + (l.x + l.w / 2) * rr.width
+            const cy = rr.top + (l.y + l.h / 2) * rr.height
             const ang = (Math.atan2(e.clientY - cy, e.clientX - cx) * 180) / Math.PI + 90
             return { ...l, rot: Math.round(ang) }
           }
@@ -108,6 +112,60 @@ export default function CalendarMaker({
       window.removeEventListener('pointercancel', up)
     }
   }, [])
+
+  // --- background generation ---
+
+  async function generate() {
+    if (!signedIn) {
+      onRequireAuth?.()
+      return
+    }
+    if (!scene.trim()) {
+      setGenErr('Describe the background you want.')
+      return
+    }
+    setGen('working')
+    setGenErr('')
+    try {
+      const res = await fetch('/api/calendar-background', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ scene: scene.trim() }),
+      })
+      const d = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(d.error || 'Something went wrong.')
+      resetEditor()
+      setBg(d.image)
+    } catch (err) {
+      setGenErr(err.message)
+    } finally {
+      setGen('idle')
+    }
+  }
+
+  function uploadBg(file) {
+    if (!file || !file.type.startsWith('image/')) return
+    resetEditor()
+    setBg(URL.createObjectURL(file))
+  }
+
+  function resetEditor() {
+    setLayers([])
+    setSelId(null)
+    setStatus('idle')
+    setError('')
+    photoEls.current = {}
+  }
+
+  function changeBg() {
+    setBg('')
+    setBgImg(null)
+    setGridUrl('')
+    resetEditor()
+  }
+
+  // --- layers ---
 
   function startDrag(mode, l, e) {
     e.preventDefault()
@@ -137,7 +195,7 @@ export default function CalendarMaker({
             src: url,
             frame: 'white',
             x: 0.5 - w / 2 + i * 0.03,
-            y: 0.32 + i * 0.03,
+            y: 0.16 + i * 0.03,
             w,
             h,
             rot: 0,
@@ -157,12 +215,12 @@ export default function CalendarMaker({
       kind: 'text',
       text: 'Your text',
       font: 'Great Vibes',
-      size: 0.07,
+      size: 0.06,
       color: '#ffffff',
       shadow: true,
       outline: false,
       x: 0.5,
-      y: 0.5,
+      y: 0.2,
       w: 0.3,
       h: 0.08,
       rot: 0,
@@ -183,27 +241,16 @@ export default function CalendarMaker({
       })
     )
   }
-
   function removeSel() {
     setLayers((ls) => ls.filter((l) => l.id !== selId))
-    if (photoEls.current[selId]) delete photoEls.current[selId]
+    delete photoEls.current[selId]
     setSelId(null)
   }
-
   function bringFront() {
     patchSel({ z: nextZ() })
   }
   function sendBack() {
-    const minZ = Math.min(...layers.map((l) => l.z))
-    patchSel({ z: minZ - 1 })
-  }
-
-  function changeTemplate() {
-    setTpl(null)
-    setLayers([])
-    setSelId(null)
-    setStatus('idle')
-    photoEls.current = {}
+    patchSel({ z: Math.min(...layers.map((l) => l.z)) - 1 })
   }
 
   async function addToCart() {
@@ -211,22 +258,16 @@ export default function CalendarMaker({
       onRequireAuth?.()
       return
     }
-    if (!tplImg || !layers.length) {
-      setError('Add at least one photo or text first.')
-      return
-    }
+    if (!bgImg) return
     setStatus('adding')
     setError('')
     setSelId(null)
     try {
-      const blob = await renderCalendar(tplImg, layers, photoEls.current, {
-        year,
-        layout: tpl.layout,
-      })
+      const blob = await renderCalendar(bgImg, layers, photoEls.current, { year, position, panel })
       const body = new FormData()
       body.append('image', blob, 'calendar.jpg')
-      body.append('width', String(tplImg.naturalWidth))
-      body.append('height', String(tplImg.naturalHeight))
+      body.append('width', String(bgImg.naturalWidth))
+      body.append('height', String(bgImg.naturalHeight))
       const res = await fetch('/api/cart/calendar', {
         method: 'POST',
         credentials: 'same-origin',
@@ -243,6 +284,7 @@ export default function CalendarMaker({
   }
 
   const ordered = useMemo(() => [...layers].sort((a, b) => a.z - b.z), [layers])
+  const hasText = layers.some((l) => l.kind === 'text')
 
   return (
     <section className="section section--dark" id="calendar">
@@ -253,23 +295,56 @@ export default function CalendarMaker({
         </Reveal>
         <Reveal delay={80}>
           <p className="section__lead section__lead--light">
-            Pick a design, drop your photos in, frame them, and add your own words.
-            8×10&nbsp;in — printed and mailed like everything else.
+            Describe a background, choose where the months go, drop in your photos
+            with a frame, and add a line of your own. 8×10&nbsp;in — printed and
+            mailed like everything else.
           </p>
         </Reveal>
 
         <Reveal delay={120}>
-          {templates && !templates.length ? (
-            <p className="section__lead section__lead--light">Calendars are coming soon.</p>
-          ) : !tpl ? (
-            <div className="cme__pick">
-              {(templates || []).map((t) => (
-                <button key={t.id} type="button" className="cme__pick-card" onClick={() => setTpl(t)}>
-                  <img src={t.image} alt={t.name} loading="lazy" />
-                  <span>{t.name}</span>
+          {!bg ? (
+            <div className="cme__intro">
+              <label className="studio__label" htmlFor="cme-scene">
+                Background
+              </label>
+              <input
+                id="cme-scene"
+                className="cpc__input"
+                maxLength={120}
+                value={scene}
+                onChange={(e) => setScene(e.target.value)}
+                placeholder="e.g. a field of wildflowers at dawn, a soft galaxy, a cosy cabin"
+              />
+              <div className="cme__intro-actions">
+                <button
+                  className="btn btn--primary"
+                  type="button"
+                  onClick={generate}
+                  disabled={gen === 'working'}
+                >
+                  {gen === 'working'
+                    ? 'Generating…'
+                    : signedIn
+                      ? 'Generate background'
+                      : 'Sign in to start'}
                 </button>
-              ))}
-              {!templates && <p className="section__lead section__lead--light">Loading…</p>}
+                <button
+                  type="button"
+                  className="cme__link"
+                  onClick={() => bgFileRef.current?.click()}
+                >
+                  or upload your own
+                </button>
+                <input
+                  ref={bgFileRef}
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  hidden
+                  onChange={(e) => uploadBg(e.target.files?.[0])}
+                />
+              </div>
+              {gen === 'working' && <p className="studio__note">This takes 15–30 seconds.</p>}
+              {genErr && <p className="studio__error">{genErr}</p>}
             </div>
           ) : (
             <div className="cme">
@@ -280,7 +355,7 @@ export default function CalendarMaker({
                   style={{ aspectRatio: String(ratio) }}
                   onPointerDown={() => setSelId(null)}
                 >
-                  {tpl && <img className="cme__bg" src={tpl.image} alt="" draggable={false} />}
+                  {bg && <img className="cme__bg" src={bg} alt="" draggable={false} />}
                   {ordered.map((l) => (
                     <div
                       key={l.id}
@@ -334,17 +409,49 @@ export default function CalendarMaker({
                   {gridUrl && <img className="cme__grid" src={gridUrl} alt="" draggable={false} />}
                 </div>
 
-                <button type="button" className="cme__change" onClick={changeTemplate}>
-                  ← Change design
+                <button type="button" className="cme__change" onClick={changeBg}>
+                  ← New background
                 </button>
               </div>
 
               <div className="cme__side">
+                <div className="cme__group">
+                  <span className="cme__group-t">Calendar placement</span>
+                  <div className="cme__seg">
+                    {POSITIONS.map((p) => (
+                      <button
+                        key={p.id}
+                        type="button"
+                        className={`cme__seg-b${position === p.id ? ' is-active' : ''}`}
+                        onClick={() => setPosition(p.id)}
+                      >
+                        {p.label}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="cme__seg">
+                    {PANELS.map((p) => (
+                      <button
+                        key={p.id}
+                        type="button"
+                        className={`cme__seg-b${panel === p.id ? ' is-active' : ''}`}
+                        onClick={() => setPanel(p.id)}
+                      >
+                        {p.label} panel
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
                 <div className="cme__add">
-                  <button type="button" className="btn btn--ghost btn--sm" onClick={() => fileRef.current?.click()}>
+                  <button
+                    type="button"
+                    className="btn btn--ghost btn--sm"
+                    onClick={() => fileRef.current?.click()}
+                  >
                     <Icon name="image" size={15} /> Add photo
                   </button>
-                  {!layers.some((l) => l.kind === 'text') && (
+                  {!hasText && (
                     <button type="button" className="btn btn--ghost btn--sm" onClick={addText}>
                       <Icon name="sparkles" size={15} /> Add text
                     </button>
@@ -362,7 +469,12 @@ export default function CalendarMaker({
                   />
                 </div>
 
-                {!sel && <p className="cme__hint">Tap a photo or text to edit it. Drag to move, corner to resize, top dot to rotate.</p>}
+                {!sel && (
+                  <p className="cme__hint">
+                    Tap a photo or the text to edit it. Drag to move, corner to resize,
+                    top dot to rotate.
+                  </p>
+                )}
 
                 {sel && (
                   <div className="cme__tools">
@@ -415,12 +527,9 @@ export default function CalendarMaker({
                         />
                         <label className="cme__field">
                           Font
-                          <select
-                            value={sel.font}
-                            onChange={(e) => patchSel({ font: e.target.value })}
-                          >
+                          <select value={sel.font} onChange={(e) => patchSel({ font: e.target.value })}>
                             {FONTS.map((f) => (
-                              <option key={f.id} value={f.id} style={{ fontFamily: `"${f.id}"` }}>
+                              <option key={f.id} value={f.id}>
                                 {f.label}
                               </option>
                             ))}

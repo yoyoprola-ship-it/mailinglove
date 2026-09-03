@@ -26,24 +26,21 @@ export const FONTS = [
   { id: 'Parisienne', label: 'Parisienne' },
 ]
 
-export const LAYOUTS = [
-  { id: 'bottom', label: 'Bottom half' },
-  { id: 'side', label: 'Side strip' },
+export const POSITIONS = [
+  { id: 'bottom', label: 'Bottom' },
+  { id: 'top', label: 'Top' },
+  { id: 'left', label: 'Left' },
+  { id: 'right', label: 'Right' },
 ]
 
 export const PANELS = [
-  { id: 'light', label: 'Light panel' },
-  { id: 'dark', label: 'Dark panel' },
-  { id: 'none', label: 'No panel' },
+  { id: 'light', label: 'Light' },
+  { id: 'dark', label: 'Dark' },
 ]
 
-export const DEFAULT_LAYOUT = {
-  position: 'bottom',
-  ink: '#2b2b2e',
-  accent: '#b8355f',
-  titleFont: 'Cinzel',
-  panel: 'light',
-}
+const TITLE_FONT = 'Cinzel'
+const INK = { light: '#2b2b2e', dark: '#f2f2f2' }
+const ACCENT = { light: '#7a2e46', dark: '#f4cfdd' }
 
 const MONTHS = [
   'January', 'February', 'March', 'April', 'May', 'June',
@@ -87,7 +84,7 @@ function drawMonth(ctx, box, year, m, o) {
   ctx.textBaseline = 'middle'
 
   ctx.fillStyle = o.accent
-  ctx.font = `600 ${nameH * 0.58}px "${o.titleFont}", serif`
+  ctx.font = `600 ${nameH * 0.58}px "${TITLE_FONT}", serif`
   ctx.fillText(MONTHS[m].toUpperCase(), box.x + box.w / 2, box.y + nameH * 0.5)
 
   ctx.font = `700 ${headH * 0.62}px Inter, Arial, sans-serif`
@@ -108,43 +105,53 @@ function drawMonth(ctx, box, year, m, o) {
   ctx.restore()
 }
 
-export function drawCalendarGrid(ctx, { year, W, H, layout }) {
-  const L = { ...DEFAULT_LAYOUT, ...(layout || {}) }
+// position: 'bottom' | 'top' | 'left' | 'right'; panel: 'light' | 'dark'
+export function drawCalendarGrid(ctx, { year, W, H, position = 'bottom', panel = 'light' }) {
+  const ink = INK[panel] || INK.light
+  const accent = ACCENT[panel] || ACCENT.light
+
   let area
   let cols
   let rows
   let yearRect
-
-  if (L.position === 'side') {
+  if (position === 'top') {
+    area = { x: 0.06 * W, y: 0.06 * H, w: 0.88 * W, h: 0.44 * H }
+    cols = 3
+    rows = 4
+    yearRect = { x: 0.06 * W, y: 0.51 * H, w: 0.88 * W, h: 0.07 * H }
+  } else if (position === 'left') {
+    area = { x: 0.05 * W, y: 0.15 * H, w: 0.4 * W, h: 0.8 * H }
+    cols = 2
+    rows = 6
+    yearRect = { x: 0.05 * W, y: 0.05 * H, w: 0.4 * W, h: 0.075 * H }
+  } else if (position === 'right') {
     area = { x: 0.55 * W, y: 0.15 * H, w: 0.4 * W, h: 0.8 * H }
     cols = 2
     rows = 6
-    yearRect = { x: 0.55 * W, y: 0.05 * H, w: 0.4 * W, h: 0.08 * H }
+    yearRect = { x: 0.55 * W, y: 0.05 * H, w: 0.4 * W, h: 0.075 * H }
   } else {
     area = { x: 0.06 * W, y: 0.5 * H, w: 0.88 * W, h: 0.44 * H }
     cols = 3
     rows = 4
-    yearRect = { x: 0.06 * W, y: 0.4 * H, w: 0.88 * W, h: 0.08 * H }
+    yearRect = { x: 0.06 * W, y: 0.405 * H, w: 0.88 * W, h: 0.07 * H }
   }
 
-  if (L.panel !== 'none') {
-    const pad = Math.min(W, H) * 0.03
-    const px = Math.min(area.x, yearRect.x) - pad
-    const py = Math.min(area.y, yearRect.y) - pad
-    const pw = Math.max(area.x + area.w, yearRect.x + yearRect.w) - px + pad
-    const ph = area.y + area.h - py + pad
-    ctx.save()
-    ctx.fillStyle = L.panel === 'dark' ? 'rgba(18,10,14,0.6)' : 'rgba(255,255,255,0.84)'
-    roundRect(ctx, px, py, pw, ph, Math.min(W, H) * 0.02)
-    ctx.fill()
-    ctx.restore()
-  }
+  const pad = Math.min(W, H) * 0.028
+  const px = Math.min(area.x, yearRect.x) - pad
+  const py = Math.min(area.y, yearRect.y) - pad
+  const pw = Math.max(area.x + area.w, yearRect.x + yearRect.w) - px + pad
+  const ph = Math.max(area.y + area.h, yearRect.y + yearRect.h) - py + pad
+  ctx.save()
+  ctx.fillStyle = panel === 'dark' ? 'rgba(16,9,13,0.62)' : 'rgba(255,255,255,0.86)'
+  roundRect(ctx, px, py, pw, ph, Math.min(W, H) * 0.02)
+  ctx.fill()
+  ctx.restore()
 
   ctx.save()
-  ctx.fillStyle = L.accent
+  ctx.fillStyle = accent
   ctx.textAlign = 'center'
   ctx.textBaseline = 'middle'
-  ctx.font = `600 ${yearRect.h * 0.95}px "${L.titleFont}", serif`
+  ctx.font = `600 ${yearRect.h * 0.95}px "${TITLE_FONT}", serif`
   ctx.fillText(String(year), yearRect.x + yearRect.w / 2, yearRect.y + yearRect.h / 2)
   ctx.restore()
 
@@ -159,17 +166,23 @@ export function drawCalendarGrid(ctx, { year, W, H, layout }) {
       { x: area.x + c * (cw + gap), y: area.y + r * (chh + gap), w: cw, h: chh },
       year,
       m,
-      L
+      { ink, accent }
     )
   }
 }
 
 // A PNG data URL of just the grid, for the live editor preview.
-export function renderGridDataUrl(w, h, year, layout) {
+export function renderGridDataUrl(w, h, year, position, panel) {
   const canvas = document.createElement('canvas')
   canvas.width = Math.round(w)
   canvas.height = Math.round(h)
-  drawCalendarGrid(canvas.getContext('2d'), { year, W: canvas.width, H: canvas.height, layout })
+  drawCalendarGrid(canvas.getContext('2d'), {
+    year,
+    W: canvas.width,
+    H: canvas.height,
+    position,
+    panel,
+  })
   return canvas.toDataURL('image/png')
 }
 
@@ -261,10 +274,9 @@ function drawText(ctx, layer, W, H) {
   })
 }
 
-async function ensureFonts(layers, layout) {
-  const fams = new Set(['Inter'])
+async function ensureFonts(layers) {
+  const fams = new Set(['Inter', TITLE_FONT])
   layers.filter((l) => l.kind === 'text').forEach((l) => fams.add(l.font))
-  if (layout?.titleFont) fams.add(layout.titleFont)
   try {
     await Promise.all([...fams].map((f) => document.fonts.load(`600 64px "${f}"`)))
     await document.fonts.ready
@@ -273,9 +285,11 @@ async function ensureFonts(layers, layout) {
   }
 }
 
-// templateImg: loaded HTMLImageElement. layers: normalized (0..1) coords.
-export async function renderCalendar(templateImg, layers, photoImgs, { year, layout }) {
-  await ensureFonts(layers, layout)
+// bgImg: loaded HTMLImageElement (the AI/uploaded background).
+// layers: normalized (0..1) coords.
+export async function renderCalendar(bgImg, layers, photoImgs, { year, position, panel }) {
+  await ensureFonts(layers)
+  const templateImg = bgImg
   const W = templateImg.naturalWidth || 2400
   const H = templateImg.naturalHeight || 3000
   const canvas = document.createElement('canvas')
@@ -298,7 +312,7 @@ export async function renderCalendar(templateImg, layers, photoImgs, { year, lay
   }
 
   // the calendar grid always sits on top, so it can never be covered
-  drawCalendarGrid(ctx, { year, W, H, layout })
+  drawCalendarGrid(ctx, { year, W, H, position, panel })
 
   return new Promise((res, rej) =>
     canvas.toBlob(

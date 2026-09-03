@@ -56,15 +56,7 @@ import {
   validateCustomPostcard,
   generateCustomPostcard,
 } from './server/customPostcard.js'
-import {
-  listTemplates,
-  adminListTemplates,
-  addTemplate,
-  replaceTemplateImage,
-  updateTemplate,
-  deleteTemplate,
-  streamTemplateImage,
-} from './server/calendarTemplates.js'
+import { validateScene, generateBackground } from './server/calendarBg.js'
 import { streamImage, adminCatalog } from './server/assets.js'
 import {
   getMergedCatalog,
@@ -256,6 +248,14 @@ const postcardLimiter = rateLimit({
   message: { error: 'Too many requests — try again in a few minutes.' },
 })
 
+const calendarLimiter = rateLimit({
+  windowMs: RATE_WINDOW_MS,
+  limit: async () => (await getConfig()).calendar.rateLimitMax,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many requests — try again in a few minutes.' },
+})
+
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   limit: 20,
@@ -421,99 +421,30 @@ app.post('/api/postcard-generate', requireUser, postcardLimiter, async (req, res
   }
 })
 
-// --- photo calendar templates --------------------------------------
+// --- photo calendar background (AI makes only the 8×10 backdrop) ------
 
-// Public: the templates a customer can build on.
-app.get('/api/calendar-templates', async (req, res) => {
-  try {
-    res.setHeader('Cache-Control', 'public, max-age=60')
-    res.json({ templates: await listTemplates() })
-  } catch (err) {
-    console.error('[cal-tpl] list failed:', err?.message || err)
-    res.status(500).json({ error: 'Could not load templates.' })
+app.post('/api/calendar-background', requireUser, calendarLimiter, async (req, res) => {
+  const { calendar } = await getConfig()
+  const { errors, value } = validateScene(req.body || {})
+  if (errors.length) return res.status(400).json({ error: errors[0], errors })
+  if (!openai) {
+    return res.status(503).json({ error: 'Image generation is not configured yet.' })
   }
-})
-
-app.get('/api/calendar-template-image/:id', async (req, res) => {
-  try {
-    await streamTemplateImage(req.params.id, res, { versioned: 'v' in req.query })
-  } catch (err) {
-    console.error('[cal-tpl] image route failed:', err?.message || err)
-    if (!res.headersSent) res.status(500).end()
+  if (!calendar.enabled) {
+    return res.status(503).json({ error: 'Calendars are paused right now.' })
   }
-})
-
-app.get('/api/admin/calendar-templates', requireAdmin, async (req, res) => {
   try {
-    res.json({ templates: await adminListTemplates() })
+    const { b64, usage } = await generateBackground(openai, calendar, value)
+    if (!b64) return res.status(502).json({ error: 'The model returned no image. Try again.' })
+    console.log(
+      `[calendar-bg] scene="${value.scene}" model=${calendar.model} quality=${calendar.quality} ` +
+        `usage=${JSON.stringify(usage)}`
+    )
+    res.json({ image: imageDataUrl(b64) })
   } catch (err) {
-    console.error('[cal-tpl] admin list failed:', err?.message || err)
-    res.status(500).json({ error: 'Could not load templates.' })
-  }
-})
-
-app.post('/api/admin/calendar-templates', requireAdmin, (req, res) => {
-  hiresUpload.single('image')(req, res, async (uploadErr) => {
-    if (uploadErr) return res.status(400).json({ error: uploadErr.message })
-    if (!req.file) return res.status(400).json({ error: 'Attach an image.' })
-    try {
-      let layout
-      try {
-        layout = req.body.layout ? JSON.parse(req.body.layout) : undefined
-      } catch {
-        layout = undefined
-      }
-      const r = await addTemplate({
-        name: req.body.name,
-        layout,
-        buffer: req.file.buffer,
-        contentType: req.file.mimetype,
-      })
-      if (!r.ok) return res.status(400).json({ error: r.error })
-      console.log(`[admin] ${req.adminEmail} added calendar template ${r.template.id}`)
-      res.json({ template: r.template })
-    } catch (err) {
-      console.error('[cal-tpl] add failed:', err?.message || err)
-      res.status(500).json({ error: 'Could not add the template.' })
-    }
-  })
-})
-
-app.post('/api/admin/calendar-templates/:id/image', requireAdmin, (req, res) => {
-  hiresUpload.single('image')(req, res, async (uploadErr) => {
-    if (uploadErr) return res.status(400).json({ error: uploadErr.message })
-    if (!req.file) return res.status(400).json({ error: 'Attach a file.' })
-    try {
-      const r = await replaceTemplateImage(req.params.id, req.file.buffer, req.file.mimetype)
-      if (!r.ok) return res.status(400).json({ error: r.error })
-      res.json({ ok: true, updatedAt: r.updatedAt })
-    } catch (err) {
-      console.error('[cal-tpl] replace failed:', err?.message || err)
-      res.status(500).json({ error: 'Upload failed.' })
-    }
-  })
-})
-
-app.put('/api/admin/calendar-templates/:id', requireAdmin, async (req, res) => {
-  try {
-    const r = await updateTemplate(req.params.id, req.body || {})
-    if (!r.ok) return res.status(400).json({ error: r.error })
-    res.json({ ok: true })
-  } catch (err) {
-    console.error('[cal-tpl] update failed:', err?.message || err)
-    res.status(500).json({ error: 'Could not update.' })
-  }
-})
-
-app.delete('/api/admin/calendar-templates/:id', requireAdmin, async (req, res) => {
-  try {
-    const r = await deleteTemplate(req.params.id)
-    if (!r.ok) return res.status(400).json({ error: r.error })
-    console.log(`[admin] ${req.adminEmail} deleted calendar template ${req.params.id}`)
-    res.json({ ok: true })
-  } catch (err) {
-    console.error('[cal-tpl] delete failed:', err?.message || err)
-    res.status(500).json({ error: 'Could not delete.' })
+    console.error('[calendar-bg] failed:', err?.message || err)
+    const status = err?.status && err.status >= 400 && err.status < 600 ? err.status : 500
+    res.status(status).json({ error: 'Could not generate the background right now. Try again.' })
   }
 })
 

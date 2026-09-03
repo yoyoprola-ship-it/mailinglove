@@ -63,7 +63,10 @@ const DEFAULTS = {
     formatsCatalog: DEFAULT_PHOTO_FORMATS_CATALOG,
   },
   calendar: {
-    enabled: false, // off until the admin sets a real price + adds a template
+    enabled: false, // off until the admin sets a real price
+    model: envModel, // AI makes only the 8×10 background
+    quality: envQuality,
+    rateLimitMax: 5,
     year: 2027,
     priceCents: 1999, // 8×10 in photo calendar
   },
@@ -132,10 +135,13 @@ export const CONFIG_SCHEMA = {
   },
   calendar: {
     label: 'Photo calendars',
-    hint: 'The "Make a photo calendar" section. Customers compose framed photos + text on the templates you upload in the Calendars tab. Needs at least one template.',
+    hint: 'The "Make a photo calendar" section. AI generates only the 8×10 background; the site draws the 12-month grid where the customer chooses, and the customer adds framed photos + one caption.',
     fields: {
       enabled: { type: 'bool', label: 'Section enabled' },
-      year: { type: 'int', min: 2025, max: 2035, label: 'Calendar year (shown on the cart line)' },
+      model: { type: 'enum', values: MODELS, label: 'OpenAI image model (background)' },
+      quality: { type: 'enum', values: QUALITIES, label: 'Background image quality' },
+      rateLimitMax: { type: 'int', min: 1, max: 100, label: 'Rate limit — requests / 15 min per IP' },
+      year: { type: 'int', min: 2025, max: 2035, label: 'Calendar year' },
       priceCents: {
         type: 'int',
         min: 0,
@@ -289,6 +295,9 @@ function migrate(s = {}) {
 function migrateCalendar(c) {
   return {
     enabled: pick(boolv(c.enabled), DEFAULTS.calendar.enabled),
+    model: pick(enumv(c.model, MODELS), DEFAULTS.calendar.model),
+    quality: pick(enumv(c.quality, QUALITIES), DEFAULTS.calendar.quality),
+    rateLimitMax: pick(intv(c.rateLimitMax, 1, 100), DEFAULTS.calendar.rateLimitMax),
     year: pick(intv(c.year, 2025, 2035), DEFAULTS.calendar.year),
     priceCents: pick(intv(c.priceCents, 0, 100000), DEFAULTS.calendar.priceCents),
   }
