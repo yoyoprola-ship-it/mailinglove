@@ -39,7 +39,8 @@ function Terms() {
       <p>
         These Terms &amp; Conditions ("Terms") govern your use of the MailingLove
         website and services ("MailingLove", "we", "us"). MailingLove prints
-        photos and postcards and mails them within the United States. By creating
+        photos, postcards, and photo calendars and mails them within the United
+        States. By creating
         an account, placing an order, or otherwise using the service, you agree to
         these Terms.
       </p>

@@ -13,13 +13,14 @@ export default function Studio() {
     <section className="section" id="studio">
       <div className="section-inner">
         <Reveal>
-          <p className="eyebrow">Try it now</p>
+          <p className="eyebrow">Free AI tool</p>
           <h2 className="section__title">See your photo, redesigned</h2>
         </Reveal>
         <Reveal delay={80}>
           <p className="section__lead">
-            Upload a photo, pick the occasion, and watch AI turn it into something
-            worth mailing. This is a preview — printing and mail come later.
+            Upload a photo, pick an occasion, and AI reimagines it — new
+            backgrounds, styles, and layouts. Download the result free. Want it
+            in the mail? Send it through <a href="#photo-print">Print your photos</a>.
           </p>
         </Reveal>
         <Reveal delay={120}>

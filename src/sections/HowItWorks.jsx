@@ -2,10 +2,10 @@ import Icon from '../components/Icon'
 import Reveal from '../components/Reveal'
 
 const steps = [
-  { icon: 'upload', title: 'Upload your photos', text: 'Send us the photo (or photos) you want to turn into something special.' },
-  { icon: 'sparkles', title: 'We redesign it with AI', text: 'New backgrounds, styles, and layouts — matched to the occasion you pick.' },
-  { icon: 'image', title: 'Choose your format', text: 'Postcard, calendar, or keepsake print — whatever fits what you\'re sending.' },
-  { icon: 'mail', title: 'We print & mail it', text: 'It goes out in a real envelope, to a real mailbox. No app for them to install.' },
+  { icon: 'image', title: 'Pick what to send', text: 'Print your own photos, choose a ready-made postcard, or build a photo calendar.' },
+  { icon: 'upload', title: 'Make it yours', text: 'Upload and crop your photos, add a message and a size — or let AI design a postcard from a name and occasion.' },
+  { icon: 'mail', title: 'Say who it’s for', text: 'Your address or theirs. US addresses, checked as you type.' },
+  { icon: 'check', title: 'We print & mail it', text: 'Real paper in a real envelope, straight to a real mailbox. No app for them to install.' },
 ]
 
 export default function HowItWorks() {

@@ -20,7 +20,7 @@ export default function Hero() {
           <p className="hero__subtitle">
             Upload your photos and we print them at full quality and mail them —
             to you or straight to someone you love. Rather send a ready-made
-            design? Pick a postcard or a calendar and we print and mail that too.
+            postcard, or build a photo calendar? We print and mail those too.
           </p>
         </Reveal>
         <Reveal delay={240}>

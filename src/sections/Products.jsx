@@ -2,9 +2,9 @@ import Icon from '../components/Icon'
 import Reveal from '../components/Reveal'
 
 const products = [
-  { icon: 'mail', title: 'Postcards', text: 'A single photo, redesigned and printed on a real postcard, stamped and mailed.' },
-  { icon: 'calendar', title: 'Calendars', text: 'Twelve of your favorite photos, one per month, printed and mailed as a keepsake calendar.' },
-  { icon: 'image', title: 'Keepsake prints', text: 'Family portraits with new backgrounds and styles, printed to frame or gift.' },
+  { icon: 'image', title: 'Photo prints', text: 'Upload one photo or a whole stack. Crop each to size, pick the format, and we print them at full quality and mail them.' },
+  { icon: 'mail', title: 'Postcards', text: 'Hundreds of ready-made designs — or generate a one-of-a-kind card from a name and occasion. We print it and mail it.' },
+  { icon: 'calendar', title: 'Photo calendars', text: 'Build a 2027 wall calendar: pick a background, drop in your framed photos, add a line of your own. 8×10 in, printed and mailed.' },
 ]
 
 export default function Products() {
@@ -13,7 +13,7 @@ export default function Products() {
       <div className="section-inner">
         <Reveal>
           <p className="eyebrow">What you can send</p>
-          <h2 className="section__title">Three ways to say it with mail</h2>
+          <h2 className="section__title">Three things we print and mail</h2>
         </Reveal>
         <div className="grid grid--3">
           {products.map((p, i) => (

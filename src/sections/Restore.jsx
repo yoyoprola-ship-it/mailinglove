@@ -20,7 +20,8 @@ export default function Restore() {
           <p className="section__lead section__lead--light">
             Scan a faded, torn, or blurry black-and-white photo. AI rebuilds the
             missing pieces, sharpens soft faces, and adds realistic color — or
-            keeps the original vintage look if you'd rather.
+            keeps the original vintage look if you'd rather. Download it free, then
+            print and mail it through <a href="#photo-print">Print your photos</a>.
           </p>
         </Reveal>
         <Reveal delay={120}>

@@ -111,8 +111,8 @@ export default function PhotoStudio({
               <a className="btn btn--ghost btn--sm" href={result} download="mailinglove.png">
                 Download
               </a>
-              <a className="btn btn--primary btn--sm" href="#postcards">
-                Shop postcards
+              <a className="btn btn--primary btn--sm" href="#photo-print">
+                Print &amp; mail it
               </a>
             </div>
           </>
