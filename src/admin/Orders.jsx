@@ -3,6 +3,8 @@ import { api } from './api'
 import AuditHistory from './AuditHistory'
 
 const STATUSES = ['awaiting_payment', 'paid', 'printed', 'mailed', 'cancelled']
+// These transitions email the customer (server/cart.js STATUS_EMAIL) — say so.
+const EMAILS_CUSTOMER = new Set(['printed', 'mailed', 'cancelled'])
 
 const fmt = (ms) => (ms ? new Date(ms).toLocaleString() : '—')
 const money = (c, ccy = 'usd') =>
@@ -57,7 +59,18 @@ function OrderRow({ o, onStatus, onOpenGallery, onPreview }) {
           <select
             className="adm__input adm__input--sm"
             value={o.status}
-            onChange={(e) => onStatus(o.id, e.target.value)}
+            onChange={(e) => {
+              const next = e.target.value
+              if (next === o.status) return
+              const emailNote = EMAILS_CUSTOMER.has(next)
+                ? '\n\nThe customer will get an email about this.'
+                : ''
+              const ok = confirm(
+                `Change order #${String(o.id).slice(0, 8)} from "${o.status}" to "${next}"?${emailNote}`
+              )
+              if (!ok) return
+              onStatus(o.id, next)
+            }}
           >
             {STATUSES.map((s) => (
               <option key={s} value={s}>
