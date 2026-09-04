@@ -106,6 +106,6 @@ env:
     availability:
       - RUNTIME
   - variable: PAYPAL_ENV
-    value: sandbox # switch to "live" for real payments
+    value: live # real payments — requires the live PayPal app + webhook secrets
     availability:
       - RUNTIME
