@@ -25,8 +25,10 @@ env:
       - RUNTIME
 
   # --- Google Maps (address autocomplete) ---
-  # Public, referrer-restricted browser key — baked into the client bundle
-  # at build time, so it needs BUILD availability (not just RUNTIME).
+  # Public, referrer-restricted browser key (dedicated key, restricted to
+  # Maps JavaScript API + Places API — not the Firebase auto-created one) —
+  # baked into the client bundle at build time, so it needs BUILD
+  # availability (not just RUNTIME).
   # Set with: firebase apphosting:secrets:set GOOGLE_MAPS_API_KEY
   - variable: VITE_GOOGLE_MAPS_API_KEY
     secret: GOOGLE_MAPS_API_KEY
