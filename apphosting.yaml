@@ -106,6 +106,6 @@ env:
     availability:
       - RUNTIME
   - variable: PAYPAL_ENV
-    value: live # real payments — requires the live PayPal app + webhook secrets
+    value: live # real payments — live PayPal + Stripe secrets confirmed 2026-09-04
     availability:
       - RUNTIME
