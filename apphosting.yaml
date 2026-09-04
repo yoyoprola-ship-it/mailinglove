@@ -24,6 +24,15 @@ env:
     availability:
       - RUNTIME
 
+  # --- Google Maps (address autocomplete) ---
+  # Public, referrer-restricted browser key — baked into the client bundle
+  # at build time, so it needs BUILD availability (not just RUNTIME).
+  # Set with: firebase apphosting:secrets:set GOOGLE_MAPS_API_KEY
+  - variable: VITE_GOOGLE_MAPS_API_KEY
+    secret: GOOGLE_MAPS_API_KEY
+    availability:
+      - BUILD
+
   # --- OpenAI (image redesign) ---
   # Set with: firebase apphosting:secrets:set OPENAI_API_KEY
   - variable: OPENAI_API_KEY
