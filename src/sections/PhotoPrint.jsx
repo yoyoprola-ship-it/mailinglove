@@ -312,6 +312,8 @@ export default function PhotoPrint({
     e.currentTarget.setPointerCapture(e.pointerId)
     const rect = e.currentTarget.getBoundingClientRect()
     drag.current = { px: e.clientX, py: e.clientY, cx: active.cx, cy: active.cy, w: rect.width || PREVIEW_W }
+    clearTimeout(dragHintTimer.current)
+    setDragHint(false)
   }
   function onPointerMove(e) {
     const d = drag.current
