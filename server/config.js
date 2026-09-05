@@ -59,6 +59,7 @@ const DEFAULTS = {
   },
   photoprint: {
     enabled: false, // off until the admin sets real prices
+    editorMode: 'classic', // '1' — the popup-per-photo flow is 'popup'
     formats10: DEFAULT_PHOTO_FORMATS_10,
     formatsCatalog: DEFAULT_PHOTO_FORMATS_CATALOG,
   },
@@ -123,6 +124,12 @@ export const CONFIG_SCHEMA = {
     hint: 'The "Print your photos and mail them" section. Each format has its own price in the cart.',
     fields: {
       enabled: { type: 'bool', label: 'Section enabled' },
+      editorMode: {
+        type: 'enum',
+        values: ['classic', 'popup'],
+        label:
+          '1 = classic (thumbnail strip + shared editor) · 2 = popup (each new photo opens its own editor, one at a time)',
+      },
       formats10: {
         type: 'priceformats',
         label: 'Formats — fit in a #10 envelope (folded/flat, no extra postage)',
@@ -309,11 +316,13 @@ function migrateCalendar(c) {
 function migratePhotoprint(pp) {
   const formats10 = validPriceFormats(pp.formats10)
   const formatsCatalog = validPriceFormats(pp.formatsCatalog)
+  const editorMode = pick(enumv(pp.editorMode, ['classic', 'popup']), DEFAULTS.photoprint.editorMode)
   if (formats10 || formatsCatalog) {
     return {
       enabled: pick(boolv(pp.enabled), DEFAULTS.photoprint.enabled),
       formats10: formats10 || DEFAULTS.photoprint.formats10,
       formatsCatalog: formatsCatalog || DEFAULTS.photoprint.formatsCatalog,
+      editorMode,
     }
   }
   const legacyAll = validPriceFormats(pp.formats)
@@ -322,12 +331,14 @@ function migratePhotoprint(pp) {
       enabled: pick(boolv(pp.enabled), DEFAULTS.photoprint.enabled),
       formats10: legacyAll.filter((f) => f.w * f.h <= 24),
       formatsCatalog: legacyAll.filter((f) => f.w * f.h > 24),
+      editorMode,
     }
   }
   return {
     enabled: pick(boolv(pp.enabled), DEFAULTS.photoprint.enabled),
     formats10: DEFAULTS.photoprint.formats10,
     formatsCatalog: DEFAULTS.photoprint.formatsCatalog,
+    editorMode,
   }
 }
 

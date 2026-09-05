@@ -297,6 +297,7 @@ app.get('/api/site-config', async (req, res) => {
     })),
     postcardPriceCents: cfg.orders.postcardPriceCents,
     photoPrintEnabled: cfg.photoprint.enabled,
+    photoPrintEditorMode: cfg.photoprint.editorMode,
     photoPrintFormats10: cfg.photoprint.formats10.map((f) => ({
       id: f.id,
       label: f.label,

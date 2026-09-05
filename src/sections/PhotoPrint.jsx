@@ -76,10 +76,12 @@ function PhotoThumb({ photo, format, active, onClick, onRemove }) {
 export default function PhotoPrint({
   formats10 = [],
   formatsCatalog = [],
+  editorMode = 'classic',
   signedIn,
   onAdded,
   onRequireAuth,
 }) {
+  const isPopup = editorMode === 'popup'
   const [photos, setPhotos] = useState([]) // { id, img, w, h, url, formatId, orientation, zoom, cx, cy }
   const [activeId, setActiveId] = useState(null)
   const [status, setStatus] = useState('idle') // idle | adding
@@ -93,6 +95,10 @@ export default function PhotoPrint({
   const addFileRef = useRef(null)
   const addedTimer = useRef(null)
   const dragDepth = useRef(0)
+  // Popup mode only: a snapshot of the photo taken when its editor opened,
+  // so Cancel can either discard it (never confirmed before) or revert it
+  // (was already configured — undo edits made in this pass).
+  const preEditRef = useRef(null)
 
   // Two envelope groups, but most logic just needs "all the formats".
   const formats = useMemo(() => [...formats10, ...formatsCatalog], [formats10, formatsCatalog])
@@ -125,14 +131,76 @@ export default function PhotoPrint({
   // Photos still needing a look, other than the one on screen.
   const pendingCount = photos.filter((p) => p.id !== activeId && !p.configured).length
 
-  // Mark the current photo done and jump to the next one that isn't.
-  function continueConfiguring() {
-    const idx = photos.findIndex((p) => p.id === activeId)
+  // Next photo (besides `id`) that still needs a look, or null if none.
+  function nextPendingAfter(id) {
+    const idx = photos.findIndex((p) => p.id === id)
     const after = photos.slice(idx + 1).find((p) => !p.configured)
     const before = photos.slice(0, idx).find((p) => !p.configured)
-    const next = after || before
+    return (after || before)?.id || null
+  }
+
+  // Mark the current photo done and jump to the next one that isn't.
+  function continueConfiguring() {
+    const next = nextPendingAfter(activeId)
     setPhotos((list) => list.map((p) => (p.id === activeId ? { ...p, configured: true } : p)))
-    if (next) setActiveId(next.id)
+    if (next) setActiveId(next)
+  }
+
+  // Popup mode: snapshot the photo whenever a new one opens in the modal.
+  useEffect(() => {
+    if (!isPopup || !activeId) return
+    const p = photos.find((x) => x.id === activeId)
+    if (!p) return
+    preEditRef.current = {
+      id: activeId,
+      wasConfigured: p.configured,
+      formatId: p.formatId,
+      orientation: p.orientation,
+      zoom: p.zoom,
+      cx: p.cx,
+      cy: p.cy,
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isPopup, activeId])
+
+  // Popup mode "Done": confirm this photo and move on to the next pending
+  // one, or close the modal if it was the last.
+  function finishEditing() {
+    const next = nextPendingAfter(activeId)
+    setPhotos((list) => list.map((p) => (p.id === activeId ? { ...p, configured: true } : p)))
+    setActiveId(next)
+  }
+
+  // Popup mode "Cancel": discard a photo that was never confirmed, or
+  // revert one that was already configured back to how it was.
+  function cancelEditing() {
+    const id = activeId
+    if (!id) return
+    const snap = preEditRef.current
+    const next = nextPendingAfter(id)
+    if (!snap || snap.id !== id || !snap.wasConfigured) {
+      setPhotos((list) => {
+        const gone = list.find((p) => p.id === id)
+        if (gone) URL.revokeObjectURL(gone.url)
+        return list.filter((p) => p.id !== id)
+      })
+    } else {
+      setPhotos((list) =>
+        list.map((p) =>
+          p.id === id
+            ? {
+                ...p,
+                formatId: snap.formatId,
+                orientation: snap.orientation,
+                zoom: snap.zoom,
+                cx: snap.cx,
+                cy: snap.cy,
+              }
+            : p
+        )
+      )
+    }
+    setActiveId(next)
   }
 
   function addFiles(fileList) {
@@ -318,7 +386,7 @@ export default function PhotoPrint({
           >
             {dragOver && <div className="pp__drophint">Drop photos to add them</div>}
             <div className="pp__stage">
-              {active && geo ? (
+              {!isPopup && active && geo ? (
                 <canvas
                   ref={previewRef}
                   className="pp__canvas"
@@ -346,7 +414,7 @@ export default function PhotoPrint({
                 </label>
               )}
 
-              {active && (
+              {!isPopup && active && (
                 <>
                   <label className="pp__zoom">
                     Zoom
@@ -402,76 +470,78 @@ export default function PhotoPrint({
             </div>
 
             <div className="pp__controls">
-              <div className="pp__block">
-                <span className="pp__label">
-                  Format {photos.length > 1 && <em className="pp__muted">· for the selected photo</em>}
-                </span>
+              {!isPopup && (
+                <div className="pp__block">
+                  <span className="pp__label">
+                    Format {photos.length > 1 && <em className="pp__muted">· for the selected photo</em>}
+                  </span>
 
-                {formats10.length > 0 && (
-                  <>
-                    <span className="pp__group-label">Fits a #10 envelope</span>
-                    <div className="pp__formats">
-                      {shown10.map((f) => (
+                  {formats10.length > 0 && (
+                    <>
+                      <span className="pp__group-label">Fits a #10 envelope</span>
+                      <div className="pp__formats">
+                        {shown10.map((f) => (
+                          <button
+                            key={f.id}
+                            type="button"
+                            className={`pp__format${active && f.id === active.formatId ? ' is-active' : ''}`}
+                            onClick={() => patchActive({ formatId: f.id })}
+                            disabled={!active}
+                          >
+                            <strong>{f.label}</strong>
+                            <span>{money(f.priceCents)}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </>
+                  )}
+
+                  {formatsCatalog.length > 0 && (
+                    <>
+                      <span className="pp__group-label">Needs a catalog envelope</span>
+                      <div className="pp__formats">
+                        {shownCatalog.map((f) => (
+                          <button
+                            key={f.id}
+                            type="button"
+                            className={`pp__format${active && f.id === active.formatId ? ' is-active' : ''}`}
+                            onClick={() => patchActive({ formatId: f.id })}
+                            disabled={!active}
+                          >
+                            <strong>{f.label}</strong>
+                            <span>{money(f.priceCents)}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </>
+                  )}
+
+                  {active && geo && !geo.square && (
+                    <div className="pp__orient">
+                      <span className="pp__label">Orientation</span>
+                      <div className="pp__row">
                         <button
-                          key={f.id}
                           type="button"
-                          className={`pp__format${active && f.id === active.formatId ? ' is-active' : ''}`}
-                          onClick={() => patchActive({ formatId: f.id })}
-                          disabled={!active}
+                          className={`pp__opt${!geo.landscape ? ' is-active' : ''}`}
+                          onClick={() => patchActive({ orientation: 'portrait' })}
                         >
-                          <strong>{f.label}</strong>
-                          <span>{money(f.priceCents)}</span>
+                          ▯ Portrait
                         </button>
-                      ))}
-                    </div>
-                  </>
-                )}
-
-                {formatsCatalog.length > 0 && (
-                  <>
-                    <span className="pp__group-label">Needs a catalog envelope</span>
-                    <div className="pp__formats">
-                      {shownCatalog.map((f) => (
                         <button
-                          key={f.id}
                           type="button"
-                          className={`pp__format${active && f.id === active.formatId ? ' is-active' : ''}`}
-                          onClick={() => patchActive({ formatId: f.id })}
-                          disabled={!active}
+                          className={`pp__opt${geo.landscape ? ' is-active' : ''}`}
+                          onClick={() => patchActive({ orientation: 'landscape' })}
                         >
-                          <strong>{f.label}</strong>
-                          <span>{money(f.priceCents)}</span>
+                          ▭ Landscape
                         </button>
-                      ))}
+                      </div>
                     </div>
-                  </>
-                )}
-
-                {active && geo && !geo.square && (
-                  <div className="pp__orient">
-                    <span className="pp__label">Orientation</span>
-                    <div className="pp__row">
-                      <button
-                        type="button"
-                        className={`pp__opt${!geo.landscape ? ' is-active' : ''}`}
-                        onClick={() => patchActive({ orientation: 'portrait' })}
-                      >
-                        ▯ Portrait
-                      </button>
-                      <button
-                        type="button"
-                        className={`pp__opt${geo.landscape ? ' is-active' : ''}`}
-                        onClick={() => patchActive({ orientation: 'landscape' })}
-                      >
-                        ▭ Landscape
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
+                  )}
+                </div>
+              )}
 
               <div className="pp__foot">
-                {status !== 'adding' && pendingCount > 0 && (
+                {!isPopup && status !== 'adding' && pendingCount > 0 && (
                   <button type="button" className="btn btn--ghost" onClick={continueConfiguring}>
                     Continue configuring → <span className="pp__muted">({pendingCount} left)</span>
                   </button>
@@ -507,6 +577,122 @@ export default function PhotoPrint({
                 </p>
               </div>
             </div>
+
+            {isPopup && active && geo && (
+              <div className="pp__modal" role="dialog" aria-modal="true" aria-label="Edit photo">
+                <div className="pp__modal-box">
+                  <div className="pp__modal-head">
+                    <strong>Edit this photo</strong>
+                    {pendingCount > 0 && (
+                      <span className="pp__muted">{pendingCount} more to go</span>
+                    )}
+                  </div>
+
+                  <div className="pp__modal-body">
+                    <canvas
+                      ref={previewRef}
+                      className="pp__canvas"
+                      style={{ width: PREVIEW_W, height: Math.round(PREVIEW_W / geo.ratio) }}
+                      onPointerDown={onPointerDown}
+                      onPointerMove={onPointerMove}
+                      onPointerUp={onPointerUp}
+                      onPointerCancel={onPointerUp}
+                    />
+                    <label className="pp__zoom">
+                      Zoom
+                      <input
+                        type="range"
+                        min={1}
+                        max={4}
+                        step={0.01}
+                        value={active.zoom}
+                        onChange={(e) => patchActive({ zoom: Number(e.target.value) })}
+                      />
+                    </label>
+                    <p className="pp__hint">Drag the photo to reposition it in the frame.</p>
+                    {lowRes && (
+                      <p className="pp__warn">
+                        ⚠ This photo is a little low-resolution for {format.label} — it may
+                        look soft in print.
+                      </p>
+                    )}
+
+                    <div className="pp__block">
+                      <span className="pp__label">Format</span>
+
+                      {formats10.length > 0 && (
+                        <>
+                          <span className="pp__group-label">Fits a #10 envelope</span>
+                          <div className="pp__formats">
+                            {shown10.map((f) => (
+                              <button
+                                key={f.id}
+                                type="button"
+                                className={`pp__format${f.id === active.formatId ? ' is-active' : ''}`}
+                                onClick={() => patchActive({ formatId: f.id })}
+                              >
+                                <strong>{f.label}</strong>
+                                <span>{money(f.priceCents)}</span>
+                              </button>
+                            ))}
+                          </div>
+                        </>
+                      )}
+
+                      {formatsCatalog.length > 0 && (
+                        <>
+                          <span className="pp__group-label">Needs a catalog envelope</span>
+                          <div className="pp__formats">
+                            {shownCatalog.map((f) => (
+                              <button
+                                key={f.id}
+                                type="button"
+                                className={`pp__format${f.id === active.formatId ? ' is-active' : ''}`}
+                                onClick={() => patchActive({ formatId: f.id })}
+                              >
+                                <strong>{f.label}</strong>
+                                <span>{money(f.priceCents)}</span>
+                              </button>
+                            ))}
+                          </div>
+                        </>
+                      )}
+
+                      {!geo.square && (
+                        <div className="pp__orient">
+                          <span className="pp__label">Orientation</span>
+                          <div className="pp__row">
+                            <button
+                              type="button"
+                              className={`pp__opt${!geo.landscape ? ' is-active' : ''}`}
+                              onClick={() => patchActive({ orientation: 'portrait' })}
+                            >
+                              ▯ Portrait
+                            </button>
+                            <button
+                              type="button"
+                              className={`pp__opt${geo.landscape ? ' is-active' : ''}`}
+                              onClick={() => patchActive({ orientation: 'landscape' })}
+                            >
+                              ▭ Landscape
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="pp__modal-foot">
+                    <button type="button" className="btn btn--ghost" onClick={cancelEditing}>
+                      Cancel
+                    </button>
+                    <button type="button" className="btn btn--primary" onClick={finishEditing}>
+                      Done
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </Reveal>
       </div>
