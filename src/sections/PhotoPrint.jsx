@@ -143,6 +143,7 @@ export default function PhotoPrint({
   const [dragOver, setDragOver] = useState(false)
 
   const previewRef = useRef(null)
+  const crop4CanvasRef = useRef(null)
   const drag = useRef(null)
   const addFileRef = useRef(null)
   const addedTimer = useRef(null)
@@ -394,6 +395,36 @@ export default function PhotoPrint({
     if (!c || !active || !geo) return
     drawCrop(c, active, crop, PREVIEW_W, Math.round(PREVIEW_W / geo.ratio))
   }, [active, geo, crop])
+
+  // Functionality 4: draw an exact preview of the crop that would be sent —
+  // the box-tool result if it's still valid, else the centred fallback.
+  useEffect(() => {
+    if (!isBoxCrop) return
+    const cv = crop4CanvasRef.current
+    if (!cv || !active || !geo) return
+    const cw = PREVIEW_W
+    const ch = Math.round(PREVIEW_W / geo.ratio)
+    const c4 = crop4For(active, geo.ratio)
+    if (!c4) {
+      drawCrop(cv, active, cropOf(active, geo.ratio), cw, ch)
+      return
+    }
+    let cancelled = false
+    loadImg(c4.url)
+      .then((im) => {
+        if (cancelled) return
+        cv.width = cw
+        cv.height = ch
+        const g = cv.getContext('2d')
+        g.fillStyle = '#ffffff'
+        g.fillRect(0, 0, cw, ch)
+        g.drawImage(im, 0, 0, im.naturalWidth, im.naturalHeight, 0, 0, cw, ch)
+      })
+      .catch(() => {})
+    return () => {
+      cancelled = true
+    }
+  }, [isBoxCrop, active, geo])
 
   function onPointerDown(e) {
     if (!active) return
@@ -716,21 +747,16 @@ export default function PhotoPrint({
                     )}
                   </div>
 
-                  {(() => {
-                    const c4 = crop4For(active, geo.ratio)
-                    return (
-                      <div
-                        className="pp__crop4"
-                        style={{
-                          width: PREVIEW_W,
-                          height: Math.round(PREVIEW_W / geo.ratio),
-                        }}
-                      >
-                        <img src={(c4 || active).url} alt="" />
-                        {!c4 && <span className="pp__crop4-tag">Not cropped yet</span>}
-                      </div>
-                    )
-                  })()}
+                  <div className="pp__crop4">
+                    <canvas
+                      ref={crop4CanvasRef}
+                      className="pp__canvas"
+                      style={{ width: PREVIEW_W, maxWidth: '100%', height: 'auto' }}
+                    />
+                    {!crop4For(active, geo.ratio) && (
+                      <span className="pp__crop4-tag">Not cropped yet</span>
+                    )}
+                  </div>
 
                   <button
                     type="button"
@@ -740,7 +766,8 @@ export default function PhotoPrint({
                     {crop4For(active, geo.ratio) ? 'Crop again' : `Crop to ${format.label}`}
                   </button>
                   <p className="pp__hint">
-                    Drag the box to frame the photo. It stays locked to the {format.label} shape.
+                    The box stays locked to the {format.label} shape. This preview is exactly
+                    what we'll print.
                   </p>
                   {lowRes && !crop4For(active, geo.ratio) && (
                     <p className="pp__warn">
