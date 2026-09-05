@@ -59,7 +59,7 @@ const DEFAULTS = {
   },
   photoprint: {
     enabled: false, // off until the admin sets real prices
-    editorMode: 'classic', // '1' classic · '2' popup-per-photo is 'popup' · '3' inline-per-photo is 'sequential'
+    editorMode: 'classic', // 1 classic · 2 'popup' · 3 'sequential' (inline) · 4 'boxcrop' (inline, ratio-locked crop box)
     formats10: DEFAULT_PHOTO_FORMATS_10,
     formatsCatalog: DEFAULT_PHOTO_FORMATS_CATALOG,
   },
@@ -126,9 +126,9 @@ export const CONFIG_SCHEMA = {
       enabled: { type: 'bool', label: 'Section enabled' },
       editorMode: {
         type: 'enum',
-        values: ['classic', 'popup', 'sequential'],
+        values: ['classic', 'popup', 'sequential', 'boxcrop'],
         label:
-          '1 = classic (thumbnail strip + shared editor) · 2 = popup (each new photo opens its own editor, one at a time, in a popup window) · 3 = sequential (same as popup, but the editor shows inline instead of in a popup window)',
+          '1 = classic (thumbnail strip + shared editor) · 2 = popup (each new photo opens its own editor, one at a time, in a popup window) · 3 = sequential (same as popup, but the editor shows inline instead of in a popup window) · 4 = boxcrop (same as sequential, but you crop with a ratio-locked box instead of dragging the photo)',
       },
       formats10: {
         type: 'priceformats',
@@ -317,7 +317,7 @@ function migratePhotoprint(pp) {
   const formats10 = validPriceFormats(pp.formats10)
   const formatsCatalog = validPriceFormats(pp.formatsCatalog)
   const editorMode = pick(
-    enumv(pp.editorMode, ['classic', 'popup', 'sequential']),
+    enumv(pp.editorMode, ['classic', 'popup', 'sequential', 'boxcrop']),
     DEFAULTS.photoprint.editorMode
   )
   if (formats10 || formatsCatalog) {

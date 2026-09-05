@@ -55,7 +55,7 @@ export default function App() {
         setPhotoEnabled(Boolean(c.photoRedesignEnabled))
         setPostcardEnabled(Boolean(c.postcardDesignEnabled))
         setPhotoPrintEnabled(Boolean(c.photoPrintEnabled))
-        if (['classic', 'popup', 'sequential'].includes(c.photoPrintEditorMode))
+        if (['classic', 'popup', 'sequential', 'boxcrop'].includes(c.photoPrintEditorMode))
           setPhotoPrintEditorMode(c.photoPrintEditorMode)
         if (Array.isArray(c.photoPrintFormats10)) setPhotoPrintFormats10(c.photoPrintFormats10)
         if (Array.isArray(c.photoPrintFormatsCatalog))

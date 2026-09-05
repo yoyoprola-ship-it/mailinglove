@@ -1513,6 +1513,37 @@
   margin-top: 18px;
 }
 
+/* ---------- photo print: box-crop editor (functionality 4) ---------- */
+.pp__crop4 {
+  position: relative;
+  max-width: 100%;
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 14px 40px rgba(74, 22, 38, 0.18);
+  background: #f4eef0;
+}
+.pp__crop4 img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.pp__crop4-tag {
+  position: absolute;
+  left: 50%;
+  bottom: 10px;
+  transform: translateX(-50%);
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+}
+.pp__crop4-btn {
+  margin-top: 12px;
+}
+
 .pp__draghint {
   position: absolute;
   inset: 0;
