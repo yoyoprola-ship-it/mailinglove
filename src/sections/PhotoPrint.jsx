@@ -167,13 +167,13 @@ export default function PhotoPrint({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isPopup, activeId])
 
-  // Popup mode: show the drag-direction hint for at least 1s each time a
-  // photo's editor opens.
+  // Popup mode: show the drag-direction hint for up to 3s each time a
+  // photo's editor opens (dismissed sooner if the customer touches the photo).
   useEffect(() => {
     if (!isPopup || !activeId) return
     setDragHint(true)
     clearTimeout(dragHintTimer.current)
-    dragHintTimer.current = setTimeout(() => setDragHint(false), 1000)
+    dragHintTimer.current = setTimeout(() => setDragHint(false), 3000)
     return () => clearTimeout(dragHintTimer.current)
   }, [isPopup, activeId])
 
