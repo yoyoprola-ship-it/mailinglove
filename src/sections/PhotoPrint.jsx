@@ -6,6 +6,15 @@ const money = (c) => `$${((c || 0) / 100).toFixed(2)}`
 const PREVIEW_W = 360
 let uid = 0
 
+// One "points up" chevron, reused for all 4 directions by rotating it in
+// CSS — keeps every arrow the same visual size (unicode ← → render smaller
+// than ↑ ↓ in most fonts).
+const dragArrowIcon = (
+  <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M12 19V5M5 12l7-7 7 7" />
+  </svg>
+)
+
 // --- geometry helpers ---------------------------------------------------
 
 function orientOf(photo, f) {
@@ -619,10 +628,10 @@ export default function PhotoPrint({
                         className={`pp__draghint${dragHint ? '' : ' is-hidden'}`}
                         aria-hidden="true"
                       >
-                        <span className="pp__draghint-arrow pp__draghint-arrow--up">↑</span>
-                        <span className="pp__draghint-arrow pp__draghint-arrow--down">↓</span>
-                        <span className="pp__draghint-arrow pp__draghint-arrow--left">←</span>
-                        <span className="pp__draghint-arrow pp__draghint-arrow--right">→</span>
+                        <span className="pp__draghint-arrow pp__draghint-arrow--up">{dragArrowIcon}</span>
+                        <span className="pp__draghint-arrow pp__draghint-arrow--down">{dragArrowIcon}</span>
+                        <span className="pp__draghint-arrow pp__draghint-arrow--left">{dragArrowIcon}</span>
+                        <span className="pp__draghint-arrow pp__draghint-arrow--right">{dragArrowIcon}</span>
                       </div>
                     </div>
                     <label className="pp__zoom">

@@ -1499,12 +1499,21 @@
   height: 50px;
   border-radius: 50%;
   background: rgba(0, 0, 0, 0.45);
-  font-size: 32px;
-  font-weight: 700;
-  line-height: 1;
   color: #fff;
-  text-shadow: 0 1px 5px rgba(0, 0, 0, 0.65), 0 0 3px rgba(0, 0, 0, 0.65);
+  filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.5));
   animation: pp-draghint-pulse 1s ease-in-out infinite;
+}
+.pp__draghint-arrow svg {
+  display: block;
+}
+.pp__draghint-arrow--down svg {
+  transform: rotate(180deg);
+}
+.pp__draghint-arrow--left svg {
+  transform: rotate(-90deg);
+}
+.pp__draghint-arrow--right svg {
+  transform: rotate(90deg);
 }
 .pp__draghint-arrow--up {
   top: 10px;
