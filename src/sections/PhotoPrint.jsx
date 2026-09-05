@@ -99,6 +99,10 @@ export default function PhotoPrint({
   // so Cancel can either discard it (never confirmed before) or revert it
   // (was already configured — undo edits made in this pass).
   const preEditRef = useRef(null)
+  // Popup mode only: briefly show 4 directional arrows over the photo so
+  // the customer knows it can be dragged, then fade them out.
+  const [dragHint, setDragHint] = useState(false)
+  const dragHintTimer = useRef(null)
 
   // Two envelope groups, but most logic just needs "all the formats".
   const formats = useMemo(() => [...formats10, ...formatsCatalog], [formats10, formatsCatalog])
@@ -161,6 +165,16 @@ export default function PhotoPrint({
       cy: p.cy,
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isPopup, activeId])
+
+  // Popup mode: show the drag-direction hint for at least 1s each time a
+  // photo's editor opens.
+  useEffect(() => {
+    if (!isPopup || !activeId) return
+    setDragHint(true)
+    clearTimeout(dragHintTimer.current)
+    dragHintTimer.current = setTimeout(() => setDragHint(false), 1000)
+    return () => clearTimeout(dragHintTimer.current)
   }, [isPopup, activeId])
 
   // Popup mode "Done": confirm this photo and move on to the next pending
@@ -589,15 +603,26 @@ export default function PhotoPrint({
                   </div>
 
                   <div className="pp__modal-body">
-                    <canvas
-                      ref={previewRef}
-                      className="pp__canvas"
-                      style={{ width: PREVIEW_W, height: Math.round(PREVIEW_W / geo.ratio) }}
-                      onPointerDown={onPointerDown}
-                      onPointerMove={onPointerMove}
-                      onPointerUp={onPointerUp}
-                      onPointerCancel={onPointerUp}
-                    />
+                    <div className="pp__canvas-wrap">
+                      <canvas
+                        ref={previewRef}
+                        className="pp__canvas"
+                        style={{ width: PREVIEW_W, height: Math.round(PREVIEW_W / geo.ratio) }}
+                        onPointerDown={onPointerDown}
+                        onPointerMove={onPointerMove}
+                        onPointerUp={onPointerUp}
+                        onPointerCancel={onPointerUp}
+                      />
+                      <div
+                        className={`pp__draghint${dragHint ? '' : ' is-hidden'}`}
+                        aria-hidden="true"
+                      >
+                        <span className="pp__draghint-arrow pp__draghint-arrow--up">↑</span>
+                        <span className="pp__draghint-arrow pp__draghint-arrow--down">↓</span>
+                        <span className="pp__draghint-arrow pp__draghint-arrow--left">←</span>
+                        <span className="pp__draghint-arrow pp__draghint-arrow--right">→</span>
+                      </div>
+                    </div>
                     <label className="pp__zoom">
                       Zoom
                       <input
