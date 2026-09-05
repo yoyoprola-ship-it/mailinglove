@@ -91,6 +91,10 @@ export default function PhotoPrint({
   onRequireAuth,
 }) {
   const isPopup = editorMode === 'popup'
+  // Functionality 3: everything functionality 2 does (one photo at a time,
+  // Cancel/Done, drag hint) but rendered inline instead of in a popup.
+  const isSequential = editorMode === 'sequential'
+  const oneAtATime = isPopup || isSequential
   const [photos, setPhotos] = useState([]) // { id, img, w, h, url, formatId, orientation, zoom, cx, cy }
   const [activeId, setActiveId] = useState(null)
   const [status, setStatus] = useState('idle') // idle | adding
@@ -104,12 +108,12 @@ export default function PhotoPrint({
   const addFileRef = useRef(null)
   const addedTimer = useRef(null)
   const dragDepth = useRef(0)
-  // Popup mode only: a snapshot of the photo taken when its editor opened,
-  // so Cancel can either discard it (never confirmed before) or revert it
-  // (was already configured — undo edits made in this pass).
+  // Popup/sequential modes only: a snapshot of the photo taken when its
+  // editor opened, so Cancel can either discard it (never confirmed before)
+  // or revert it (was already configured — undo edits made in this pass).
   const preEditRef = useRef(null)
-  // Popup mode only: briefly show 4 directional arrows over the photo so
-  // the customer knows it can be dragged, then fade them out.
+  // Popup/sequential modes only: briefly show 4 directional arrows over the
+  // photo so the customer knows it can be dragged, then fade them out.
   const [dragHint, setDragHint] = useState(false)
   const dragHintTimer = useRef(null)
 
@@ -159,9 +163,9 @@ export default function PhotoPrint({
     if (next) setActiveId(next)
   }
 
-  // Popup mode: snapshot the photo whenever a new one opens in the modal.
+  // Popup/sequential: snapshot the photo whenever a new one opens for editing.
   useEffect(() => {
-    if (!isPopup || !activeId) return
+    if (!oneAtATime || !activeId) return
     const p = photos.find((x) => x.id === activeId)
     if (!p) return
     preEditRef.current = {
@@ -174,27 +178,27 @@ export default function PhotoPrint({
       cy: p.cy,
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isPopup, activeId])
+  }, [oneAtATime, activeId])
 
-  // Popup mode: show the drag-direction hint for up to 3s each time a
+  // Popup/sequential: show the drag-direction hint for up to 3s each time a
   // photo's editor opens (dismissed sooner if the customer touches the photo).
   useEffect(() => {
-    if (!isPopup || !activeId) return
+    if (!oneAtATime || !activeId) return
     setDragHint(true)
     clearTimeout(dragHintTimer.current)
     dragHintTimer.current = setTimeout(() => setDragHint(false), 3000)
     return () => clearTimeout(dragHintTimer.current)
-  }, [isPopup, activeId])
+  }, [oneAtATime, activeId])
 
-  // Popup mode "Done": confirm this photo and move on to the next pending
-  // one, or close the modal if it was the last.
+  // Popup/sequential "Done": confirm this photo and move on to the next
+  // pending one, or close/clear the editor if it was the last.
   function finishEditing() {
     const next = nextPendingAfter(activeId)
     setPhotos((list) => list.map((p) => (p.id === activeId ? { ...p, configured: true } : p)))
     setActiveId(next)
   }
 
-  // Popup mode "Cancel": discard a photo that was never confirmed, or
+  // Popup/sequential "Cancel": discard a photo that was never confirmed, or
   // revert one that was already configured back to how it was.
   function cancelEditing() {
     const id = activeId
@@ -411,7 +415,7 @@ export default function PhotoPrint({
           >
             {dragOver && <div className="pp__drophint">Drop photos to add them</div>}
             <div className="pp__stage">
-              {!isPopup && active && geo ? (
+              {editorMode === 'classic' && active && geo ? (
                 <canvas
                   ref={previewRef}
                   className="pp__canvas"
@@ -422,24 +426,26 @@ export default function PhotoPrint({
                   onPointerCancel={onPointerUp}
                 />
               ) : (
-                <label className="pp__drop">
-                  <Icon name="upload" size={26} />
-                  <span>
-                    {justAdded
-                      ? 'Added to cart ✓ — choose more photos'
-                      : 'Choose photos or drag them here'}
-                  </span>
-                  <input
-                    type="file"
-                    accept="image/jpeg,image/png,image/webp"
-                    multiple
-                    hidden
-                    onChange={(e) => addFiles(e.target.files)}
-                  />
-                </label>
+                !isSequential && (
+                  <label className="pp__drop">
+                    <Icon name="upload" size={26} />
+                    <span>
+                      {justAdded
+                        ? 'Added to cart ✓ — choose more photos'
+                        : 'Choose photos or drag them here'}
+                    </span>
+                    <input
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp"
+                      multiple
+                      hidden
+                      onChange={(e) => addFiles(e.target.files)}
+                    />
+                  </label>
+                )
               )}
 
-              {!isPopup && active && (
+              {editorMode === 'classic' && active && (
                 <>
                   <label className="pp__zoom">
                     Zoom
@@ -460,6 +466,147 @@ export default function PhotoPrint({
                     </p>
                   )}
                 </>
+              )}
+
+              {isSequential && !active && (
+                <label className="pp__drop">
+                  <Icon name="upload" size={26} />
+                  <span>
+                    {justAdded
+                      ? 'Added to cart ✓ — choose more photos'
+                      : 'Choose photos or drag them here'}
+                  </span>
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    multiple
+                    hidden
+                    onChange={(e) => addFiles(e.target.files)}
+                  />
+                </label>
+              )}
+
+              {isSequential && active && geo && (
+                <div className="pp__seq">
+                  <div className="pp__seq-head">
+                    <strong>Edit this photo</strong>
+                    {pendingCount > 0 && (
+                      <span className="pp__muted">{pendingCount} more to go</span>
+                    )}
+                  </div>
+
+                  <div className="pp__canvas-wrap">
+                    <canvas
+                      ref={previewRef}
+                      className="pp__canvas"
+                      style={{ width: PREVIEW_W, height: Math.round(PREVIEW_W / geo.ratio) }}
+                      onPointerDown={onPointerDown}
+                      onPointerMove={onPointerMove}
+                      onPointerUp={onPointerUp}
+                      onPointerCancel={onPointerUp}
+                    />
+                    <div
+                      className={`pp__draghint${dragHint ? '' : ' is-hidden'}`}
+                      aria-hidden="true"
+                    >
+                      <span className="pp__draghint-arrow pp__draghint-arrow--up">{dragArrowIcon}</span>
+                      <span className="pp__draghint-arrow pp__draghint-arrow--down">{dragArrowIcon}</span>
+                      <span className="pp__draghint-arrow pp__draghint-arrow--left">{dragArrowIcon}</span>
+                      <span className="pp__draghint-arrow pp__draghint-arrow--right">{dragArrowIcon}</span>
+                    </div>
+                  </div>
+                  <label className="pp__zoom">
+                    Zoom
+                    <input
+                      type="range"
+                      min={1}
+                      max={4}
+                      step={0.01}
+                      value={active.zoom}
+                      onChange={(e) => patchActive({ zoom: Number(e.target.value) })}
+                    />
+                  </label>
+                  <p className="pp__hint">Drag the photo to reposition it in the frame.</p>
+                  {lowRes && (
+                    <p className="pp__warn">
+                      ⚠ This photo is a little low-resolution for {format.label} — it may
+                      look soft in print.
+                    </p>
+                  )}
+
+                  <div className="pp__block">
+                    <span className="pp__label">Format</span>
+
+                    {formats10.length > 0 && (
+                      <>
+                        <span className="pp__group-label">Fits a #10 envelope</span>
+                        <div className="pp__formats">
+                          {shown10.map((f) => (
+                            <button
+                              key={f.id}
+                              type="button"
+                              className={`pp__format${f.id === active.formatId ? ' is-active' : ''}`}
+                              onClick={() => patchActive({ formatId: f.id })}
+                            >
+                              <strong>{f.label}</strong>
+                              <span>{money(f.priceCents)}</span>
+                            </button>
+                          ))}
+                        </div>
+                      </>
+                    )}
+
+                    {formatsCatalog.length > 0 && (
+                      <>
+                        <span className="pp__group-label">Needs a catalog envelope</span>
+                        <div className="pp__formats">
+                          {shownCatalog.map((f) => (
+                            <button
+                              key={f.id}
+                              type="button"
+                              className={`pp__format${f.id === active.formatId ? ' is-active' : ''}`}
+                              onClick={() => patchActive({ formatId: f.id })}
+                            >
+                              <strong>{f.label}</strong>
+                              <span>{money(f.priceCents)}</span>
+                            </button>
+                          ))}
+                        </div>
+                      </>
+                    )}
+
+                    {!geo.square && (
+                      <div className="pp__orient">
+                        <span className="pp__label">Orientation</span>
+                        <div className="pp__row">
+                          <button
+                            type="button"
+                            className={`pp__opt${!geo.landscape ? ' is-active' : ''}`}
+                            onClick={() => patchActive({ orientation: 'portrait' })}
+                          >
+                            ▯ Portrait
+                          </button>
+                          <button
+                            type="button"
+                            className={`pp__opt${geo.landscape ? ' is-active' : ''}`}
+                            onClick={() => patchActive({ orientation: 'landscape' })}
+                          >
+                            ▭ Landscape
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="pp__seq-foot">
+                    <button type="button" className="btn btn--ghost" onClick={cancelEditing}>
+                      Cancel
+                    </button>
+                    <button type="button" className="btn btn--primary" onClick={finishEditing}>
+                      Done
+                    </button>
+                  </div>
+                </div>
               )}
 
               {photos.length > 0 && (
@@ -495,7 +642,7 @@ export default function PhotoPrint({
             </div>
 
             <div className="pp__controls">
-              {!isPopup && (
+              {editorMode === 'classic' && (
                 <div className="pp__block">
                   <span className="pp__label">
                     Format {photos.length > 1 && <em className="pp__muted">· for the selected photo</em>}
@@ -566,7 +713,7 @@ export default function PhotoPrint({
               )}
 
               <div className="pp__foot">
-                {!isPopup && status !== 'adding' && pendingCount > 0 && (
+                {editorMode === 'classic' && status !== 'adding' && pendingCount > 0 && (
                   <button type="button" className="btn btn--ghost" onClick={continueConfiguring}>
                     Continue configuring → <span className="pp__muted">({pendingCount} left)</span>
                   </button>

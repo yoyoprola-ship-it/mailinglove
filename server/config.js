@@ -59,7 +59,7 @@ const DEFAULTS = {
   },
   photoprint: {
     enabled: false, // off until the admin sets real prices
-    editorMode: 'classic', // '1' — the popup-per-photo flow is 'popup'
+    editorMode: 'classic', // '1' classic · '2' popup-per-photo is 'popup' · '3' inline-per-photo is 'sequential'
     formats10: DEFAULT_PHOTO_FORMATS_10,
     formatsCatalog: DEFAULT_PHOTO_FORMATS_CATALOG,
   },
@@ -126,9 +126,9 @@ export const CONFIG_SCHEMA = {
       enabled: { type: 'bool', label: 'Section enabled' },
       editorMode: {
         type: 'enum',
-        values: ['classic', 'popup'],
+        values: ['classic', 'popup', 'sequential'],
         label:
-          '1 = classic (thumbnail strip + shared editor) · 2 = popup (each new photo opens its own editor, one at a time)',
+          '1 = classic (thumbnail strip + shared editor) · 2 = popup (each new photo opens its own editor, one at a time, in a popup window) · 3 = sequential (same as popup, but the editor shows inline instead of in a popup window)',
       },
       formats10: {
         type: 'priceformats',
@@ -316,7 +316,10 @@ function migrateCalendar(c) {
 function migratePhotoprint(pp) {
   const formats10 = validPriceFormats(pp.formats10)
   const formatsCatalog = validPriceFormats(pp.formatsCatalog)
-  const editorMode = pick(enumv(pp.editorMode, ['classic', 'popup']), DEFAULTS.photoprint.editorMode)
+  const editorMode = pick(
+    enumv(pp.editorMode, ['classic', 'popup', 'sequential']),
+    DEFAULTS.photoprint.editorMode
+  )
   if (formats10 || formatsCatalog) {
     return {
       enabled: pick(boolv(pp.enabled), DEFAULTS.photoprint.enabled),
