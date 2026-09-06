@@ -1446,6 +1446,12 @@
   max-width: 100%;
   line-height: 0;
 }
+/* The preview is decorative — let touches pass through so the page still
+   scrolls when a finger swipes over it on mobile. */
+.pp__crop4 .pp__canvas,
+.pp__crop4-tag {
+  pointer-events: none;
+}
 .pp__crop4-tag {
   position: absolute;
   left: 50%;
