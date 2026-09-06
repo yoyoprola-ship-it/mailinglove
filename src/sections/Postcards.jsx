@@ -209,7 +209,6 @@ export default function Postcards({
                   <img className="pc-card__img" src={p.image} alt={p.title} loading="lazy" />
                 </button>
                 <div className="pc-card__body">
-                  <h3 className="pc-card__title">{p.title}</h3>
                   <CartControl
                     qty={cartQtyFor(p.id)}
                     onAdd={() => onAdd(p)}
@@ -243,7 +242,6 @@ export default function Postcards({
             </button>
             <img className="pc-modal__img" src={preview.image} alt={preview.title} />
             <div className="pc-modal__foot">
-              <span className="pc-modal__title">{preview.title}</span>
               <CartControl
                 qty={cartQtyFor(preview.id)}
                 onAdd={() => onAdd(preview)}

@@ -773,31 +773,16 @@
 .pc-modal__foot {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: center;
   gap: 14px;
 }
 
-.pc-modal__title {
-  font-size: 0.9rem;
-  font-weight: 600;
-  color: var(--rose-900);
-}
-
 .pc-card__body {
-  padding: 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  align-items: flex-start;
+  padding: 14px 16px;
   flex: 1;
-  justify-content: space-between;
-}
-
-.pc-card__title {
-  font-size: 1rem;
-  color: var(--rose-900);
-  /* reserve two lines so the Add control lines up across a row */
-  min-height: 2.6em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .pc-stepper {
