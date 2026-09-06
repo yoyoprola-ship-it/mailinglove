@@ -32,7 +32,6 @@ export default function App() {
   const [photoEnabled, setPhotoEnabled] = useState(null)
   const [postcardEnabled, setPostcardEnabled] = useState(null)
   const [photoPrintEnabled, setPhotoPrintEnabled] = useState(false)
-  const [photoPrintEditorMode, setPhotoPrintEditorMode] = useState('classic')
   const [photoPrintFormats10, setPhotoPrintFormats10] = useState([])
   const [photoPrintFormatsCatalog, setPhotoPrintFormatsCatalog] = useState([])
   const [perPage, setPerPage] = useState(25)
@@ -55,8 +54,6 @@ export default function App() {
         setPhotoEnabled(Boolean(c.photoRedesignEnabled))
         setPostcardEnabled(Boolean(c.postcardDesignEnabled))
         setPhotoPrintEnabled(Boolean(c.photoPrintEnabled))
-        if (['classic', 'popup', 'sequential', 'boxcrop'].includes(c.photoPrintEditorMode))
-          setPhotoPrintEditorMode(c.photoPrintEditorMode)
         if (Array.isArray(c.photoPrintFormats10)) setPhotoPrintFormats10(c.photoPrintFormats10)
         if (Array.isArray(c.photoPrintFormatsCatalog))
           setPhotoPrintFormatsCatalog(c.photoPrintFormatsCatalog)
@@ -237,7 +234,6 @@ export default function App() {
         <PhotoPrint
           formats10={photoPrintFormats10}
           formatsCatalog={photoPrintFormatsCatalog}
-          editorMode={photoPrintEditorMode}
           signedIn={signedIn}
           onAdded={(items) => Array.isArray(items) && setCartItems(items)}
           onRequireAuth={() => setAuthCtx({ mode: 'account' })}

@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { createPortal } from 'react-dom'
 import Reveal from '../components/Reveal'
 import Icon from '../components/Icon'
 import CropModal from '../components/CropModal'
@@ -8,10 +7,9 @@ const money = (c) => `$${((c || 0) / 100).toFixed(2)}`
 const PREVIEW_W = 360
 let uid = 0
 
-// Functionality 4 keeps its crop as a ready-made JPEG (from CropModal),
-// tagged with its pixel size. It's only usable while its aspect ratio
-// still matches the chosen format — otherwise we fall back to a centred
-// crop of the original.
+// The crop is a ready-made JPEG (from CropModal), tagged with its pixel
+// size. It's only usable while its aspect ratio still matches the chosen
+// format — otherwise we fall back to a centred crop of the original.
 const RATIO_EPS = 0.02
 const crop4For = (photo, ratio) =>
   photo.crop4 && Math.abs(photo.crop4.w / photo.crop4.h - ratio) < RATIO_EPS ? photo.crop4 : null
@@ -25,15 +23,6 @@ function loadImg(src) {
   })
 }
 
-// One "points up" chevron, reused for all 4 directions by rotating it in
-// CSS — keeps every arrow the same visual size (unicode ← → render smaller
-// than ↑ ↓ in most fonts).
-const dragArrowIcon = (
-  <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M12 19V5M5 12l7-7 7 7" />
-  </svg>
-)
-
 // --- geometry helpers ---------------------------------------------------
 
 function orientOf(photo, f) {
@@ -44,32 +33,26 @@ function orientOf(photo, f) {
   return { square, landscape, wIn, hIn, ratio: wIn / hIn }
 }
 
-// Crop rectangle in source pixels for a photo at its format/zoom/pan.
-function cropOf(photo, ratio) {
-  const { w: W, h: H } = photo
-  if (!W) return { x: 0, y: 0, w: 0, h: 0 }
-  let h = H / photo.zoom
-  let w = h * ratio
-  if (w > W) {
-    w = W
-    h = w / ratio
-  }
+// Largest centred rectangle of the given ratio inside a W×H image — the
+// fallback crop when the customer hasn't used the box tool yet.
+function centerCrop(W, H, ratio) {
+  if (!W || !H) return { x: 0, y: 0, w: 0, h: 0 }
+  let w = W
+  let h = W / ratio
   if (h > H) {
     h = H
-    w = h * ratio
+    w = H * ratio
   }
-  const cx = Math.min(Math.max(photo.cx, w / 2), W - w / 2)
-  const cy = Math.min(Math.max(photo.cy, h / 2), H - h / 2)
-  return { x: cx - w / 2, y: cy - h / 2, w, h }
+  return { x: (W - w) / 2, y: (H - h) / 2, w, h }
 }
 
-function drawCrop(canvas, photo, crop, outW, outH) {
+function drawCrop(canvas, img, crop, outW, outH) {
   canvas.width = outW
   canvas.height = outH
   const ctx = canvas.getContext('2d')
   ctx.fillStyle = '#ffffff'
   ctx.fillRect(0, 0, outW, outH)
-  if (crop.w) ctx.drawImage(photo.img, crop.x, crop.y, crop.w, crop.h, 0, 0, outW, outH)
+  if (crop.w) ctx.drawImage(img, crop.x, crop.y, crop.w, crop.h, 0, 0, outW, outH)
 }
 
 // --- thumbnail --------------------------------------------------------
@@ -96,7 +79,7 @@ function PhotoThumb({ photo, format, active, onClick, onRemove }) {
       im.src = c4.url
       return
     }
-    drawCrop(cv, photo, cropOf(photo, ratio), w, h)
+    drawCrop(cv, photo.img, centerCrop(photo.w, photo.h, ratio), w, h)
   }, [photo, ratio])
   return (
     <div
@@ -122,43 +105,26 @@ function PhotoThumb({ photo, format, active, onClick, onRemove }) {
 export default function PhotoPrint({
   formats10 = [],
   formatsCatalog = [],
-  editorMode = 'classic',
   signedIn,
   onAdded,
   onRequireAuth,
 }) {
-  const isPopup = editorMode === 'popup'
-  // Functionality 3: everything functionality 2 does (one photo at a time,
-  // Cancel/Done, drag hint) but rendered inline instead of in a popup.
-  const isSequential = editorMode === 'sequential'
-  // Functionality 4: like 3, but instead of dragging the photo you crop it
-  // with the ratio-locked box tool (the same one used for postcards).
-  const isBoxCrop = editorMode === 'boxcrop'
-  const oneAtATime = isPopup || isSequential || isBoxCrop
-  const [photos, setPhotos] = useState([]) // { id, img, w, h, url, formatId, orientation, zoom, cx, cy }
+  const [photos, setPhotos] = useState([]) // { id, img, w, h, url, formatId, orientation, configured, crop4? }
   const [activeId, setActiveId] = useState(null)
   const [status, setStatus] = useState('idle') // idle | adding
   const [progress, setProgress] = useState('')
   const [error, setError] = useState('')
   const [justAdded, setJustAdded] = useState(false)
   const [dragOver, setDragOver] = useState(false)
+  const [cropOpen, setCropOpen] = useState(false)
 
-  const previewRef = useRef(null)
-  const crop4CanvasRef = useRef(null)
-  const drag = useRef(null)
+  const previewCanvasRef = useRef(null)
   const addFileRef = useRef(null)
   const addedTimer = useRef(null)
   const dragDepth = useRef(0)
-  // Popup/sequential modes only: a snapshot of the photo taken when its
-  // editor opened, so Cancel can either discard it (never confirmed before)
-  // or revert it (was already configured — undo edits made in this pass).
+  // Snapshot of the photo taken when its editor opened, so Cancel can
+  // either discard it (never confirmed before) or revert it.
   const preEditRef = useRef(null)
-  // Popup/sequential modes only: briefly show 4 directional arrows over the
-  // photo so the customer knows it can be dragged, then fade them out.
-  const [dragHint, setDragHint] = useState(false)
-  const dragHintTimer = useRef(null)
-  // Functionality 4: whether the ratio-locked crop tool is open.
-  const [crop4Open, setCrop4Open] = useState(false)
 
   // Two envelope groups, but most logic just needs "all the formats".
   const formats = useMemo(() => [...formats10, ...formatsCatalog], [formats10, formatsCatalog])
@@ -176,8 +142,9 @@ export default function PhotoPrint({
     [active, formats]
   )
   const geo = active && format ? orientOf(active, format) : null
-  const crop = active && geo ? cropOf(active, geo.ratio) : { x: 0, y: 0, w: 0, h: 0 }
-  const lowRes = active && geo && crop.w > 0 && crop.w < geo.wIn * 150
+  const activeCrop = active && geo ? crop4For(active, geo.ratio) : null
+  const srcW = active && geo ? (activeCrop ? activeCrop.w : centerCrop(active.w, active.h, geo.ratio).w) : 0
+  const lowRes = active && geo && srcW > 0 && srcW < geo.wIn * 150
 
   const total = photos.reduce((n, p) => {
     const f = formats.find((x) => x.id === p.formatId) || formats[0]
@@ -199,17 +166,10 @@ export default function PhotoPrint({
     return (after || before)?.id || null
   }
 
-  // Mark the current photo done and jump to the next one that isn't.
-  function continueConfiguring() {
-    const next = nextPendingAfter(activeId)
-    setPhotos((list) => list.map((p) => (p.id === activeId ? { ...p, configured: true } : p)))
-    if (next) setActiveId(next)
-  }
-
-  // Popup/sequential: snapshot the photo whenever a new one opens for editing.
+  // Snapshot the photo whenever a new one opens for editing.
   useEffect(() => {
-    if (!oneAtATime || !activeId) return
-    setCrop4Open(false)
+    if (!activeId) return
+    setCropOpen(false)
     const p = photos.find((x) => x.id === activeId)
     if (!p) return
     preEditRef.current = {
@@ -217,46 +177,21 @@ export default function PhotoPrint({
       wasConfigured: p.configured,
       formatId: p.formatId,
       orientation: p.orientation,
-      zoom: p.zoom,
-      cx: p.cx,
-      cy: p.cy,
       crop4: p.crop4 || null,
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [oneAtATime, activeId])
+  }, [activeId])
 
-  // Popup/sequential: show the drag-direction hint for up to 3s each time a
-  // photo's editor opens (dismissed sooner if the customer touches the photo).
-  // Box-crop mode has no draggable photo, so it doesn't get the hint.
-  const dragHintMode = isPopup || isSequential
-  useEffect(() => {
-    if (!dragHintMode || !activeId) return
-    setDragHint(true)
-    clearTimeout(dragHintTimer.current)
-    dragHintTimer.current = setTimeout(() => setDragHint(false), 3000)
-    return () => clearTimeout(dragHintTimer.current)
-  }, [dragHintMode, activeId])
-
-  // Lock the page while the popup (functionality 2) modal is open.
-  useEffect(() => {
-    if (!isPopup || !activeId) return
-    const prev = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
-    return () => {
-      document.body.style.overflow = prev
-    }
-  }, [isPopup, activeId])
-
-  // Popup/sequential "Done": confirm this photo and move on to the next
-  // pending one, or close/clear the editor if it was the last.
+  // "Done": confirm this photo and move on to the next pending one, or
+  // close the editor if it was the last.
   function finishEditing() {
     const next = nextPendingAfter(activeId)
     setPhotos((list) => list.map((p) => (p.id === activeId ? { ...p, configured: true } : p)))
     setActiveId(next)
   }
 
-  // Functionality 4: store the crop the box tool produced.
-  async function applyCrop4(blob) {
+  // Store the crop the box tool produced.
+  async function applyCrop(blob) {
     const url = URL.createObjectURL(blob)
     let dims = { w: 0, h: 0 }
     try {
@@ -272,11 +207,11 @@ export default function PhotoPrint({
         return { ...p, crop4: { url, w: dims.w, h: dims.h } }
       })
     )
-    setCrop4Open(false)
+    setCropOpen(false)
   }
 
-  // Popup/sequential "Cancel": discard a photo that was never confirmed, or
-  // revert one that was already configured back to how it was.
+  // "Cancel": discard a photo that was never confirmed, or revert one
+  // that was already configured back to how it was.
   function cancelEditing() {
     const id = activeId
     if (!id) return
@@ -296,15 +231,7 @@ export default function PhotoPrint({
         list.map((p) => {
           if (p.id !== id) return p
           if (p.crop4 && p.crop4 !== snap.crop4) URL.revokeObjectURL(p.crop4.url)
-          return {
-            ...p,
-            formatId: snap.formatId,
-            orientation: snap.orientation,
-            zoom: snap.zoom,
-            cx: snap.cx,
-            cy: snap.cy,
-            crop4: snap.crop4 || null,
-          }
+          return { ...p, formatId: snap.formatId, orientation: snap.orientation, crop4: snap.crop4 || null }
         })
       )
     }
@@ -331,9 +258,6 @@ export default function PhotoPrint({
                 h: im.naturalHeight,
                 formatId: defFormat,
                 orientation: im.naturalWidth > im.naturalHeight ? 'landscape' : 'portrait',
-                zoom: 1,
-                cx: im.naturalWidth / 2,
-                cy: im.naturalHeight / 2,
                 configured: false,
               })
             im.onerror = () => resolve(null)
@@ -397,27 +321,18 @@ export default function PhotoPrint({
     setStatus('idle')
     setProgress('')
     setError('')
-    drag.current = null
   }
 
-  // Redraw the active photo in the stage.
+  // Draw an exact preview of the crop that would be sent — the box-tool
+  // result if it's still valid, else the centred fallback.
   useEffect(() => {
-    const c = previewRef.current
-    if (!c || !active || !geo) return
-    drawCrop(c, active, crop, PREVIEW_W, Math.round(PREVIEW_W / geo.ratio))
-  }, [active, geo, crop])
-
-  // Functionality 4: draw an exact preview of the crop that would be sent —
-  // the box-tool result if it's still valid, else the centred fallback.
-  useEffect(() => {
-    if (!isBoxCrop) return
-    const cv = crop4CanvasRef.current
+    const cv = previewCanvasRef.current
     if (!cv || !active || !geo) return
     const cw = PREVIEW_W
     const ch = Math.round(PREVIEW_W / geo.ratio)
     const c4 = crop4For(active, geo.ratio)
     if (!c4) {
-      drawCrop(cv, active, cropOf(active, geo.ratio), cw, ch)
+      drawCrop(cv, active.img, centerCrop(active.w, active.h, geo.ratio), cw, ch)
       return
     }
     let cancelled = false
@@ -435,28 +350,7 @@ export default function PhotoPrint({
     return () => {
       cancelled = true
     }
-  }, [isBoxCrop, active, geo])
-
-  function onPointerDown(e) {
-    if (!active) return
-    e.currentTarget.setPointerCapture(e.pointerId)
-    const rect = e.currentTarget.getBoundingClientRect()
-    drag.current = { px: e.clientX, py: e.clientY, cx: active.cx, cy: active.cy, w: rect.width || PREVIEW_W }
-    clearTimeout(dragHintTimer.current)
-    setDragHint(false)
-  }
-  function onPointerMove(e) {
-    const d = drag.current
-    if (!d) return
-    const scale = crop.w / d.w
-    patchActive({
-      cx: d.cx - (e.clientX - d.px) * scale,
-      cy: d.cy - (e.clientY - d.py) * scale,
-    })
-  }
-  function onPointerUp() {
-    drag.current = null
-  }
+  }, [active, geo])
 
   async function addToCart() {
     if (!photos.length) return
@@ -478,8 +372,8 @@ export default function PhotoPrint({
         let outW
         let outH
         if (c4) {
-          // Functionality 4 — the box tool already cut the photo to the
-          // right ratio; just scale it into the print size.
+          // The box tool already cut the photo to the right ratio; just
+          // scale it into the print size.
           const im = await loadImg(c4.url)
           outW = Math.max(600, Math.round(Math.min(g.wIn * 300, c4.w, 3000)))
           outH = Math.round(outW / g.ratio)
@@ -490,10 +384,10 @@ export default function PhotoPrint({
           cx.fillRect(0, 0, outW, outH)
           cx.drawImage(im, 0, 0, im.naturalWidth, im.naturalHeight, 0, 0, outW, outH)
         } else {
-          const c = cropOf(p, g.ratio)
+          const c = centerCrop(p.w, p.h, g.ratio)
           outW = Math.max(600, Math.round(Math.min(g.wIn * 300, c.w, 3000)))
           outH = Math.round(outW / g.ratio)
-          drawCrop(canvas, p, c, outW, outH)
+          drawCrop(canvas, p.img, c, outW, outH)
         }
         const blob = await new Promise((res) => canvas.toBlob(res, 'image/jpeg', 0.95))
         if (!blob) throw new Error('Could not render an image.')
@@ -525,72 +419,20 @@ export default function PhotoPrint({
 
   if (!formats.length) return null
 
-  // Format + orientation pickers for the one-at-a-time editors (2/3/4).
-  // Only rendered where `active` and `geo` are known to be set.
-  const formatOrientBlock = active && geo && (
-    <div className="pp__block">
-      <span className="pp__label">Format</span>
-
-      {formats10.length > 0 && (
-        <>
-          <span className="pp__group-label">Fits a #10 envelope</span>
-          <div className="pp__formats">
-            {shown10.map((f) => (
-              <button
-                key={f.id}
-                type="button"
-                className={`pp__format${f.id === active.formatId ? ' is-active' : ''}`}
-                onClick={() => patchActive({ formatId: f.id })}
-              >
-                <strong>{f.label}</strong>
-                <span>{money(f.priceCents)}</span>
-              </button>
-            ))}
-          </div>
-        </>
-      )}
-
-      {formatsCatalog.length > 0 && (
-        <>
-          <span className="pp__group-label">Needs a catalog envelope</span>
-          <div className="pp__formats">
-            {shownCatalog.map((f) => (
-              <button
-                key={f.id}
-                type="button"
-                className={`pp__format${f.id === active.formatId ? ' is-active' : ''}`}
-                onClick={() => patchActive({ formatId: f.id })}
-              >
-                <strong>{f.label}</strong>
-                <span>{money(f.priceCents)}</span>
-              </button>
-            ))}
-          </div>
-        </>
-      )}
-
-      {!geo.square && (
-        <div className="pp__orient">
-          <span className="pp__label">Orientation</span>
-          <div className="pp__row">
-            <button
-              type="button"
-              className={`pp__opt${!geo.landscape ? ' is-active' : ''}`}
-              onClick={() => patchActive({ orientation: 'portrait' })}
-            >
-              ▯ Portrait
-            </button>
-            <button
-              type="button"
-              className={`pp__opt${geo.landscape ? ' is-active' : ''}`}
-              onClick={() => patchActive({ orientation: 'landscape' })}
-            >
-              ▭ Landscape
-            </button>
-          </div>
-        </div>
-      )}
-    </div>
+  const dropLabel = (
+    <label className="pp__drop">
+      <Icon name="upload" size={26} />
+      <span>
+        {justAdded ? 'Added to cart ✓ — choose more photos' : 'Choose photos or drag them here'}
+      </span>
+      <input
+        type="file"
+        accept="image/jpeg,image/png,image/webp"
+        multiple
+        hidden
+        onChange={(e) => addFiles(e.target.files)}
+      />
+    </label>
   )
 
   return (
@@ -616,178 +458,107 @@ export default function PhotoPrint({
             onDrop={onDrop}
           >
             {dragOver && <div className="pp__drophint">Drop photos to add them</div>}
+
             <div className="pp__stage">
-              {editorMode === 'classic' && active && geo ? (
-                <canvas
-                  ref={previewRef}
-                  className="pp__canvas"
-                  style={{ width: PREVIEW_W, height: Math.round(PREVIEW_W / geo.ratio) }}
-                  onPointerDown={onPointerDown}
-                  onPointerMove={onPointerMove}
-                  onPointerUp={onPointerUp}
-                  onPointerCancel={onPointerUp}
-                />
-              ) : (
-                !oneAtATime && (
-                  <label className="pp__drop">
-                    <Icon name="upload" size={26} />
-                    <span>
-                      {justAdded
-                        ? 'Added to cart ✓ — choose more photos'
-                        : 'Choose photos or drag them here'}
-                    </span>
-                    <input
-                      type="file"
-                      accept="image/jpeg,image/png,image/webp"
-                      multiple
-                      hidden
-                      onChange={(e) => addFiles(e.target.files)}
-                    />
-                  </label>
-                )
-              )}
+              {!active && dropLabel}
 
-              {editorMode === 'classic' && active && (
-                <>
-                  <label className="pp__zoom">
-                    Zoom
-                    <input
-                      type="range"
-                      min={1}
-                      max={4}
-                      step={0.01}
-                      value={active.zoom}
-                      onChange={(e) => patchActive({ zoom: Number(e.target.value) })}
-                    />
-                  </label>
-                  <p className="pp__hint">Drag the photo to reposition it in the frame.</p>
-                  {lowRes && (
-                    <p className="pp__warn">
-                      ⚠ This photo is a little low-resolution for {format.label} — it may
-                      look soft in print.
-                    </p>
-                  )}
-                </>
-              )}
-
-              {oneAtATime && !active && (
-                <label className="pp__drop">
-                  <Icon name="upload" size={26} />
-                  <span>
-                    {justAdded
-                      ? 'Added to cart ✓ — choose more photos'
-                      : 'Choose photos or drag them here'}
-                  </span>
-                  <input
-                    type="file"
-                    accept="image/jpeg,image/png,image/webp"
-                    multiple
-                    hidden
-                    onChange={(e) => addFiles(e.target.files)}
-                  />
-                </label>
-              )}
-
-              {isSequential && active && geo && (
+              {active && geo && (
                 <div className="pp__seq">
                   <div className="pp__seq-head">
                     <strong>Edit this photo</strong>
-                    {pendingCount > 0 && (
-                      <span className="pp__muted">{pendingCount} more to go</span>
-                    )}
-                  </div>
-
-                  <div className="pp__canvas-wrap">
-                    <canvas
-                      ref={previewRef}
-                      className="pp__canvas"
-                      style={{ width: PREVIEW_W, height: Math.round(PREVIEW_W / geo.ratio) }}
-                      onPointerDown={onPointerDown}
-                      onPointerMove={onPointerMove}
-                      onPointerUp={onPointerUp}
-                      onPointerCancel={onPointerUp}
-                    />
-                    <div
-                      className={`pp__draghint${dragHint ? '' : ' is-hidden'}`}
-                      aria-hidden="true"
-                    >
-                      <span className="pp__draghint-arrow pp__draghint-arrow--up">{dragArrowIcon}</span>
-                      <span className="pp__draghint-arrow pp__draghint-arrow--down">{dragArrowIcon}</span>
-                      <span className="pp__draghint-arrow pp__draghint-arrow--left">{dragArrowIcon}</span>
-                      <span className="pp__draghint-arrow pp__draghint-arrow--right">{dragArrowIcon}</span>
-                    </div>
-                  </div>
-                  <label className="pp__zoom">
-                    Zoom
-                    <input
-                      type="range"
-                      min={1}
-                      max={4}
-                      step={0.01}
-                      value={active.zoom}
-                      onChange={(e) => patchActive({ zoom: Number(e.target.value) })}
-                    />
-                  </label>
-                  <p className="pp__hint">Drag the photo to reposition it in the frame.</p>
-                  {lowRes && (
-                    <p className="pp__warn">
-                      ⚠ This photo is a little low-resolution for {format.label} — it may
-                      look soft in print.
-                    </p>
-                  )}
-
-                  {formatOrientBlock}
-
-                  <div className="pp__seq-foot">
-                    <button type="button" className="btn btn--ghost" onClick={cancelEditing}>
-                      Cancel
-                    </button>
-                    <button type="button" className="btn btn--primary" onClick={finishEditing}>
-                      Done
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {isBoxCrop && active && geo && (
-                <div className="pp__seq">
-                  <div className="pp__seq-head">
-                    <strong>Edit this photo</strong>
-                    {pendingCount > 0 && (
-                      <span className="pp__muted">{pendingCount} more to go</span>
-                    )}
+                    {pendingCount > 0 && <span className="pp__muted">{pendingCount} more to go</span>}
                   </div>
 
                   <div className="pp__crop4">
                     <canvas
-                      ref={crop4CanvasRef}
+                      ref={previewCanvasRef}
                       className="pp__canvas"
                       style={{ width: PREVIEW_W, maxWidth: '100%', height: 'auto' }}
                     />
-                    {!crop4For(active, geo.ratio) && (
-                      <span className="pp__crop4-tag">Not cropped yet</span>
-                    )}
+                    {!activeCrop && <span className="pp__crop4-tag">Not cropped yet</span>}
                   </div>
 
                   <button
                     type="button"
                     className="btn btn--ghost pp__crop4-btn"
-                    onClick={() => setCrop4Open(true)}
+                    onClick={() => setCropOpen(true)}
                   >
-                    {crop4For(active, geo.ratio) ? 'Crop again' : `Crop to ${format.label}`}
+                    {activeCrop ? 'Crop again' : `Crop to ${format.label}`}
                   </button>
                   <p className="pp__hint">
                     The box stays locked to the {format.label} shape. This preview is exactly
                     what we'll print.
                   </p>
-                  {lowRes && !crop4For(active, geo.ratio) && (
+                  {lowRes && !activeCrop && (
                     <p className="pp__warn">
                       ⚠ This photo is a little low-resolution for {format.label} — it may
                       look soft in print.
                     </p>
                   )}
 
-                  {formatOrientBlock}
+                  <div className="pp__block">
+                    <span className="pp__label">Format</span>
+
+                    {formats10.length > 0 && (
+                      <>
+                        <span className="pp__group-label">Fits a #10 envelope</span>
+                        <div className="pp__formats">
+                          {shown10.map((f) => (
+                            <button
+                              key={f.id}
+                              type="button"
+                              className={`pp__format${f.id === active.formatId ? ' is-active' : ''}`}
+                              onClick={() => patchActive({ formatId: f.id })}
+                            >
+                              <strong>{f.label}</strong>
+                              <span>{money(f.priceCents)}</span>
+                            </button>
+                          ))}
+                        </div>
+                      </>
+                    )}
+
+                    {formatsCatalog.length > 0 && (
+                      <>
+                        <span className="pp__group-label">Needs a catalog envelope</span>
+                        <div className="pp__formats">
+                          {shownCatalog.map((f) => (
+                            <button
+                              key={f.id}
+                              type="button"
+                              className={`pp__format${f.id === active.formatId ? ' is-active' : ''}`}
+                              onClick={() => patchActive({ formatId: f.id })}
+                            >
+                              <strong>{f.label}</strong>
+                              <span>{money(f.priceCents)}</span>
+                            </button>
+                          ))}
+                        </div>
+                      </>
+                    )}
+
+                    {!geo.square && (
+                      <div className="pp__orient">
+                        <span className="pp__label">Orientation</span>
+                        <div className="pp__row">
+                          <button
+                            type="button"
+                            className={`pp__opt${!geo.landscape ? ' is-active' : ''}`}
+                            onClick={() => patchActive({ orientation: 'portrait' })}
+                          >
+                            ▯ Portrait
+                          </button>
+                          <button
+                            type="button"
+                            className={`pp__opt${geo.landscape ? ' is-active' : ''}`}
+                            onClick={() => patchActive({ orientation: 'landscape' })}
+                          >
+                            ▭ Landscape
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
 
                   <div className="pp__seq-foot">
                     <button type="button" className="btn btn--ghost" onClick={cancelEditing}>
@@ -800,13 +571,13 @@ export default function PhotoPrint({
                 </div>
               )}
 
-              {isBoxCrop && crop4Open && active && geo && (
+              {cropOpen && active && geo && (
                 <CropModal
                   src={active.url}
                   title={`Crop to ${format.label}`}
                   aspect={geo.ratio}
-                  onCancel={() => setCrop4Open(false)}
-                  onApply={applyCrop4}
+                  onCancel={() => setCropOpen(false)}
+                  onApply={applyCrop}
                 />
               )}
 
@@ -843,82 +614,7 @@ export default function PhotoPrint({
             </div>
 
             <div className="pp__controls">
-              {editorMode === 'classic' && (
-                <div className="pp__block">
-                  <span className="pp__label">
-                    Format {photos.length > 1 && <em className="pp__muted">· for the selected photo</em>}
-                  </span>
-
-                  {formats10.length > 0 && (
-                    <>
-                      <span className="pp__group-label">Fits a #10 envelope</span>
-                      <div className="pp__formats">
-                        {shown10.map((f) => (
-                          <button
-                            key={f.id}
-                            type="button"
-                            className={`pp__format${active && f.id === active.formatId ? ' is-active' : ''}`}
-                            onClick={() => patchActive({ formatId: f.id })}
-                            disabled={!active}
-                          >
-                            <strong>{f.label}</strong>
-                            <span>{money(f.priceCents)}</span>
-                          </button>
-                        ))}
-                      </div>
-                    </>
-                  )}
-
-                  {formatsCatalog.length > 0 && (
-                    <>
-                      <span className="pp__group-label">Needs a catalog envelope</span>
-                      <div className="pp__formats">
-                        {shownCatalog.map((f) => (
-                          <button
-                            key={f.id}
-                            type="button"
-                            className={`pp__format${active && f.id === active.formatId ? ' is-active' : ''}`}
-                            onClick={() => patchActive({ formatId: f.id })}
-                            disabled={!active}
-                          >
-                            <strong>{f.label}</strong>
-                            <span>{money(f.priceCents)}</span>
-                          </button>
-                        ))}
-                      </div>
-                    </>
-                  )}
-
-                  {active && geo && !geo.square && (
-                    <div className="pp__orient">
-                      <span className="pp__label">Orientation</span>
-                      <div className="pp__row">
-                        <button
-                          type="button"
-                          className={`pp__opt${!geo.landscape ? ' is-active' : ''}`}
-                          onClick={() => patchActive({ orientation: 'portrait' })}
-                        >
-                          ▯ Portrait
-                        </button>
-                        <button
-                          type="button"
-                          className={`pp__opt${geo.landscape ? ' is-active' : ''}`}
-                          onClick={() => patchActive({ orientation: 'landscape' })}
-                        >
-                          ▭ Landscape
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-
               <div className="pp__foot">
-                {editorMode === 'classic' && status !== 'adding' && pendingCount > 0 && (
-                  <button type="button" className="btn btn--ghost" onClick={continueConfiguring}>
-                    Continue configuring → <span className="pp__muted">({pendingCount} left)</span>
-                  </button>
-                )}
                 <button
                   className="btn btn--primary"
                   type="button"
@@ -950,72 +646,6 @@ export default function PhotoPrint({
                 </p>
               </div>
             </div>
-
-            {isPopup && active && geo && createPortal(
-              <div className="pp__modal" role="dialog" aria-modal="true" aria-label="Edit photo">
-                <div className="pp__modal-box">
-                  <div className="pp__modal-head">
-                    <strong>Edit this photo</strong>
-                    {pendingCount > 0 && (
-                      <span className="pp__muted">{pendingCount} more to go</span>
-                    )}
-                  </div>
-
-                  <div className="pp__modal-body">
-                    <div className="pp__canvas-wrap">
-                      <canvas
-                        ref={previewRef}
-                        className="pp__canvas"
-                        style={{ width: PREVIEW_W, height: Math.round(PREVIEW_W / geo.ratio) }}
-                        onPointerDown={onPointerDown}
-                        onPointerMove={onPointerMove}
-                        onPointerUp={onPointerUp}
-                        onPointerCancel={onPointerUp}
-                      />
-                      <div
-                        className={`pp__draghint${dragHint ? '' : ' is-hidden'}`}
-                        aria-hidden="true"
-                      >
-                        <span className="pp__draghint-arrow pp__draghint-arrow--up">{dragArrowIcon}</span>
-                        <span className="pp__draghint-arrow pp__draghint-arrow--down">{dragArrowIcon}</span>
-                        <span className="pp__draghint-arrow pp__draghint-arrow--left">{dragArrowIcon}</span>
-                        <span className="pp__draghint-arrow pp__draghint-arrow--right">{dragArrowIcon}</span>
-                      </div>
-                    </div>
-                    <label className="pp__zoom">
-                      Zoom
-                      <input
-                        type="range"
-                        min={1}
-                        max={4}
-                        step={0.01}
-                        value={active.zoom}
-                        onChange={(e) => patchActive({ zoom: Number(e.target.value) })}
-                      />
-                    </label>
-                    <p className="pp__hint">Drag the photo to reposition it in the frame.</p>
-                    {lowRes && (
-                      <p className="pp__warn">
-                        ⚠ This photo is a little low-resolution for {format.label} — it may
-                        look soft in print.
-                      </p>
-                    )}
-
-                    {formatOrientBlock}
-                  </div>
-
-                  <div className="pp__modal-foot">
-                    <button type="button" className="btn btn--ghost" onClick={cancelEditing}>
-                      Cancel
-                    </button>
-                    <button type="button" className="btn btn--primary" onClick={finishEditing}>
-                      Done
-                    </button>
-                  </div>
-                </div>
-              </div>,
-              document.body
-            )}
           </div>
         </Reveal>
       </div>
