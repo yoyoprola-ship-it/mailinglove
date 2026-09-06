@@ -4,17 +4,19 @@
   z-index: 1100;
   background: rgba(20, 8, 12, 0.85);
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
   padding: 20px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
 }
 .cropm__box {
+  margin: auto; /* centres when it fits, lets the overlay scroll when it doesn't */
   background: #fff;
   border-radius: 14px;
   padding: 16px;
   max-width: min(94vw, 700px);
-  max-height: 94vh;
-  overflow: auto;
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -65,22 +67,28 @@
 }
 .cropm__h {
   position: absolute;
-  width: 20px;
-  height: 20px;
+  width: 22px;
+  height: 22px;
   background: #fff;
   border: 2px solid var(--rose);
   border-radius: 4px;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
   touch-action: none;
 }
-.cropm__h--nw { left: -10px; top: -10px; cursor: nwse-resize; }
-.cropm__h--ne { right: -10px; top: -10px; cursor: nesw-resize; }
-.cropm__h--se { right: -10px; bottom: -10px; cursor: nwse-resize; }
-.cropm__h--sw { left: -10px; bottom: -10px; cursor: nesw-resize; }
-.cropm__h--n { left: calc(50% - 10px); top: -10px; cursor: ns-resize; }
-.cropm__h--s { left: calc(50% - 10px); bottom: -10px; cursor: ns-resize; }
-.cropm__h--e { right: -10px; top: calc(50% - 10px); cursor: ew-resize; }
-.cropm__h--w { left: -10px; top: calc(50% - 10px); cursor: ew-resize; }
+/* Invisible, generous tap area around each handle for touch. */
+.cropm__h::after {
+  content: '';
+  position: absolute;
+  inset: -14px;
+}
+.cropm__h--nw { left: -11px; top: -11px; cursor: nwse-resize; }
+.cropm__h--ne { right: -11px; top: -11px; cursor: nesw-resize; }
+.cropm__h--se { right: -11px; bottom: -11px; cursor: nwse-resize; }
+.cropm__h--sw { left: -11px; bottom: -11px; cursor: nesw-resize; }
+.cropm__h--n { left: calc(50% - 11px); top: -11px; cursor: ns-resize; }
+.cropm__h--s { left: calc(50% - 11px); bottom: -11px; cursor: ns-resize; }
+.cropm__h--e { right: -11px; top: calc(50% - 11px); cursor: ew-resize; }
+.cropm__h--w { left: -11px; top: calc(50% - 11px); cursor: ew-resize; }
 .cropm__lock {
   display: flex;
   align-items: center;

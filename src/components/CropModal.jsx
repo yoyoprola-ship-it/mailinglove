@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import './CropModal.css'
 
 // Reusable crop tool: drag a box (move + 8-way free resize, or 4 corners
@@ -96,6 +97,15 @@ export default function CropModal({ src, title = 'Crop', aspect = null, onCancel
     return () => window.removeEventListener('keydown', onKey)
   }, [busy, onCancel])
 
+  // Lock the page behind the modal so touch scrolling stays inside it.
+  useEffect(() => {
+    const prev = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.body.style.overflow = prev
+    }
+  }, [])
+
   useEffect(() => {
     const el = imgRef.current
     if (el && el.complete && el.naturalWidth) onImgLoad()
@@ -108,18 +118,21 @@ export default function CropModal({ src, title = 'Crop', aspect = null, onCancel
     const nw = el.naturalWidth
     const nh = el.naturalHeight
     const maxW = Math.min(window.innerWidth * 0.9, 640)
-    const maxH = window.innerHeight * 0.62
+    const maxH = window.innerHeight * 0.56
     const scale = Math.min(maxW / nw, maxH / nh, 1)
     const w = Math.round(nw * scale)
     const h = Math.round(nh * scale)
     setDisp({ w, h, toNaturalX: nw / w, toNaturalY: nh / h })
     if (aspect != null) {
+      // Start well inside the photo so every corner handle is easy to grab.
       let cw = w
       let ch = w / aspect
       if (ch > h) {
         ch = h
         cw = h * aspect
       }
+      cw *= 0.8
+      ch *= 0.8
       setCrop({ x: (w - cw) / 2, y: (h - ch) / 2, w: cw, h: ch })
     } else {
       setCrop({ x: 0, y: 0, w, h })
@@ -181,7 +194,7 @@ export default function CropModal({ src, title = 'Crop', aspect = null, onCancel
   const natH = crop && disp ? Math.round(crop.h * disp.toNaturalY) : 0
   const handles = lock ? LOCK_HANDLES : FREE_HANDLES
 
-  return (
+  return createPortal(
     <div className="cropm" onClick={busy ? undefined : onCancel}>
       <div className="cropm__box" onClick={(e) => e.stopPropagation()}>
         <div className="cropm__head">
@@ -256,6 +269,7 @@ export default function CropModal({ src, title = 'Crop', aspect = null, onCancel
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }

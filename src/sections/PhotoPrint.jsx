@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import Reveal from '../components/Reveal'
 import Icon from '../components/Icon'
 import CropModal from '../components/CropModal'
@@ -235,6 +236,16 @@ export default function PhotoPrint({
     dragHintTimer.current = setTimeout(() => setDragHint(false), 3000)
     return () => clearTimeout(dragHintTimer.current)
   }, [dragHintMode, activeId])
+
+  // Lock the page while the popup (functionality 2) modal is open.
+  useEffect(() => {
+    if (!isPopup || !activeId) return
+    const prev = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.body.style.overflow = prev
+    }
+  }, [isPopup, activeId])
 
   // Popup/sequential "Done": confirm this photo and move on to the next
   // pending one, or close/clear the editor if it was the last.
@@ -940,7 +951,7 @@ export default function PhotoPrint({
               </div>
             </div>
 
-            {isPopup && active && geo && (
+            {isPopup && active && geo && createPortal(
               <div className="pp__modal" role="dialog" aria-modal="true" aria-label="Edit photo">
                 <div className="pp__modal-box">
                   <div className="pp__modal-head">
@@ -1002,7 +1013,8 @@ export default function PhotoPrint({
                     </button>
                   </div>
                 </div>
-              </div>
+              </div>,
+              document.body
             )}
           </div>
         </Reveal>
