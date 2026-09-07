@@ -133,20 +133,34 @@ function CartLine({ item, currency, onQty, onRemove, onSaveNote, onPreview }) {
   )
 }
 
-function RecipientForm({ recipient, hasAccountAddress, onDone, onCancel }) {
-  const [mode, setMode] = useState(recipient ? recipient.type : hasAccountAddress ? 'self' : 'other')
+function RecipientForm({ recipient, user, onDone, onCancel, onUser }) {
+  const hasAccountAddress = Boolean(user?.address?.line1 && user?.name)
+  const [mode, setMode] = useState(recipient ? recipient.type : 'self')
   const [name, setName] = useState(recipient?.type === 'other' ? recipient.name : '')
   const [addr, setAddr] = useState(
     recipient?.type === 'other' ? { ...emptyAddr, ...recipient.address } : emptyAddr
   )
+  // Filled in here when the profile has no address yet — saved to the
+  // profile on submit so it's there next time too.
+  const [selfName, setSelfName] = useState(user?.name || '')
+  const [selfAddr, setSelfAddr] = useState({ ...emptyAddr, ...(user?.address || {}) })
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+
+  const needSelfDetails = mode === 'self' && !hasAccountAddress
 
   async function submit(e) {
     e.preventDefault()
     setBusy(true)
     setError('')
     try {
+      if (needSelfDetails) {
+        const { user: updated } = await api.put('/api/me', {
+          name: selfName.trim(),
+          address: selfAddr,
+        })
+        onUser?.(updated)
+      }
       const rec = mode === 'self' ? { type: 'self' } : { type: 'other', name, address: addr }
       const res = await api.put('/api/cart/shipping', { recipient: rec })
       onDone(res.recipient)
@@ -163,18 +177,38 @@ function RecipientForm({ recipient, hasAccountAddress, onDone, onCancel }) {
       <p className="acc__muted">Every card in this cart is mailed to this person.</p>
 
       <label className="acc__radio">
-        <input
-          type="radio"
-          checked={mode === 'self'}
-          onChange={() => setMode('self')}
-          disabled={!hasAccountAddress}
-        />
-        My address{!hasAccountAddress && ' (add it in Your details first)'}
+        <input type="radio" checked={mode === 'self'} onChange={() => setMode('self')} />
+        My address
       </label>
       <label className="acc__radio">
         <input type="radio" checked={mode === 'other'} onChange={() => setMode('other')} />
         Someone else
       </label>
+
+      {mode === 'self' && hasAccountAddress && (
+        <p className="acc__muted acc__sub">
+          {user.name} — {user.address.line1}, {user.address.city}, {user.address.state}{' '}
+          {user.address.zip}
+        </p>
+      )}
+
+      {needSelfDetails && (
+        <div className="acc__sub">
+          <p className="acc__muted">
+            We don't have your address yet — add it here and we'll save it to your profile.
+          </p>
+          <label className="acc__label">
+            Full name
+            <input
+              className="acc__input"
+              value={selfName}
+              onChange={(e) => setSelfName(e.target.value)}
+              required
+            />
+          </label>
+          <AddressFields value={selfAddr} onChange={setSelfAddr} />
+        </div>
+      )}
 
       {mode === 'other' && (
         <div className="acc__sub">
@@ -204,7 +238,7 @@ function RecipientForm({ recipient, hasAccountAddress, onDone, onCancel }) {
   )
 }
 
-export default function Cart({ user, onCount }) {
+export default function Cart({ user, onCount, onUser }) {
   const [items, setItems] = useState(null)
   const [recipient, setRecipient] = useState(null)
   const [price, setPrice] = useState({ priceCents: 0, currency: 'usd', totalCents: 0 })
@@ -227,8 +261,6 @@ export default function Cart({ user, onCount }) {
       document.body.style.overflow = ''
     }
   }, [preview])
-
-  const hasAccountAddress = Boolean(user?.address?.line1 && user?.name)
 
   const destZip =
     recipient?.type === 'other'
@@ -336,7 +368,8 @@ export default function Cart({ user, onCount }) {
     return (
       <RecipientForm
         recipient={recipient}
-        hasAccountAddress={hasAccountAddress}
+        user={user}
+        onUser={onUser}
         onDone={(r) => {
           setRecipient(r)
           setEditRcpt(false)
