@@ -30,11 +30,11 @@ function QtyStepper({ value, onChange, min = 1 }) {
   )
 }
 
-function CartLine({ item, currency, onQty, onRemove, onSaveNote, onPreview }) {
+function CartLine({ item, unitPrice, currency, onQty, onRemove, onSaveNote, onPreview }) {
   const [open, setOpen] = useState(false)
   const [draft, setDraft] = useState(item.note || '')
   const isPhoto = item.kind === 'photo'
-  const unit = item.unitPriceCents || 0
+  const unit = unitPrice != null ? unitPrice : item.unitPriceCents || 0
 
   function done() {
     if (draft.trim() !== (item.note || '')) onSaveNote(item, draft.trim())
@@ -380,9 +380,11 @@ export default function Cart({ user, onCount, onUser }) {
   }
 
   const count = items ? cardCount(items) : 0
-  const total =
-    price.totalCents ||
-    (items || []).reduce((n, i) => n + (i.unitPriceCents || 0) * (i.qty || 1), 0)
+  // Compute the total from the live items so it tracks +/-/remove. Older
+  // postcard lines saved before per-line pricing fall back to the flat
+  // postcard price (same fill the GET /api/cart response does).
+  const unitOf = (i) => i.unitPriceCents || (i.kind === 'photo' ? 0 : price.priceCents || 0)
+  const total = (items || []).reduce((n, i) => n + unitOf(i) * (i.qty || 1), 0)
 
   return (
     <div className="acc__card acc__card--wide">
@@ -408,6 +410,7 @@ export default function Cart({ user, onCount, onUser }) {
               <CartLine
                 key={it.id}
                 item={it}
+                unitPrice={unitOf(it)}
                 currency={price.currency}
                 onQty={setQty}
                 onRemove={remove}
