@@ -34,6 +34,10 @@ export default function App() {
   const [photoPrintEnabled, setPhotoPrintEnabled] = useState(false)
   const [photoPrintFormats10, setPhotoPrintFormats10] = useState([])
   const [photoPrintFormatsCatalog, setPhotoPrintFormatsCatalog] = useState([])
+  // Until the config is in, assume both services are on so the chooser
+  // paints its final shape once instead of adding the photos card a beat
+  // after the postcards card.
+  const [configLoaded, setConfigLoaded] = useState(false)
   const [perPage, setPerPage] = useState(25)
   const [postcardSizes, setPostcardSizes] = useState(null)
   const [postcardPriceCents, setPostcardPriceCents] = useState(0)
@@ -68,6 +72,7 @@ export default function App() {
         setPhotoEnabled(true)
         setPostcardEnabled(true)
       })
+      .finally(() => setConfigLoaded(true))
     fetch('/api/cart', { credentials: 'same-origin' })
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => {
@@ -111,6 +116,8 @@ export default function App() {
   const cartCount = countCards(cartItems)
   const hasPhotoPrint =
     photoPrintEnabled && photoPrintFormats10.length + photoPrintFormatsCatalog.length > 0
+  // What the chooser/nav should assume before the config lands.
+  const showPhotoPrintNav = !configLoaded || hasPhotoPrint
 
   // qty of a design in the cart, for the gallery stepper. 0 if not in cart.
   function cartQty(postcardId) {
@@ -224,12 +231,12 @@ export default function App() {
         onOrders={openOrders}
         onGo={scrollToId}
         cartCount={cartCount}
-        showPhotoPrint={hasPhotoPrint}
+        showPhotoPrint={showPhotoPrintNav}
         showPostcardGen={postcardEnabled}
         showPhotoRestore={Boolean(photoEnabled)}
         showCalendar={calendarEnabled}
       />
-      <ServiceChooser showPhotoPrint={hasPhotoPrint} showPostcards onGo={scrollToId} />
+      <ServiceChooser showPhotoPrint={showPhotoPrintNav} showPostcards onGo={scrollToId} />
       {hasPhotoPrint && (
         <PhotoPrint
           formats10={photoPrintFormats10}
