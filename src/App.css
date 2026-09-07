@@ -269,6 +269,30 @@
   font-weight: 600;
 }
 
+.authm__check {
+  display: flex;
+  gap: 9px;
+  align-items: flex-start;
+  margin-top: 14px;
+  font-size: 0.82rem;
+  color: var(--muted);
+  line-height: 1.45;
+  text-align: left;
+}
+
+.authm__check input {
+  margin-top: 2px;
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  accent-color: var(--rose);
+  cursor: pointer;
+}
+
+.authm__check a {
+  color: var(--rose);
+}
+
 .authm__go {
   width: 100%;
   margin-top: 14px;

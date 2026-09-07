@@ -18,6 +18,7 @@ async function post(url, body) {
 export default function AuthModal({ context, onClose, onSignedIn }) {
   const [step, setStep] = useState('email') // email | code | done
   const [email, setEmail] = useState('')
+  const [agree, setAgree] = useState(false)
   const [challengeId, setChallengeId] = useState('')
   const [code, setCode] = useState('')
   const [busy, setBusy] = useState(false)
@@ -39,10 +40,17 @@ export default function AuthModal({ context, onClose, onSignedIn }) {
 
   async function sendCode(e) {
     e.preventDefault()
+    if (!agree) {
+      setError('Please read and accept the Terms & Conditions and Privacy Policy first.')
+      return
+    }
     setBusy(true)
     setError('')
     try {
-      const { challengeId } = await post('/api/auth/start', { email: email.trim() })
+      const { challengeId } = await post('/api/auth/start', {
+        email: email.trim(),
+        acceptedTerms: true,
+      })
       setChallengeId(challengeId)
       setStep('code')
     } catch (err) {
@@ -96,7 +104,29 @@ export default function AuthModal({ context, onClose, onSignedIn }) {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
             />
-            <button className="btn btn--primary authm__go" type="submit" disabled={busy}>
+            <label className="authm__check">
+              <input
+                type="checkbox"
+                checked={agree}
+                onChange={(e) => setAgree(e.target.checked)}
+              />
+              <span>
+                I have read and agree to the{' '}
+                <a href="/terms" target="_blank" rel="noopener noreferrer">
+                  Terms &amp; Conditions
+                </a>{' '}
+                and{' '}
+                <a href="/privacy" target="_blank" rel="noopener noreferrer">
+                  Privacy Policy
+                </a>
+                .
+              </span>
+            </label>
+            <button
+              className="btn btn--primary authm__go"
+              type="submit"
+              disabled={busy || !agree}
+            >
               {busy ? 'Sending…' : 'Email me a code'}
             </button>
           </form>
