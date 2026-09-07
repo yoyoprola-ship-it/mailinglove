@@ -68,7 +68,10 @@ export default function Login({ onSignedIn }) {
             <input
               type="checkbox"
               checked={agree}
-              onChange={(e) => setAgree(e.target.checked)}
+              onChange={(e) => {
+                setAgree(e.target.checked)
+                if (e.target.checked) setError('')
+              }}
             />
             <span>
               I have read and agree to the{' '}
@@ -82,7 +85,7 @@ export default function Login({ onSignedIn }) {
               .
             </span>
           </label>
-          <button className="acc__btn" type="submit" disabled={busy || !agree}>
+          <button className="acc__btn" type="submit" disabled={busy}>
             {busy ? 'Sending…' : 'Send code'}
           </button>
         </form>

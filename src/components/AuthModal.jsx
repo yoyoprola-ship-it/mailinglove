@@ -108,7 +108,10 @@ export default function AuthModal({ context, onClose, onSignedIn }) {
               <input
                 type="checkbox"
                 checked={agree}
-                onChange={(e) => setAgree(e.target.checked)}
+                onChange={(e) => {
+                  setAgree(e.target.checked)
+                  if (e.target.checked) setError('')
+                }}
               />
               <span>
                 I have read and agree to the{' '}
@@ -122,11 +125,7 @@ export default function AuthModal({ context, onClose, onSignedIn }) {
                 .
               </span>
             </label>
-            <button
-              className="btn btn--primary authm__go"
-              type="submit"
-              disabled={busy || !agree}
-            >
+            <button className="btn btn--primary authm__go" type="submit" disabled={busy}>
               {busy ? 'Sending…' : 'Email me a code'}
             </button>
           </form>
