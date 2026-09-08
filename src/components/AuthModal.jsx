@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react'
+import GoogleButton from './GoogleButton'
+import { googleSignInConfigured } from '../account/googleSignIn'
 
 async function post(url, body) {
   const res = await fetch(url, {
@@ -37,6 +39,32 @@ export default function AuthModal({ context, onClose, onSignedIn }) {
   }, [onClose])
 
   const isAdd = context?.mode === 'add'
+
+  function afterSignIn(user) {
+    if (isAdd) {
+      onSignedIn(user)
+    } else {
+      onSignedIn(user)
+      setStep('done')
+    }
+  }
+
+  async function googleSignIn(credential) {
+    if (!agree) {
+      setError('Please read and accept the Terms & Conditions and Privacy Policy first.')
+      return
+    }
+    setBusy(true)
+    setError('')
+    try {
+      const { user } = await post('/api/auth/google', { credential, acceptedTerms: true })
+      afterSignIn(user)
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setBusy(false)
+    }
+  }
 
   async function sendCode(e) {
     e.preventDefault()
@@ -128,6 +156,15 @@ export default function AuthModal({ context, onClose, onSignedIn }) {
             <button className="btn btn--primary authm__go" type="submit" disabled={busy}>
               {busy ? 'Sending…' : 'Email me a code'}
             </button>
+
+            {googleSignInConfigured() && (
+              <>
+                <div className="authm__or"><span>or</span></div>
+                <div className="authm__google">
+                  <GoogleButton onCredential={googleSignIn} />
+                </div>
+              </>
+            )}
           </form>
         )}
 

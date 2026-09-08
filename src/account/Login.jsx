@@ -1,5 +1,7 @@
 import { useState } from 'react'
 import { api } from './api'
+import GoogleButton from '../components/GoogleButton'
+import { googleSignInConfigured } from './googleSignIn'
 
 export default function Login({ onSignedIn }) {
   const [step, setStep] = useState('email') // email | code
@@ -38,6 +40,23 @@ export default function Login({ onSignedIn }) {
     setError('')
     try {
       await api.post('/api/auth/verify', { challengeId, code: code.trim() })
+      onSignedIn()
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function googleSignIn(credential) {
+    if (!agree) {
+      setError('Please read and accept the Terms & Conditions and Privacy Policy first.')
+      return
+    }
+    setBusy(true)
+    setError('')
+    try {
+      await api.post('/api/auth/google', { credential, acceptedTerms: true })
       onSignedIn()
     } catch (err) {
       setError(err.message)
@@ -88,6 +107,15 @@ export default function Login({ onSignedIn }) {
           <button className="acc__btn" type="submit" disabled={busy}>
             {busy ? 'Sending…' : 'Send code'}
           </button>
+
+          {googleSignInConfigured() && (
+            <>
+              <div className="acc__or"><span>or</span></div>
+              <div className="acc__google">
+                <GoogleButton onCredential={googleSignIn} />
+              </div>
+            </>
+          )}
         </form>
       ) : (
         <form onSubmit={verify}>

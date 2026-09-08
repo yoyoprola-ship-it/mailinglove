@@ -126,6 +126,28 @@
   cursor: default;
 }
 
+.acc__or {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 16px 0 12px;
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+.acc__or::before,
+.acc__or::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: rgba(74, 22, 38, 0.18);
+}
+
+.acc__google {
+  display: flex;
+  justify-content: center;
+  min-height: 44px;
+}
+
 .acc__link {
   display: block;
   margin-top: 14px;

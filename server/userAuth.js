@@ -18,6 +18,11 @@ import {
 // cookie can't be replayed here and vice versa.
 
 const SECRET = process.env.ADMIN_SESSION_SECRET || ''
+// OAuth 2.0 Web client ID (from Google Cloud Console). Public — also baked
+// into the browser bundle as VITE_GOOGLE_OAUTH_CLIENT_ID. When unset, the
+// "Sign in with Google" button/endpoint just stay off.
+const GOOGLE_CLIENT_ID = process.env.GOOGLE_OAUTH_CLIENT_ID || ''
+const GOOGLE_ISS = new Set(['accounts.google.com', 'https://accounts.google.com'])
 // Bumped whenever the Terms/Privacy text changes materially, so we can tell
 // which version a customer actually agreed to. Keep in step with the
 // "Effective" date shown on /terms and /privacy.
@@ -40,6 +45,78 @@ const normEmail = (s) => String(s).trim().toLowerCase()
 
 export function userAuthConfigured() {
   return Boolean(SECRET && emailConfigured() && getDb())
+}
+
+export function googleAuthConfigured() {
+  return Boolean(GOOGLE_CLIENT_ID && SECRET && getDb())
+}
+
+// --- Google Sign-In (verify an ID token locally against Google's JWKs) ---
+
+const b64urlToBuf = (s) => Buffer.from(String(s).replace(/-/g, '+').replace(/_/g, '/'), 'base64')
+
+let googleCertCache = { keys: null, exp: 0 }
+async function googleCerts() {
+  if (googleCertCache.keys && Date.now() < googleCertCache.exp) return googleCertCache.keys
+  const res = await fetch('https://www.googleapis.com/oauth2/v3/certs')
+  if (!res.ok) throw new Error('Could not fetch Google certificates.')
+  const body = await res.json()
+  const m = (res.headers.get('cache-control') || '').match(/max-age=(\d+)/)
+  const ttl = m ? Math.max(60, Number(m[1])) * 1000 : 60 * 60 * 1000
+  const keys = {}
+  for (const k of body.keys || []) keys[k.kid] = k
+  googleCertCache = { keys, exp: Date.now() + ttl }
+  return keys
+}
+
+async function verifyGoogleIdToken(idToken) {
+  const parts = String(idToken || '').split('.')
+  if (parts.length !== 3) throw new Error('Malformed token.')
+  const [h, p, sig] = parts
+  const header = JSON.parse(b64urlToBuf(h).toString('utf8'))
+  if (header.alg !== 'RS256') throw new Error('Unexpected token algorithm.')
+  const jwk = (await googleCerts())[header.kid]
+  if (!jwk) throw new Error('Unknown signing key.')
+  const ok = crypto.verify(
+    'RSA-SHA256',
+    Buffer.from(`${h}.${p}`),
+    crypto.createPublicKey({ key: jwk, format: 'jwk' }),
+    b64urlToBuf(sig)
+  )
+  if (!ok) throw new Error('Bad token signature.')
+  const payload = JSON.parse(b64urlToBuf(p).toString('utf8'))
+  if (!GOOGLE_ISS.has(payload.iss)) throw new Error('Bad token issuer.')
+  if (payload.aud !== GOOGLE_CLIENT_ID) throw new Error('Token is for a different app.')
+  if (payload.exp && Math.floor(Date.now() / 1000) > payload.exp) throw new Error('Token expired.')
+  return payload
+}
+
+// Verify a Google ID token, then sign the same session an email-code
+// sign-in would — creating the account and recording consent on first use.
+export async function signInWithGoogle(idToken, consent = {}) {
+  if (!consent.accepted) {
+    return {
+      ok: false,
+      error: 'Please accept the Terms & Conditions and Privacy Policy to continue.',
+    }
+  }
+  let payload
+  try {
+    payload = await verifyGoogleIdToken(idToken)
+  } catch (err) {
+    console.warn('[auth] google verify failed:', err?.message || err)
+    return { ok: false, error: 'Could not verify your Google sign-in. Please try again.' }
+  }
+  const email = normEmail(payload.email || '')
+  if (!isEmail(email) || payload.email_verified === false) {
+    return { ok: false, error: 'That Google account has no verified email address.' }
+  }
+  const user = await ensureUser(email)
+  await recordConsent(email, {
+    ip: consent.ip || null,
+    userAgent: consent.userAgent || null,
+  }).catch((err) => console.warn('[auth] consent record failed:', err?.message || err))
+  return { ok: true, token: signToken(SECRET, { sub: email, aud: AUD }, SESSION_TTL_MS), user }
 }
 
 export async function startUserChallenge(email, consent = {}) {

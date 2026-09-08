@@ -20,8 +20,10 @@ import {
 } from './server/adminAuth.js'
 import {
   userAuthConfigured,
+  googleAuthConfigured,
   startUserChallenge,
   verifyUserChallenge,
+  signInWithGoogle,
   requireUser,
   getUser,
   saveProfile,
@@ -674,6 +676,26 @@ app.post('/api/auth/verify', authLimiter, async (req, res) => {
   } catch (err) {
     console.error('[auth] verify failed:', err?.message || err)
     res.status(500).json({ error: 'Verification failed. Try again.' })
+  }
+})
+
+app.post('/api/auth/google', authLimiter, async (req, res) => {
+  if (!userAuthConfigured() || !googleAuthConfigured()) {
+    return res.status(503).json({ error: 'Google sign-in is not available.' })
+  }
+  const body = req.body || {}
+  try {
+    const result = await signInWithGoogle(body.credential, {
+      accepted: body.acceptedTerms === true,
+      ip: clientIp(req),
+      userAgent: req.get('user-agent') || '',
+    })
+    if (!result.ok) return res.status(400).json({ error: result.error })
+    res.setHeader('Set-Cookie', userSessionCookie(result.token, req.secure))
+    res.json({ user: result.user })
+  } catch (err) {
+    console.error('[auth] google sign-in failed:', err?.message || err)
+    res.status(500).json({ error: 'Sign-in failed. Try again.' })
   }
 })
 

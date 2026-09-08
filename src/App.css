@@ -298,6 +298,34 @@
   margin-top: 14px;
 }
 
+.authm__or {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 16px 0 12px;
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+.authm__or::before,
+.authm__or::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: rgba(74, 22, 38, 0.18);
+}
+
+.authm__google {
+  display: flex;
+  justify-content: center;
+  min-height: 44px;
+}
+
+/* Google renders its button inside an iframe; just center it. */
+.gbtn {
+  display: flex;
+  justify-content: center;
+}
+
 .authm__link {
   display: block;
   width: 100%;
