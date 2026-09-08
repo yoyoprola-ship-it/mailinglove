@@ -82,9 +82,84 @@
         ]
       }
     </script>
+    <style>
+      /* Boot splash: shown instantly from static HTML while the JS loads
+         and (mainly) while a scaled-to-zero server cold-starts. It fades
+         in only after ~350ms, so a warm server never shows it. */
+      #boot-splash {
+        position: fixed;
+        inset: 0;
+        z-index: 99999;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        background: #fdf6f7;
+        opacity: 0;
+        animation: boot-in 0.2s ease 0.35s forwards;
+        transition: opacity 0.35s ease;
+      }
+      #boot-splash.is-hiding {
+        opacity: 0 !important;
+        pointer-events: none;
+      }
+      #boot-splash .boot-spinner {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        border: 3px solid rgba(74, 22, 38, 0.15);
+        border-top-color: #4a1626;
+        animation: boot-spin 0.8s linear infinite;
+      }
+      #boot-splash .boot-msg {
+        margin-top: 16px;
+        font: 14px/1.4 system-ui, -apple-system, sans-serif;
+        color: #7a5563;
+      }
+      @keyframes boot-in {
+        to {
+          opacity: 1;
+        }
+      }
+      @keyframes boot-spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        #boot-splash .boot-spinner {
+          animation-duration: 2s;
+        }
+      }
+    </style>
   </head>
   <body>
+    <div id="boot-splash">
+      <div class="boot-spinner"></div>
+      <p class="boot-msg">Loading…</p>
+    </div>
     <div id="root"></div>
+    <script>
+      // Kick the server awake before the app bundle even parses, and give
+      // the app a single handle to dismiss the splash.
+      window.__bootFetch = fetch('/api/site-config', { cache: 'no-store' }).catch(function () {
+        return null
+      })
+      window.__hideBootSplash = function () {
+        var el = document.getElementById('boot-splash')
+        if (!el) return
+        el.classList.add('is-hiding')
+        setTimeout(function () {
+          el.remove()
+        }, 400)
+      }
+      // If it's taking a while, say so; never trap the user on the splash.
+      setTimeout(function () {
+        var m = document.querySelector('#boot-splash .boot-msg')
+        if (m) m.textContent = 'Waking up the server…'
+      }, 3500)
+      setTimeout(window.__hideBootSplash, 15000)
+    </script>
     <noscript>
       <h1>MailingLove — photo prints &amp; postcards, printed and mailed</h1>
       <p>

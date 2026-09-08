@@ -52,8 +52,14 @@ export default function App() {
   const toastTimer = useRef(null)
 
   useEffect(() => {
-    fetch('/api/site-config')
-      .then((r) => r.json())
+    // Reuse the warm-up request the static HTML already fired, if it's
+    // still around, so the server is only hit once.
+    const boot =
+      window.__bootFetch?.then((r) => (r && r.ok ? r.clone().json() : null)).catch(() => null) ||
+      Promise.resolve(null)
+
+    boot
+      .then((pre) => pre || fetch('/api/site-config').then((r) => r.json()))
       .then((c) => {
         setPhotoEnabled(Boolean(c.photoRedesignEnabled))
         setPostcardEnabled(Boolean(c.postcardDesignEnabled))
@@ -72,7 +78,10 @@ export default function App() {
         setPhotoEnabled(true)
         setPostcardEnabled(true)
       })
-      .finally(() => setConfigLoaded(true))
+      .finally(() => {
+        setConfigLoaded(true)
+        window.__hideBootSplash?.()
+      })
     fetch('/api/cart', { credentials: 'same-origin' })
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => {

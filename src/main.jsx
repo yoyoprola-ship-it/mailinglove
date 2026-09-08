@@ -67,3 +67,10 @@ createRoot(document.getElementById('root')).render(
     <ErrorBoundary>{root}</ErrorBoundary>
   </StrictMode>
 )
+
+// The home view dismisses the boot splash once /api/site-config answers
+// (i.e. the server is awake). The other views have their own loading
+// states, so drop it as soon as React has painted.
+if (view !== 'site') {
+  requestAnimationFrame(() => requestAnimationFrame(() => window.__hideBootSplash?.()))
+}
