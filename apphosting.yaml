@@ -36,19 +36,17 @@ env:
       - BUILD
 
   # --- Google Sign-In ---
-  # OAuth 2.0 *Web application* client ID from Google Cloud Console. It's a
+  # OAuth 2.0 "Web application" client ID from Google Cloud Console. It's a
   # public identifier (not a secret): the browser needs it (BUILD) and the
   # server needs it to check the `aud` claim of the ID token (RUNTIME).
-  # Uncomment and paste the client ID once it's created. Until then the
-  # "Sign in with Google" button and /api/auth/google stay off.
-  # - variable: VITE_GOOGLE_OAUTH_CLIENT_ID
-  #   value: "REPLACE_WITH.apps.googleusercontent.com"
-  #   availability:
-  #     - BUILD
-  # - variable: GOOGLE_OAUTH_CLIENT_ID
-  #   value: "REPLACE_WITH.apps.googleusercontent.com"
-  #   availability:
-  #     - RUNTIME
+  - variable: VITE_GOOGLE_OAUTH_CLIENT_ID
+    value: 1046999905227-lvinamv44obq6vjfvli5a5rkv2htf845.apps.googleusercontent.com
+    availability:
+      - BUILD
+  - variable: GOOGLE_OAUTH_CLIENT_ID
+    value: 1046999905227-lvinamv44obq6vjfvli5a5rkv2htf845.apps.googleusercontent.com
+    availability:
+      - RUNTIME
 
   # --- OpenAI (image redesign) ---
   # Set with: firebase apphosting:secrets:set OPENAI_API_KEY
