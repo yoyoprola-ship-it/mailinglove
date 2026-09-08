@@ -73,28 +73,6 @@ export default function Login({ onSignedIn }) {
         <form onSubmit={sendCode}>
           <p className="acc__muted">No password — use Google or a 6-digit code by email.</p>
 
-          <label className="acc__check">
-            <input
-              type="checkbox"
-              checked={agree}
-              onChange={(e) => {
-                setAgree(e.target.checked)
-                if (e.target.checked) setError('')
-              }}
-            />
-            <span>
-              I have read and agree to the{' '}
-              <a href="/terms" target="_blank" rel="noopener noreferrer">
-                Terms &amp; Conditions
-              </a>{' '}
-              and{' '}
-              <a href="/privacy" target="_blank" rel="noopener noreferrer">
-                Privacy Policy
-              </a>
-              .
-            </span>
-          </label>
-
           {googleSignInConfigured() && (
             <>
               <div className="acc__google">
@@ -117,6 +95,28 @@ export default function Login({ onSignedIn }) {
           <button className="acc__btn" type="submit" disabled={busy}>
             {busy ? 'Sending…' : 'Send code'}
           </button>
+
+          <label className="acc__check">
+            <input
+              type="checkbox"
+              checked={agree}
+              onChange={(e) => {
+                setAgree(e.target.checked)
+                if (e.target.checked) setError('')
+              }}
+            />
+            <span>
+              I have read and agree to the{' '}
+              <a href="/terms" target="_blank" rel="noopener noreferrer">
+                Terms &amp; Conditions
+              </a>{' '}
+              and{' '}
+              <a href="/privacy" target="_blank" rel="noopener noreferrer">
+                Privacy Policy
+              </a>
+              .
+            </span>
+          </label>
         </form>
       ) : (
         <form onSubmit={verify}>

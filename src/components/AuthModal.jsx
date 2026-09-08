@@ -124,6 +124,27 @@ export default function AuthModal({ context, onClose, onSignedIn }) {
                 : 'No password — continue with Google or get a code by email.'}
             </p>
 
+            {googleSignInConfigured() && (
+              <>
+                <div className="authm__google">
+                  <GoogleButton onCredential={googleSignIn} />
+                </div>
+                <div className="authm__or"><span>or</span></div>
+              </>
+            )}
+
+            <input
+              className="authm__input"
+              type="email"
+              required
+              placeholder="you@email.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+            />
+            <button className="btn btn--primary authm__go" type="submit" disabled={busy}>
+              {busy ? 'Sending…' : 'Email me a code'}
+            </button>
+
             <label className="authm__check">
               <input
                 type="checkbox"
@@ -145,27 +166,6 @@ export default function AuthModal({ context, onClose, onSignedIn }) {
                 .
               </span>
             </label>
-
-            {googleSignInConfigured() && (
-              <>
-                <div className="authm__google">
-                  <GoogleButton onCredential={googleSignIn} />
-                </div>
-                <div className="authm__or"><span>or</span></div>
-              </>
-            )}
-
-            <input
-              className="authm__input"
-              type="email"
-              required
-              placeholder="you@email.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-            />
-            <button className="btn btn--primary authm__go" type="submit" disabled={busy}>
-              {busy ? 'Sending…' : 'Email me a code'}
-            </button>
           </form>
         )}
 
