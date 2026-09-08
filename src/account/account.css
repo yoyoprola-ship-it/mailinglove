@@ -50,6 +50,21 @@
   max-width: 640px;
 }
 
+.acc__danger {
+  margin-top: 20px;
+  border: 1px solid rgba(184, 53, 95, 0.3);
+}
+.acc__danger .acc__title {
+  color: #b8355f;
+}
+
+.acc__btn--danger {
+  background: #b8355f;
+}
+.acc__btn--danger:disabled {
+  background: #b8355f;
+}
+
 .acc__title {
   font-size: 1.4rem;
   color: var(--rose-900);

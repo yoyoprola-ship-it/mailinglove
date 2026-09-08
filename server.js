@@ -27,6 +27,7 @@ import {
   requireUser,
   getUser,
   saveProfile,
+  deleteAccount,
   userSessionCookie,
   clearUserCookie,
   listCustomers,
@@ -726,6 +727,20 @@ app.put('/api/me', requireUser, async (req, res) => {
   } catch (err) {
     console.error('[auth] profile save failed:', err?.message || err)
     res.status(500).json({ error: 'Could not save.' })
+  }
+})
+
+app.delete('/api/me', requireUser, async (req, res) => {
+  try {
+    await deleteAccount(req.userEmail, {
+      ip: clientIp(req),
+      userAgent: req.get('user-agent') || '',
+    })
+    res.setHeader('Set-Cookie', clearUserCookie(req.secure))
+    res.status(204).end()
+  } catch (err) {
+    console.error('[auth] account delete failed:', err?.message || err)
+    res.status(500).json({ error: 'Could not delete your account.' })
   }
 })
 

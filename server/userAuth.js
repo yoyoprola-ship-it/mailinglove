@@ -311,6 +311,33 @@ export async function listCustomers({ q = '', limit = 3000 } = {}) {
   return matched.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))
 }
 
+// Delete the customer's account: their profile + cart + saved recipient +
+// consent, and their support thread. Orders are transaction records and
+// are kept; the append-only audit log keeps a "account.delete" entry.
+export async function deleteAccount(email, meta = {}) {
+  const db = getDb()
+  if (!db || !email) return { ok: false, error: 'Not signed in.' }
+  const ref = db.collection('users').doc(email)
+  const snap = await ref.get()
+  const prev = snap.exists ? snap.data() : null
+
+  await ref.delete().catch(() => {})
+  await db.collection('supportThreads').doc(email).delete().catch(() => {})
+
+  const { logChange } = await import('./audit.js')
+  logChange({
+    email,
+    kind: 'account.delete',
+    before: prev
+      ? { name: prev.name || '', hasAddress: Boolean(prev.address && prev.address.line1) }
+      : null,
+    after: null,
+    ip: meta.ip,
+    userAgent: meta.userAgent,
+  })
+  return { ok: true }
+}
+
 export async function saveProfile(email, input, meta = {}) {
   const { value, errors } = validateProfile(input)
   if (errors.length) return { ok: false, errors }

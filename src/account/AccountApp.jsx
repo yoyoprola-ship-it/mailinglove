@@ -145,7 +145,16 @@ export default function AccountApp() {
               ))}
             </nav>
 
-            {tab === 'profile' && <Profile user={user} onSaved={setUser} />}
+            {tab === 'profile' && (
+              <Profile
+                user={user}
+                onSaved={setUser}
+                onDeleted={() => {
+                  setUser(null)
+                  setState('out')
+                }}
+              />
+            )}
             {tab === 'cart' && (
               <Cart user={user} onCount={setCartCount} onUser={setUser} />
             )}
