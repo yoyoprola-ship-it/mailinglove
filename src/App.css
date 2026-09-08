@@ -269,30 +269,6 @@
   font-weight: 600;
 }
 
-.authm__check {
-  display: flex;
-  gap: 9px;
-  align-items: flex-start;
-  margin-top: 14px;
-  font-size: 0.82rem;
-  color: var(--muted);
-  line-height: 1.45;
-  text-align: left;
-}
-
-.authm__check input {
-  margin-top: 2px;
-  flex-shrink: 0;
-  width: 16px;
-  height: 16px;
-  accent-color: var(--rose);
-  cursor: pointer;
-}
-
-.authm__check a {
-  color: var(--rose);
-}
-
 .authm__go {
   width: 100%;
   margin-top: 14px;
@@ -324,6 +300,70 @@
 .gbtn {
   display: flex;
   justify-content: center;
+}
+
+/* Consent popup shown after picking a sign-in method (Google or email). */
+.cgate {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  background: rgba(43, 22, 32, 0.6);
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+.cgate__box {
+  width: 100%;
+  max-width: 380px;
+  background: #fff;
+  border-radius: 18px;
+  padding: 24px 22px 20px;
+  box-shadow: 0 30px 80px rgba(43, 22, 32, 0.35);
+  animation: authm-in 0.18s ease;
+  text-align: center;
+}
+.cgate__title {
+  margin: 0 0 14px;
+  font-weight: 700;
+  color: var(--rose-900);
+}
+.cgate__check {
+  display: flex;
+  gap: 9px;
+  align-items: flex-start;
+  text-align: left;
+  font-size: 0.85rem;
+  color: var(--muted);
+  line-height: 1.45;
+}
+.cgate__check input {
+  margin-top: 2px;
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  accent-color: var(--rose);
+  cursor: pointer;
+}
+.cgate__check a {
+  color: var(--rose);
+}
+.cgate__go {
+  width: 100%;
+  margin-top: 18px;
+}
+.cgate__link {
+  display: block;
+  width: 100%;
+  margin-top: 10px;
+  background: none;
+  border: none;
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-family: inherit;
+  cursor: pointer;
 }
 
 .authm__link {

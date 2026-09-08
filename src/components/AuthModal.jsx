@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import GoogleButton from './GoogleButton'
+import ConsentGate from './ConsentGate'
 import { googleSignInConfigured } from '../account/googleSignIn'
 
 async function post(url, body) {
@@ -14,17 +15,19 @@ async function post(url, body) {
   return data
 }
 
-// Modal sign-in / sign-up: email -> 6-digit code, no password. `context` is
-// { mode: 'account' } or { mode: 'add', postcard }. On success the caller is
-// told, and a short confirmation step routes the user onward.
+// Modal sign-in / sign-up: Google, or email -> 6-digit code, no password.
+// `context` is { mode: 'account' } or { mode: 'add', postcard }. Terms
+// consent is collected in a small popup the first time a method is used.
 export default function AuthModal({ context, onClose, onSignedIn }) {
   const [step, setStep] = useState('email') // email | code | done
   const [email, setEmail] = useState('')
-  const [agree, setAgree] = useState(false)
   const [challengeId, setChallengeId] = useState('')
   const [code, setCode] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  const [consented, setConsented] = useState(false)
+  const [gate, setGate] = useState(null) // null | 'email' | 'google'
+  const [pendingCredential, setPendingCredential] = useState(null)
 
   useEffect(() => {
     function onKey(e) {
@@ -41,19 +44,11 @@ export default function AuthModal({ context, onClose, onSignedIn }) {
   const isAdd = context?.mode === 'add'
 
   function afterSignIn(user) {
-    if (isAdd) {
-      onSignedIn(user)
-    } else {
-      onSignedIn(user)
-      setStep('done')
-    }
+    onSignedIn(user)
+    if (!isAdd) setStep('done')
   }
 
-  async function googleSignIn(credential) {
-    if (!agree) {
-      setError('Please read and accept the Terms & Conditions and Privacy Policy first.')
-      return
-    }
+  async function runGoogle(credential) {
     setBusy(true)
     setError('')
     try {
@@ -66,12 +61,7 @@ export default function AuthModal({ context, onClose, onSignedIn }) {
     }
   }
 
-  async function sendCode(e) {
-    e.preventDefault()
-    if (!agree) {
-      setError('Please read and accept the Terms & Conditions and Privacy Policy first.')
-      return
-    }
+  async function runSendCode() {
     setBusy(true)
     setError('')
     try {
@@ -88,19 +78,34 @@ export default function AuthModal({ context, onClose, onSignedIn }) {
     }
   }
 
+  function googleSignIn(credential) {
+    if (consented) return runGoogle(credential)
+    setPendingCredential(credential)
+    setGate('google')
+  }
+
+  function sendCode(e) {
+    e.preventDefault()
+    if (consented) return runSendCode()
+    setGate('email')
+  }
+
+  async function acceptConsent() {
+    const which = gate
+    setConsented(true)
+    if (which === 'google') await runGoogle(pendingCredential)
+    else await runSendCode()
+    setGate(null)
+    setPendingCredential(null)
+  }
+
   async function verify(e) {
     e.preventDefault()
     setBusy(true)
     setError('')
     try {
       await post('/api/auth/verify', { challengeId, code: code.trim() })
-      if (isAdd) {
-        // App adds the pending postcard and closes the modal.
-        onSignedIn()
-      } else {
-        onSignedIn()
-        setStep('done')
-      }
+      afterSignIn()
     } catch (err) {
       setError(err.message)
     } finally {
@@ -129,7 +134,9 @@ export default function AuthModal({ context, onClose, onSignedIn }) {
                 <div className="authm__google">
                   <GoogleButton onCredential={googleSignIn} />
                 </div>
-                <div className="authm__or"><span>or</span></div>
+                <div className="authm__or">
+                  <span>or</span>
+                </div>
               </>
             )}
 
@@ -144,28 +151,6 @@ export default function AuthModal({ context, onClose, onSignedIn }) {
             <button className="btn btn--primary authm__go" type="submit" disabled={busy}>
               {busy ? 'Sending…' : 'Email me a code'}
             </button>
-
-            <label className="authm__check">
-              <input
-                type="checkbox"
-                checked={agree}
-                onChange={(e) => {
-                  setAgree(e.target.checked)
-                  if (e.target.checked) setError('')
-                }}
-              />
-              <span>
-                I have read and agree to the{' '}
-                <a href="/terms" target="_blank" rel="noopener noreferrer">
-                  Terms &amp; Conditions
-                </a>{' '}
-                and{' '}
-                <a href="/privacy" target="_blank" rel="noopener noreferrer">
-                  Privacy Policy
-                </a>
-                .
-              </span>
-            </label>
           </form>
         )}
 
@@ -223,6 +208,17 @@ export default function AuthModal({ context, onClose, onSignedIn }) {
 
         {error && <p className="authm__error">{error}</p>}
       </div>
+
+      {gate && (
+        <ConsentGate
+          busy={busy}
+          onAccept={acceptConsent}
+          onClose={() => {
+            setGate(null)
+            setPendingCredential(null)
+          }}
+        />
+      )}
     </div>
   )
 }

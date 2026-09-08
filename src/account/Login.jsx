@@ -1,23 +1,21 @@
 import { useState } from 'react'
 import { api } from './api'
 import GoogleButton from '../components/GoogleButton'
+import ConsentGate from '../components/ConsentGate'
 import { googleSignInConfigured } from './googleSignIn'
 
 export default function Login({ onSignedIn }) {
   const [step, setStep] = useState('email') // email | code
   const [email, setEmail] = useState('')
-  const [agree, setAgree] = useState(false)
   const [challengeId, setChallengeId] = useState('')
   const [code, setCode] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  const [consented, setConsented] = useState(false)
+  const [gate, setGate] = useState(null) // null | 'email' | 'google'
+  const [pendingCredential, setPendingCredential] = useState(null)
 
-  async function sendCode(e) {
-    e.preventDefault()
-    if (!agree) {
-      setError('Please read and accept the Terms & Conditions and Privacy Policy first.')
-      return
-    }
+  async function runSendCode() {
     setBusy(true)
     setError('')
     try {
@@ -34,12 +32,11 @@ export default function Login({ onSignedIn }) {
     }
   }
 
-  async function verify(e) {
-    e.preventDefault()
+  async function runGoogle(credential) {
     setBusy(true)
     setError('')
     try {
-      await api.post('/api/auth/verify', { challengeId, code: code.trim() })
+      await api.post('/api/auth/google', { credential, acceptedTerms: true })
       onSignedIn()
     } catch (err) {
       setError(err.message)
@@ -48,15 +45,33 @@ export default function Login({ onSignedIn }) {
     }
   }
 
-  async function googleSignIn(credential) {
-    if (!agree) {
-      setError('Please read and accept the Terms & Conditions and Privacy Policy first.')
-      return
-    }
+  function sendCode(e) {
+    e.preventDefault()
+    if (consented) return runSendCode()
+    setGate('email')
+  }
+
+  function googleSignIn(credential) {
+    if (consented) return runGoogle(credential)
+    setPendingCredential(credential)
+    setGate('google')
+  }
+
+  async function acceptConsent() {
+    const which = gate
+    setConsented(true)
+    if (which === 'google') await runGoogle(pendingCredential)
+    else await runSendCode()
+    setGate(null)
+    setPendingCredential(null)
+  }
+
+  async function verify(e) {
+    e.preventDefault()
     setBusy(true)
     setError('')
     try {
-      await api.post('/api/auth/google', { credential, acceptedTerms: true })
+      await api.post('/api/auth/verify', { challengeId, code: code.trim() })
       onSignedIn()
     } catch (err) {
       setError(err.message)
@@ -78,7 +93,9 @@ export default function Login({ onSignedIn }) {
               <div className="acc__google">
                 <GoogleButton onCredential={googleSignIn} />
               </div>
-              <div className="acc__or"><span>or</span></div>
+              <div className="acc__or">
+                <span>or</span>
+              </div>
             </>
           )}
 
@@ -95,28 +112,6 @@ export default function Login({ onSignedIn }) {
           <button className="acc__btn" type="submit" disabled={busy}>
             {busy ? 'Sending…' : 'Send code'}
           </button>
-
-          <label className="acc__check">
-            <input
-              type="checkbox"
-              checked={agree}
-              onChange={(e) => {
-                setAgree(e.target.checked)
-                if (e.target.checked) setError('')
-              }}
-            />
-            <span>
-              I have read and agree to the{' '}
-              <a href="/terms" target="_blank" rel="noopener noreferrer">
-                Terms &amp; Conditions
-              </a>{' '}
-              and{' '}
-              <a href="/privacy" target="_blank" rel="noopener noreferrer">
-                Privacy Policy
-              </a>
-              .
-            </span>
-          </label>
         </form>
       ) : (
         <form onSubmit={verify}>
@@ -152,6 +147,17 @@ export default function Login({ onSignedIn }) {
       )}
 
       {error && <p className="acc__error">{error}</p>}
+
+      {gate && (
+        <ConsentGate
+          busy={busy}
+          onAccept={acceptConsent}
+          onClose={() => {
+            setGate(null)
+            setPendingCredential(null)
+          }}
+        />
+      )}
     </div>
   )
 }
