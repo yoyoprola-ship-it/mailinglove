@@ -71,18 +71,8 @@ export default function Login({ onSignedIn }) {
 
       {step === 'email' ? (
         <form onSubmit={sendCode}>
-          <p className="acc__muted">We'll email you a 6-digit code — no password.</p>
-          <label className="acc__label">
-            Email
-            <input
-              className="acc__input"
-              type="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              autoFocus
-            />
-          </label>
+          <p className="acc__muted">No password — use Google or a 6-digit code by email.</p>
+
           <label className="acc__check">
             <input
               type="checkbox"
@@ -104,18 +94,29 @@ export default function Login({ onSignedIn }) {
               .
             </span>
           </label>
-          <button className="acc__btn" type="submit" disabled={busy}>
-            {busy ? 'Sending…' : 'Send code'}
-          </button>
 
           {googleSignInConfigured() && (
             <>
-              <div className="acc__or"><span>or</span></div>
               <div className="acc__google">
                 <GoogleButton onCredential={googleSignIn} />
               </div>
+              <div className="acc__or"><span>or</span></div>
             </>
           )}
+
+          <label className="acc__label">
+            Email
+            <input
+              className="acc__input"
+              type="email"
+              required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+            />
+          </label>
+          <button className="acc__btn" type="submit" disabled={busy}>
+            {busy ? 'Sending…' : 'Send code'}
+          </button>
         </form>
       ) : (
         <form onSubmit={verify}>
