@@ -7,6 +7,7 @@ import Orders from './Orders'
 import SupportChat from '../components/SupportChat'
 import MenuDrawer from '../sections/MenuDrawer'
 import { mpTrack } from '../metaPixel'
+import { trackEvent } from '../track'
 import './account.css'
 
 const params = new URLSearchParams(window.location.search)
@@ -105,6 +106,7 @@ export default function AccountApp() {
           },
           `purchase_${paid.id}`
         )
+        trackEvent('purchase', { valueCents: paid.amountCents || 0 })
       })
       .catch(() => {})
 

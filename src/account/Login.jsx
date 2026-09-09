@@ -3,6 +3,7 @@ import { api } from './api'
 import GoogleButton from '../components/GoogleButton'
 import ConsentGate from '../components/ConsentGate'
 import { googleSignInConfigured } from './googleSignIn'
+import { trackEvent } from '../track'
 
 export default function Login({ onSignedIn }) {
   const [step, setStep] = useState('email') // email | code
@@ -37,6 +38,7 @@ export default function Login({ onSignedIn }) {
     setError('')
     try {
       await api.post('/api/auth/google', { credential, acceptedTerms: true })
+      trackEvent('sign_in')
       onSignedIn()
     } catch (err) {
       setError(err.message)
@@ -72,6 +74,7 @@ export default function Login({ onSignedIn }) {
     setError('')
     try {
       await api.post('/api/auth/verify', { challengeId, code: code.trim() })
+      trackEvent('sign_in')
       onSignedIn()
     } catch (err) {
       setError(err.message)

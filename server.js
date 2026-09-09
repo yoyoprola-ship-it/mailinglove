@@ -8,7 +8,7 @@ import { fileURLToPath } from 'node:url'
 
 import { getConfig, invalidateConfigCache, pickValid, CONFIG_SCHEMA, CONFIG_DEFAULTS } from './server/config.js'
 import { getDb } from './server/firebaseAdmin.js'
-import { recordVisit, getStats, geoCountry } from './server/analytics.js'
+import { recordVisit, recordEvent, getStats, geoCountry } from './server/analytics.js'
 import {
   adminConfigured,
   adminSetupIssues,
@@ -454,19 +454,28 @@ app.post('/api/calendar-background', requireUser, calendarLimiter, async (req, r
 // --- visit tracking -----------------------------------------------------
 
 app.post('/api/track', (req, res) => {
-  const { path: p, ref, visitorId } = req.body || {}
+  const { path: p, ref, visitorId, event, valueCents } = req.body || {}
   res.status(204).end()
+  const vid = typeof visitorId === 'string' ? visitorId : ''
   // Resolve the country (header or IP lookup) off the response path.
   geoCountry(req)
     .catch(() => '')
-    .then((country) =>
-      recordVisit({
+    .then((country) => {
+      if (typeof event === 'string' && event) {
+        return recordEvent({
+          name: event,
+          visitorId: vid,
+          valueCents: Number(valueCents) || 0,
+          country,
+        })
+      }
+      return recordVisit({
         path: typeof p === 'string' ? p : '/',
         ref: typeof ref === 'string' ? ref : '',
-        visitorId: typeof visitorId === 'string' ? visitorId : '',
+        visitorId: vid,
         country,
       })
-    )
+    })
 })
 
 // --- admin: auth ------------------------------------------------------

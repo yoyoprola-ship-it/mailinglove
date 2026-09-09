@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import GoogleButton from './GoogleButton'
 import ConsentGate from './ConsentGate'
 import { googleSignInConfigured } from '../account/googleSignIn'
+import { trackEvent } from '../track'
 
 async function post(url, body) {
   const res = await fetch(url, {
@@ -44,6 +45,7 @@ export default function AuthModal({ context, onClose, onSignedIn }) {
   const isAdd = context?.mode === 'add'
 
   function afterSignIn(user) {
+    trackEvent('sign_in')
     onSignedIn(user)
     if (!isAdd) setStep('done')
   }

@@ -6,6 +6,10 @@ function fmtDate(ms) {
   return new Date(ms).toLocaleDateString()
 }
 
+const money = (c) =>
+  new Intl.NumberFormat('en-US', { style: 'currency', currency: 'usd' }).format((c || 0) / 100)
+const pct = (a, b) => (b > 0 ? `${Math.round((a / b) * 100)}%` : '—')
+
 const flag = (cc) =>
   /^[A-Z]{2}$/.test(cc || '')
     ? String.fromCodePoint(...[...cc].map((c) => 127397 + c.charCodeAt(0)))
@@ -32,8 +36,63 @@ export default function Dashboard() {
   const countries = stats.countries || []
   const maxCountry = Math.max(1, ...countries.map((c) => c.count))
 
+  const f = stats.funnel || { pageViews: 0, addToCart: 0, initiateCheckout: 0, purchase: 0 }
+  const funnelRows = [
+    { label: 'Page views', n: f.pageViews, of: f.pageViews },
+    { label: 'Added to cart', n: f.addToCart, of: f.pageViews },
+    { label: 'Checkout started', n: f.initiateCheckout, of: f.addToCart },
+    { label: 'Purchases', n: f.purchase, of: f.initiateCheckout },
+  ]
+  const maxFunnel = Math.max(1, f.pageViews, f.addToCart, f.initiateCheckout, f.purchase)
+
   return (
     <div className="adm__grid">
+      <section className="adm__panel">
+        <h2 className="adm__h2">Funnel &amp; revenue</h2>
+        <p className="adm__hint adm__hint--top">
+          First-party events over the last 30 days (before any ad-blocker loss).
+        </p>
+        <div className="adm__kpis">
+          <div className="adm__kpi">
+            <span className="adm__kpi-n">{money(stats.revenueCents)}</span>
+            <span className="adm__kpi-l">revenue (30 days)</span>
+          </div>
+          <div className="adm__kpi">
+            <span className="adm__kpi-n">{f.purchase}</span>
+            <span className="adm__kpi-l">purchases</span>
+          </div>
+          <div className="adm__kpi">
+            <span className="adm__kpi-n">{pct(f.purchase, f.pageViews)}</span>
+            <span className="adm__kpi-l">views → purchase</span>
+          </div>
+          <div className="adm__kpi">
+            <span className="adm__kpi-n">{stats.events?.sign_in || 0}</span>
+            <span className="adm__kpi-l">sign-ins</span>
+          </div>
+        </div>
+        <div className="adm__bars">
+          {funnelRows.map((r) => (
+            <div className="adm__bar-row" key={r.label}>
+              <span className="adm__bar-day" style={{ width: 120 }}>
+                {r.label}
+              </span>
+              <span className="adm__bar-track">
+                <span
+                  className="adm__bar-fill"
+                  style={{ width: `${(r.n / maxFunnel) * 100}%` }}
+                />
+              </span>
+              <span className="adm__bar-n">
+                {r.n}
+                {r.label !== 'Page views' && (
+                  <span className="adm__muted"> · {pct(r.n, r.of)}</span>
+                )}
+              </span>
+            </div>
+          ))}
+        </div>
+      </section>
+
       <section className="adm__panel">
         <h2 className="adm__h2">Visits</h2>
         <div className="adm__kpis">

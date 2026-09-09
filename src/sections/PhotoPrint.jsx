@@ -3,6 +3,7 @@ import Reveal from '../components/Reveal'
 import Icon from '../components/Icon'
 import CropModal from '../components/CropModal'
 import { mpTrack } from '../metaPixel'
+import { trackEvent } from '../track'
 
 const money = (c) => `$${((c || 0) / 100).toFixed(2)}`
 const PREVIEW_W = 360
@@ -411,6 +412,7 @@ export default function PhotoPrint({
         value: total / 100,
         currency: 'USD',
       })
+      trackEvent('add_to_cart', { valueCents: total })
       onAdded?.(lastItems)
       reset()
       setJustAdded(true)

@@ -4,6 +4,7 @@ import Icon from '../components/Icon'
 import AddressFields from './AddressFields'
 import Checkout from './Checkout'
 import { mpTrack } from '../metaPixel'
+import { trackEvent } from '../track'
 
 const emptyAddr = { line1: '', line2: '', city: '', state: '', zip: '' }
 const cardCount = (items) => items.reduce((n, i) => n + (i.qty || 1), 0)
@@ -358,6 +359,7 @@ export default function Cart({ user, onCount, onUser }) {
         value: (order.amountCents || 0) / 100,
         currency: order.currency ? order.currency.toUpperCase() : 'USD',
       })
+      trackEvent('initiate_checkout', { valueCents: order.amountCents || 0 })
       setCheckoutOrder(order)
     } catch (err) {
       setError(err.message)

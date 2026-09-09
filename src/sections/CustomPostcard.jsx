@@ -3,6 +3,7 @@ import Reveal from '../components/Reveal'
 import Icon from '../components/Icon'
 import catalog from '../data/postcards.json'
 import { mpTrack } from '../metaPixel'
+import { trackEvent } from '../track'
 
 const FALLBACK_SIZES = [
   { id: '4x6', label: '4×6 in — vertical' },
@@ -69,6 +70,7 @@ export default function CustomPostcard({
         value: (unitPrice || 0) / 100,
         currency: 'USD',
       })
+      trackEvent('add_to_cart', { valueCents: unitPrice || 0 })
       onAdded?.(d.items)
     } catch (err) {
       setCartError(err.message)

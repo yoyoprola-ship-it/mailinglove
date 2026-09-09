@@ -23,3 +23,26 @@ export function track() {
     // tracking must never break the page
   }
 }
+
+// First-party behavioural event for the admin dashboard funnel:
+//   trackEvent('add_to_cart', { valueCents: 299 })
+// Known names only (server-side allowlist): add_to_cart, initiate_checkout,
+// purchase, sign_in.
+export function trackEvent(name, { valueCents } = {}) {
+  try {
+    const body = JSON.stringify({
+      event: name,
+      valueCents: Number.isFinite(valueCents) ? Math.round(valueCents) : undefined,
+      path: location.pathname,
+      visitorId: localStorage.getItem('ml_vid') || '',
+    })
+    fetch('/api/track', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body,
+      keepalive: true,
+    }).catch(() => {})
+  } catch {
+    // tracking must never break the page
+  }
+}

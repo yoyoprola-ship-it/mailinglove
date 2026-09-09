@@ -111,6 +111,39 @@ export async function recordVisit({ path = '/', ref = '', visitorId = '', countr
   }
 }
 
+// Behavioural events (add_to_cart / initiate_checkout / purchase / …).
+// Kept as per-day counters on the same analytics day-doc as page views;
+// `purchase` also rolls up revenue. Unknown names are ignored so the
+// dashboard stays a known, small set.
+const EVENT_NAMES = new Set([
+  'add_to_cart',
+  'initiate_checkout',
+  'purchase',
+  'sign_in',
+])
+
+export async function recordEvent({ name = '', visitorId = '', valueCents = 0, country = '' } = {}) {
+  const db = getDb()
+  if (!db) return
+  if (!EVENT_NAMES.has(name)) return
+  const day = dayKey()
+  const dayRef = db.collection('analytics').doc(day)
+  const cc = /^[A-Za-z]{2}$/.test(country) ? country.toUpperCase() : ''
+  const cents = Number.isFinite(valueCents) && valueCents > 0 ? Math.round(valueCents) : 0
+  try {
+    const patch = {
+      events: { [name]: FieldValue.increment(1) },
+      updatedAt: FieldValue.serverTimestamp(),
+    }
+    if (name === 'purchase' && cents > 0) patch.revenueCents = FieldValue.increment(cents)
+    if (cc) patch.eventGeo = { [cc]: FieldValue.increment(1) }
+    void visitorId // reserved: per-visitor event de-dupe could go here later
+    await dayRef.set(patch, { merge: true })
+  } catch (err) {
+    console.warn('[analytics] recordEvent failed:', err?.message || err)
+  }
+}
+
 export async function getStats() {
   const db = getDb()
   if (!db) return { available: false }
@@ -125,8 +158,24 @@ export async function getStats() {
     .get()
 
   const days = daysSnap.docs
-    .map((d) => ({ day: d.id, views: d.data().views || 0, uniques: d.data().uniques || 0 }))
+    .map((d) => ({
+      day: d.id,
+      views: d.data().views || 0,
+      uniques: d.data().uniques || 0,
+      events: d.data().events || {},
+    }))
     .sort((a, b) => a.day.localeCompare(b.day))
+
+  // Behavioural-event totals + revenue over the window.
+  const eventTotals = {}
+  let revenueCents = 0
+  for (const doc of daysSnap.docs) {
+    const data = doc.data()
+    for (const [name, n] of Object.entries(data.events || {})) {
+      eventTotals[name] = (eventTotals[name] || 0) + (Number(n) || 0)
+    }
+    revenueCents += Number(data.revenueCents) || 0
+  }
 
   // Countries of unique visitors over the window. Handles both the nested
   // `geo` map and any legacy flat "geo.XX" keys from before that fix.
@@ -198,6 +247,15 @@ export async function getStats() {
     console.warn('[analytics] users read failed:', err?.message || err)
   }
 
+  // Funnel over the window. Page views come from the visit counter; the
+  // rest from behavioural events.
+  const funnel = {
+    pageViews: sum(30),
+    addToCart: eventTotals.add_to_cart || 0,
+    initiateCheckout: eventTotals.initiate_checkout || 0,
+    purchase: eventTotals.purchase || 0,
+  }
+
   return {
     available: true,
     today,
@@ -208,6 +266,9 @@ export async function getStats() {
     usersTotal,
     usersRecent,
     ordersPending,
+    events: eventTotals,
+    funnel,
+    revenueCents,
   }
 }
 
