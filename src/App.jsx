@@ -262,6 +262,7 @@ export default function App() {
         onDec={decFromCart}
         cartQtyFor={cartQty}
         perPage={perPage}
+        priceCents={postcardPriceCents}
       />
       {postcardEnabled && (
         <CustomPostcard

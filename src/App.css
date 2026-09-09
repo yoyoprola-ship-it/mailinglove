@@ -1167,6 +1167,33 @@
 }
 
 /* ---------- print your photos ---------- */
+.pp__pricelist {
+  list-style: none;
+  margin: 14px 0 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.pp__pricechip {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 6px 12px;
+  border: 1px solid rgba(74, 22, 38, 0.16);
+  border-radius: 999px;
+  font-size: 0.86rem;
+  background: #fff;
+}
+.pp__pricechip strong {
+  color: var(--rose-900);
+  font-weight: 600;
+}
+.pp__pricechip span {
+  color: var(--rose);
+  font-weight: 700;
+}
+
 .pp {
   position: relative;
   display: grid;

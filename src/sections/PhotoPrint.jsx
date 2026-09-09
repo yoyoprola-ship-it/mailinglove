@@ -444,9 +444,18 @@ export default function PhotoPrint({
         </Reveal>
         <Reveal delay={80}>
           <p className="section__lead">
-            Upload one photo or many, pick a size, and crop each one. We print them
-            at full quality and mail them — to you or straight to someone you love.
+            Upload one photo or many, pick a size, and crop each one. We print each
+            at full quality and mail it — to you or straight to someone you love.
+            Price per print, printing and US mailing included:
           </p>
+          <ul className="pp__pricelist">
+            {[...shown10, ...shownCatalog].map((f) => (
+              <li key={f.id} className="pp__pricechip">
+                <strong>{f.label}</strong>
+                <span>{money(f.priceCents)}</span>
+              </li>
+            ))}
+          </ul>
         </Reveal>
 
         <Reveal delay={120}>

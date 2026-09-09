@@ -65,7 +65,9 @@ function Pager({ current, pageCount, onGo }) {
   )
 }
 
-function CartControl({ qty, onAdd, onDec }) {
+const money = (c) => `$${((c || 0) / 100).toFixed(2)}`
+
+function CartControl({ qty, onAdd, onDec, price = 0 }) {
   if (qty > 0) {
     return (
       <span className="pc-stepper">
@@ -81,7 +83,7 @@ function CartControl({ qty, onAdd, onDec }) {
   }
   return (
     <button className="btn btn--primary btn--sm" type="button" onClick={onAdd}>
-      Add
+      Add{price > 0 ? ` · ${money(price)}` : ''}
     </button>
   )
 }
@@ -93,6 +95,7 @@ export default function Postcards({
   onDec,
   cartQtyFor = () => 0,
   perPage = 25,
+  priceCents = 0,
 }) {
   const [page, setPage] = useState(1)
   const size = perPage > 0 ? perPage : 25
@@ -213,6 +216,7 @@ export default function Postcards({
                     qty={cartQtyFor(p.id)}
                     onAdd={() => onAdd(p)}
                     onDec={() => onDec(p)}
+                    price={p.priceCents || priceCents}
                   />
                 </div>
               </article>
@@ -246,6 +250,7 @@ export default function Postcards({
                 qty={cartQtyFor(preview.id)}
                 onAdd={() => onAdd(preview)}
                 onDec={() => onDec(preview)}
+                price={preview.priceCents || priceCents}
               />
             </div>
           </div>
