@@ -120,6 +120,8 @@ const EVENT_NAMES = new Set([
   'initiate_checkout',
   'purchase',
   'sign_in',
+  'choose_photos',
+  'choose_postcards',
 ])
 
 export async function recordEvent({ name = '', visitorId = '', valueCents = 0, country = '' } = {}) {

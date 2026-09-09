@@ -45,6 +45,11 @@ export default function Dashboard() {
   ]
   const maxFunnel = Math.max(1, f.pageViews, f.addToCart, f.initiateCheckout, f.purchase)
 
+  const choosePhotos = stats.events?.choose_photos || 0
+  const choosePostcards = stats.events?.choose_postcards || 0
+  const chooseTotal = choosePhotos + choosePostcards
+  const maxChoose = Math.max(1, choosePhotos, choosePostcards)
+
   return (
     <div className="adm__grid">
       <section className="adm__panel">
@@ -91,6 +96,38 @@ export default function Dashboard() {
             </div>
           ))}
         </div>
+      </section>
+
+      <section className="adm__panel">
+        <h2 className="adm__h2">Photos vs postcards</h2>
+        <p className="adm__hint adm__hint--top">
+          Which service visitors tap on the home screen — last 30 days.
+        </p>
+        {chooseTotal === 0 ? (
+          <p className="adm__muted">No taps recorded yet.</p>
+        ) : (
+          <div className="adm__bars">
+            {[
+              { label: '📷 Print photos', n: choosePhotos },
+              { label: '✉️ Send a postcard', n: choosePostcards },
+            ].map((r) => (
+              <div className="adm__bar-row" key={r.label}>
+                <span className="adm__bar-day" style={{ width: 130 }}>
+                  {r.label}
+                </span>
+                <span className="adm__bar-track">
+                  <span
+                    className="adm__bar-fill"
+                    style={{ width: `${(r.n / maxChoose) * 100}%` }}
+                  />
+                </span>
+                <span className="adm__bar-n">
+                  {r.n} <span className="adm__muted">· {pct(r.n, chooseTotal)}</span>
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
       </section>
 
       <section className="adm__panel">

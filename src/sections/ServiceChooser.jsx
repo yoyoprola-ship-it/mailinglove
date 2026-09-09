@@ -1,5 +1,6 @@
 import Reveal from '../components/Reveal'
 import Icon from '../components/Icon'
+import { trackEvent } from '../track'
 
 // The top of the page: pick a service. Both options carry equal weight;
 // each one just scrolls down to its section. The cart serves both.
@@ -48,7 +49,10 @@ export default function ServiceChooser({ showPhotoPrint = true, showPostcards = 
               <button
                 type="button"
                 className={`chooser__card chooser__card--${c.id}`}
-                onClick={() => onGo(c.id)}
+                onClick={() => {
+                  trackEvent(c.id === 'photo-print' ? 'choose_photos' : 'choose_postcards')
+                  onGo(c.id)
+                }}
               >
                 <span className="chooser__body">
                   <span className="chooser__icon">
