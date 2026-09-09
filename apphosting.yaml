@@ -50,12 +50,12 @@ env:
 
   # --- Meta (Facebook) Pixel ---
   # Ads pixel ID from Meta Events Manager. Public (baked into the client
-  # bundle), not a secret. Uncomment and paste the ID to turn on ads
-  # tracking (PageView / AddToCart / InitiateCheckout / Purchase).
-  # - variable: VITE_META_PIXEL_ID
-  #   value: "REPLACE_WITH_PIXEL_ID"
-  #   availability:
-  #     - BUILD
+  # bundle), not a secret. Drives PageView / AddToCart / InitiateCheckout
+  # / Purchase for Meta sales campaigns.
+  - variable: VITE_META_PIXEL_ID
+    value: "1399050631560184"
+    availability:
+      - BUILD
 
   # --- OpenAI (image redesign) ---
   # Set with: firebase apphosting:secrets:set OPENAI_API_KEY
