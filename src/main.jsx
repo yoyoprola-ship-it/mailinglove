@@ -7,6 +7,7 @@ import AccountApp from './account/AccountApp.jsx'
 import LegalPage from './legal/LegalPage.jsx'
 import ErrorBoundary from './components/ErrorBoundary.jsx'
 import { track } from './track.js'
+import { initMetaPixel } from './metaPixel.js'
 
 // In-browser page translators (Chrome/Google Translate, Samsung, etc.)
 // swap text nodes out from under React — usually wrapping them in <font>
@@ -38,6 +39,9 @@ const view = path.startsWith('/admin')
       : path.startsWith('/privacy')
         ? 'privacy'
         : 'site'
+
+// Ads pixel on every customer-facing view (not the admin panel).
+if (view !== 'admin') initMetaPixel()
 
 if (view === 'site') {
   track()

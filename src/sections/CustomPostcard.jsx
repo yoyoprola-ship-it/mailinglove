@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import Reveal from '../components/Reveal'
 import Icon from '../components/Icon'
 import catalog from '../data/postcards.json'
+import { mpTrack } from '../metaPixel'
 
 const FALLBACK_SIZES = [
   { id: '4x6', label: '4×6 in — vertical' },
@@ -61,6 +62,13 @@ export default function CustomPostcard({
       const d = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(d.error || 'Could not add to cart.')
       setCartState('done')
+      mpTrack('AddToCart', {
+        content_type: 'product',
+        content_name: 'Custom postcard',
+        num_items: 1,
+        value: (unitPrice || 0) / 100,
+        currency: 'USD',
+      })
       onAdded?.(d.items)
     } catch (err) {
       setCartError(err.message)

@@ -14,6 +14,7 @@ import Products from './sections/Products'
 import Footer from './sections/Footer'
 import AuthModal from './components/AuthModal'
 import SupportChat from './components/SupportChat'
+import { mpTrack } from './metaPixel'
 import './App.css'
 
 const countCards = (items) => items.reduce((n, i) => n + (i.qty || 1), 0)
@@ -157,6 +158,13 @@ export default function App() {
   async function addToCart(postcard) {
     try {
       await cartPost('/api/cart', postcard)
+      mpTrack('AddToCart', {
+        content_type: 'product',
+        content_ids: [postcard.id],
+        content_name: postcard.title || 'Postcard',
+        value: (postcard.priceCents || postcardPriceCents || 0) / 100,
+        currency: 'USD',
+      })
     } catch (err) {
       flash(err.message)
     }

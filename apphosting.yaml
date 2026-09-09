@@ -48,6 +48,15 @@ env:
     availability:
       - RUNTIME
 
+  # --- Meta (Facebook) Pixel ---
+  # Ads pixel ID from Meta Events Manager. Public (baked into the client
+  # bundle), not a secret. Uncomment and paste the ID to turn on ads
+  # tracking (PageView / AddToCart / InitiateCheckout / Purchase).
+  # - variable: VITE_META_PIXEL_ID
+  #   value: "REPLACE_WITH_PIXEL_ID"
+  #   availability:
+  #     - BUILD
+
   # --- OpenAI (image redesign) ---
   # Set with: firebase apphosting:secrets:set OPENAI_API_KEY
   - variable: OPENAI_API_KEY

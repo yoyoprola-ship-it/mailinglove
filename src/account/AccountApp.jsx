@@ -6,6 +6,7 @@ import Cart from './Cart'
 import Orders from './Orders'
 import SupportChat from '../components/SupportChat'
 import MenuDrawer from '../sections/MenuDrawer'
+import { mpTrack } from '../metaPixel'
 import './account.css'
 
 const params = new URLSearchParams(window.location.search)
@@ -66,6 +67,52 @@ export default function AccountApp() {
   useEffect(() => {
     refresh()
   }, [])
+
+  // Back from a successful payment (Stripe or PayPal both land on
+  // /account with a marker). Fire the ads Purchase event once per order,
+  // then strip the marker so a refresh doesn't look like a new sale.
+  useEffect(() => {
+    if (state !== 'in') return
+    const q = new URLSearchParams(window.location.search)
+    if (!q.get('paid') && !q.get('stripe_session')) return
+
+    api
+      .get('/api/orders')
+      .then(({ orders }) => {
+        if (!Array.isArray(orders)) return
+        const paid = orders
+          .filter((o) => o.status && o.status !== 'awaiting_payment')
+          .sort((a, b) => (b.paidAt || b.createdAt || 0) - (a.paidAt || a.createdAt || 0))[0]
+        if (!paid) return
+        const key = `ml_fb_purchase_${paid.id}`
+        try {
+          if (localStorage.getItem(key)) return
+          localStorage.setItem(key, '1')
+        } catch {
+          /* private mode — fine, may fire twice at worst */
+        }
+        mpTrack(
+          'Purchase',
+          {
+            value: (paid.amountCents || 0) / 100,
+            currency: (paid.currency || 'usd').toUpperCase(),
+            num_items:
+              paid.cardCount || (paid.items || []).reduce((n, i) => n + (i.qty || 1), 0),
+            content_type: 'product',
+            content_ids: (paid.items || [])
+              .map((i) => i.postcardId || i.photoId)
+              .filter(Boolean),
+          },
+          `purchase_${paid.id}`
+        )
+      })
+      .catch(() => {})
+
+    const u = new URL(window.location.href)
+    u.searchParams.delete('paid')
+    u.searchParams.delete('stripe_session')
+    window.history.replaceState(null, '', u.pathname + u.search)
+  }, [state])
 
   async function logout() {
     await api.post('/api/auth/logout').catch(() => {})

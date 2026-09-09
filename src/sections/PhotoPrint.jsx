@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import Reveal from '../components/Reveal'
 import Icon from '../components/Icon'
 import CropModal from '../components/CropModal'
+import { mpTrack } from '../metaPixel'
 
 const money = (c) => `$${((c || 0) / 100).toFixed(2)}`
 const PREVIEW_W = 360
@@ -403,6 +404,13 @@ export default function PhotoPrint({
         if (!r.ok) throw new Error(d.error || 'Could not add to cart.')
         lastItems = d.items
       }
+      mpTrack('AddToCart', {
+        content_type: 'product',
+        content_name: 'Photo prints',
+        num_items: photos.length,
+        value: total / 100,
+        currency: 'USD',
+      })
       onAdded?.(lastItems)
       reset()
       setJustAdded(true)

@@ -3,6 +3,7 @@ import { api } from './api'
 import Icon from '../components/Icon'
 import AddressFields from './AddressFields'
 import Checkout from './Checkout'
+import { mpTrack } from '../metaPixel'
 
 const emptyAddr = { line1: '', line2: '', city: '', state: '', zip: '' }
 const cardCount = (items) => items.reduce((n, i) => n + (i.qty || 1), 0)
@@ -352,6 +353,11 @@ export default function Cart({ user, onCount, onUser }) {
     setError('')
     try {
       const { order } = await api.post('/api/checkout')
+      mpTrack('InitiateCheckout', {
+        num_items: order.cardCount || count,
+        value: (order.amountCents || 0) / 100,
+        currency: order.currency ? order.currency.toUpperCase() : 'USD',
+      })
       setCheckoutOrder(order)
     } catch (err) {
       setError(err.message)
