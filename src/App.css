@@ -1583,6 +1583,75 @@
   padding-bottom: 40px;
 }
 
+/* ---------- postcard marquee (home, under the chooser) ---------- */
+.pstrip {
+  overflow: hidden;
+  padding: 6px 0 34px;
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 6%, #000 94%, transparent);
+  mask-image: linear-gradient(to right, transparent, #000 6%, #000 94%, transparent);
+}
+.pstrip__track {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  width: max-content;
+  padding: 12px 16px;
+  text-decoration: none;
+  cursor: pointer;
+  animation: pstrip-scroll 70s linear infinite;
+}
+.pstrip:hover .pstrip__track,
+.pstrip__track:focus-visible {
+  animation-play-state: paused;
+}
+.pstrip__card {
+  flex: 0 0 auto;
+  line-height: 0;
+}
+.pstrip__card img {
+  height: 170px;
+  width: auto;
+  border-radius: 12px;
+  box-shadow: 0 12px 28px rgba(74, 22, 38, 0.16);
+  background: #fff;
+  display: block;
+  pointer-events: none;
+}
+
+@keyframes pstrip-scroll {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+@media (max-width: 640px) {
+  .pstrip__card img {
+    height: 130px;
+  }
+  .pstrip__track {
+    animation-duration: 45s;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pstrip {
+    -webkit-mask-image: none;
+    mask-image: none;
+  }
+  .pstrip__track {
+    animation: none;
+    width: 100%;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .pstrip__track::-webkit-scrollbar {
+    display: none;
+  }
+}
+
 .chooser__title {
   font-family: var(--serif);
   font-size: 2.6rem;

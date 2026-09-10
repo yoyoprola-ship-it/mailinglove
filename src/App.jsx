@@ -6,6 +6,7 @@ import HowItWorks from './sections/HowItWorks'
 import Studio from './sections/Studio'
 import Restore from './sections/Restore'
 import ServiceChooser from './sections/ServiceChooser'
+import PostcardStrip from './sections/PostcardStrip'
 import Postcards from './sections/Postcards'
 import CustomPostcard from './sections/CustomPostcard'
 import CalendarMaker from './sections/CalendarMaker'
@@ -336,6 +337,7 @@ export default function App() {
       {PAGE === 'home' && (
         <>
           <ServiceChooser showPhotoPrint={showPhotoPrintNav} showPostcards onGo={navigate} />
+          <PostcardStrip />
           <Hero />
           <Categories />
           <HowItWorks />
