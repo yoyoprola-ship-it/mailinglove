@@ -1732,6 +1732,23 @@
   transform-origin: center bottom;
 }
 
+/* The calendar card spans the full row when all three are shown, and its
+   art is a real photo — frame it rather than treat it as a cutout. */
+.chooser__card--calendar {
+  grid-column: 1 / -1;
+}
+.chooser__card--calendar .chooser__media {
+  width: 32%;
+  right: 20px;
+}
+.chooser__card--calendar .chooser__media img {
+  border-radius: 14px;
+  filter: drop-shadow(0 16px 30px rgba(74, 22, 38, 0.3));
+}
+.chooser__card--calendar:hover .chooser__media img {
+  transform: scale(1.04) translateY(-3px);
+}
+
 .chooser__eyebrow {
   font-size: 0.72rem;
   font-weight: 700;

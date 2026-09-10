@@ -47,8 +47,14 @@ export default function Dashboard() {
 
   const choosePhotos = stats.events?.choose_photos || 0
   const choosePostcards = stats.events?.choose_postcards || 0
-  const chooseTotal = choosePhotos + choosePostcards
-  const maxChoose = Math.max(1, choosePhotos, choosePostcards)
+  const chooseCalendars = stats.events?.choose_calendars || 0
+  const chooseTotal = choosePhotos + choosePostcards + chooseCalendars
+  const maxChoose = Math.max(1, choosePhotos, choosePostcards, chooseCalendars)
+  const chooseRows = [
+    { label: '📷 Print photos', n: choosePhotos },
+    { label: '✉️ Send a postcard', n: choosePostcards },
+    ...(chooseCalendars > 0 ? [{ label: '📅 Make a calendar', n: chooseCalendars }] : []),
+  ]
 
   return (
     <div className="adm__grid">
@@ -99,7 +105,7 @@ export default function Dashboard() {
       </section>
 
       <section className="adm__panel">
-        <h2 className="adm__h2">Photos vs postcards</h2>
+        <h2 className="adm__h2">Service picks</h2>
         <p className="adm__hint adm__hint--top">
           Which service visitors tap on the home screen — last 30 days.
         </p>
@@ -107,10 +113,7 @@ export default function Dashboard() {
           <p className="adm__muted">No taps recorded yet.</p>
         ) : (
           <div className="adm__bars">
-            {[
-              { label: '📷 Print photos', n: choosePhotos },
-              { label: '✉️ Send a postcard', n: choosePostcards },
-            ].map((r) => (
+            {chooseRows.map((r) => (
               <div className="adm__bar-row" key={r.label}>
                 <span className="adm__bar-day" style={{ width: 130 }}>
                   {r.label}

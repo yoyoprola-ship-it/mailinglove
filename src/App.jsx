@@ -361,7 +361,12 @@ export default function App() {
 
       {PAGE === 'home' && (
         <>
-          <ServiceChooser showPhotoPrint={showPhotoPrintNav} showPostcards onGo={navigate} />
+          <ServiceChooser
+            showPhotoPrint={showPhotoPrintNav}
+            showPostcards
+            showCalendars={calendarEnabled}
+            onGo={navigate}
+          />
           <PostcardStrip />
           <Hero />
           <Categories />

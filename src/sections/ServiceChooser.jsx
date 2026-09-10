@@ -2,9 +2,20 @@ import Reveal from '../components/Reveal'
 import Icon from '../components/Icon'
 import { trackEvent } from '../track'
 
-// The top of the page: pick a service. Both options carry equal weight;
-// each one just scrolls down to its section. The cart serves both.
-export default function ServiceChooser({ showPhotoPrint = true, showPostcards = true, onGo }) {
+const CHOOSE_EVENT = {
+  'photo-print': 'choose_photos',
+  postcards: 'choose_postcards',
+  calendar: 'choose_calendars',
+}
+
+// The top of the page: pick a service. Each card just goes to that
+// service's page. The cart serves all of them.
+export default function ServiceChooser({
+  showPhotoPrint = true,
+  showPostcards = true,
+  showCalendars = false,
+  onGo,
+}) {
   const cards = []
   if (showPhotoPrint) {
     cards.push({
@@ -26,6 +37,17 @@ export default function ServiceChooser({ showPhotoPrint = true, showPostcards = 
       title: 'Send a postcard',
       text: 'Choose from hundreds of designs or generate your own. We print it and mail it for you.',
       cta: 'Browse postcards',
+    })
+  }
+  if (showCalendars) {
+    cards.push({
+      id: 'calendar',
+      icon: 'calendar',
+      img: '/calendar-bg/1.jpg',
+      eyebrow: 'Photo calendars',
+      title: 'Make a calendar',
+      text: 'Pick a background or use your own, place the months, drop in your photos — an 8×10 wall calendar, printed and mailed.',
+      cta: 'Build a calendar',
     })
   }
   if (!cards.length) return null
@@ -50,7 +72,7 @@ export default function ServiceChooser({ showPhotoPrint = true, showPostcards = 
                 type="button"
                 className={`chooser__card chooser__card--${c.id}`}
                 onClick={() => {
-                  trackEvent(c.id === 'photo-print' ? 'choose_photos' : 'choose_postcards')
+                  trackEvent(CHOOSE_EVENT[c.id])
                   onGo(c.id)
                 }}
               >
