@@ -449,15 +449,25 @@ async function ensureFonts(layers) {
 
 // bgImg: loaded HTMLImageElement (the AI/uploaded background).
 // layers: normalized (0..1) coords.
+// 8 × 10 in at 300 DPI — the print target. The output canvas is always
+// this size regardless of the background's own resolution, so the
+// customer's photos and the calendar grid rasterise at full print
+// quality even behind a low-res background (the background is just
+// stretched to fill).
+export const CAL_OUT_W = 2400
+export const CAL_OUT_H = 3000
+
 export async function renderCalendar(bgImg, layers, photoImgs, { year, position, panel, panelAlpha }) {
   await ensureFonts(layers)
   const templateImg = bgImg
-  const W = templateImg.naturalWidth || 2400
-  const H = templateImg.naturalHeight || 3000
+  const W = CAL_OUT_W
+  const H = CAL_OUT_H
   const canvas = document.createElement('canvas')
   canvas.width = W
   canvas.height = H
   const ctx = canvas.getContext('2d')
+  ctx.imageSmoothingEnabled = true
+  ctx.imageSmoothingQuality = 'high'
   ctx.drawImage(templateImg, 0, 0, W, H)
 
   for (const layer of [...layers].sort((a, b) => a.z - b.z)) {
@@ -480,7 +490,7 @@ export async function renderCalendar(bgImg, layers, photoImgs, { year, position,
     canvas.toBlob(
       (b) => (b ? res(b) : rej(new Error('Could not render the calendar.'))),
       'image/jpeg',
-      0.92
+      0.94
     )
   )
 }

@@ -11,6 +11,8 @@ import {
   renderCalendar,
   renderGridDataUrl,
   renderFrameOverlay,
+  CAL_OUT_W,
+  CAL_OUT_H,
 } from './calendarRender'
 
 const money = (c) => `$${((c || 0) / 100).toFixed(2)}`
@@ -325,8 +327,8 @@ export default function CalendarMaker({
       })
       const body = new FormData()
       body.append('image', blob, 'calendar.jpg')
-      body.append('width', String(bgImg.naturalWidth))
-      body.append('height', String(bgImg.naturalHeight))
+      body.append('width', String(CAL_OUT_W))
+      body.append('height', String(CAL_OUT_H))
       const res = await fetch('/api/cart/calendar', {
         method: 'POST',
         credentials: 'same-origin',
