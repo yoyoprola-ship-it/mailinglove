@@ -20,12 +20,36 @@ import './App.css'
 
 const countCards = (items) => items.reduce((n, i) => n + (i.qty || 1), 0)
 
-// ?type=&sub= lets the menu (incl. from the account pages) deep-link into
-// a postcard category.
 const urlParams = new URLSearchParams(window.location.search)
+// Photo printing and postcards are their own pages now; anything else is
+// the home / landing.
+const PATH = window.location.pathname
+const PAGE = PATH === '/photos' ? 'photos' : PATH === '/postcards' ? 'postcards' : 'home'
+
+// ?type=&sub= (from the menu / an old deep link) seeds the postcard filter.
 const initialFilter = {
   type: urlParams.get('type') || 'birthday',
   sub: urlParams.get('sub') || null,
+}
+
+const PAGE_META = {
+  home: {
+    title: 'MailingLove — Photo Prints & Postcards, Printed and Mailed',
+    path: '/',
+  },
+  photos: { title: 'Print & mail your photos — MailingLove', path: '/photos' },
+  postcards: { title: 'Send a postcard, printed & mailed — MailingLove', path: '/postcards' },
+}
+
+// Old links pointed at #photo-print / #postcards / ?type= on the home
+// page. Send them to the new pages before React even renders.
+if (PAGE === 'home') {
+  const hash = (window.location.hash || '').replace(/^#/, '')
+  const q = urlParams.toString()
+  if (hash === 'photo-print') window.location.replace('/photos')
+  else if (hash === 'postcards' || urlParams.get('type'))
+    window.location.replace(`/postcards${q ? `?${q}` : ''}`)
+  else if (hash === 'custom-postcard') window.location.replace('/postcards#custom-postcard')
 }
 
 export default function App() {
@@ -93,26 +117,30 @@ export default function App() {
         }
       })
       .catch(() => {})
-
-    // Arrived from a menu link (e.g. from the account pages): settle the
-    // scroll on the target section once the page has laid out, then strip
-    // the #hash / ?type params so a later refresh doesn't jump back here.
-    const target = urlParams.get('type')
-      ? 'postcards'
-      : (window.location.hash || '').replace(/^#/, '')
-    if (target) {
-      const t = setTimeout(() => scrollToId(target), 250)
-      const u = new URL(window.location.href)
-      u.hash = ''
-      u.searchParams.delete('type')
-      u.searchParams.delete('sub')
-      history.replaceState(null, '', u.pathname + u.search)
-      return () => clearTimeout(t)
-    }
   }, [])
 
-  // In-page anchor links (Hero, etc.): scroll there, then drop the #hash
-  // so refreshing doesn't force the page back to that section.
+  // A remaining #hash on the home page (how-it-works, restore, …): scroll
+  // there once, then drop it so a refresh doesn't jump back. On /postcards,
+  // #custom-postcard scrolls to the "design your own" block.
+  useEffect(() => {
+    const hash = (window.location.hash || '').replace(/^#/, '')
+    if (!hash) return
+    if (PAGE === 'postcards') {
+      if (hash === 'custom-postcard') {
+        const t = setTimeout(() => scrollToId('custom-postcard'), 300)
+        return () => clearTimeout(t)
+      }
+      return
+    }
+    if (PAGE !== 'home') return
+    const t = setTimeout(() => scrollToId(hash), 250)
+    const u = new URL(window.location.href)
+    u.hash = ''
+    history.replaceState(null, '', u.pathname + u.search)
+    return () => clearTimeout(t)
+  }, [])
+
+  // In-page anchor links (home only): scroll there, then drop the #hash.
   useEffect(() => {
     function onHash() {
       const id = window.location.hash.replace(/^#/, '')
@@ -122,6 +150,15 @@ export default function App() {
     }
     window.addEventListener('hashchange', onHash)
     return () => window.removeEventListener('hashchange', onHash)
+  }, [])
+
+  // Per-page title + canonical (all pages share one index.html).
+  useEffect(() => {
+    const m = PAGE_META[PAGE]
+    if (!m) return
+    document.title = m.title
+    const c = document.querySelector('link[rel="canonical"]')
+    if (c) c.href = `https://mailinglove.com${m.path}`
   }, [])
 
   const cartCount = countCards(cartItems)
@@ -181,11 +218,30 @@ export default function App() {
     }
   }
 
+  // Nav / chooser targets. Photo printing and postcards are pages now;
+  // everything else is a section on the home page.
+  function navigate(to) {
+    if (to === 'photo-print') return void (window.location.href = '/photos')
+    if (to === 'postcards') return void (window.location.href = '/postcards')
+    if (to === 'custom-postcard') {
+      if (PAGE === 'postcards') return scrollToId('custom-postcard')
+      return void (window.location.href = '/postcards#custom-postcard')
+    }
+    if (PAGE === 'home') return scrollToId(to)
+    window.location.href = `/#${to}`
+  }
+
   function goToPostcards(type, sub = null) {
-    setPcFilter({ type, sub })
-    requestAnimationFrame(() =>
-      document.getElementById('postcards')?.scrollIntoView({ behavior: 'smooth' })
-    )
+    if (PAGE === 'postcards') {
+      setPcFilter({ type, sub })
+      requestAnimationFrame(() =>
+        document.getElementById('postcards')?.scrollIntoView({ behavior: 'smooth' })
+      )
+      return
+    }
+    const q = new URLSearchParams({ type })
+    if (sub) q.set('sub', sub)
+    window.location.href = `/postcards?${q.toString()}`
   }
 
   function scrollToId(id) {
@@ -242,6 +298,26 @@ export default function App() {
     }
   }
 
+  const photoPrintNode = hasPhotoPrint ? (
+    <PhotoPrint
+      formats10={photoPrintFormats10}
+      formatsCatalog={photoPrintFormatsCatalog}
+      signedIn={signedIn}
+      onAdded={(items) => Array.isArray(items) && setCartItems(items)}
+      onRequireAuth={() => setAuthCtx({ mode: 'account' })}
+    />
+  ) : (
+    <section className="section" id="photo-print">
+      <div className="section-inner">
+        <p className="eyebrow">Print your photos</p>
+        <h2 className="section__title">Photo printing isn't available right now</h2>
+        <p className="section__lead">
+          It's temporarily switched off. <a href="/">Back to home</a>.
+        </p>
+      </div>
+    </section>
+  )
+
   return (
     <div className="page">
       <Nav
@@ -249,61 +325,72 @@ export default function App() {
         onAccount={openAccount}
         onCart={openCart}
         onOrders={openOrders}
-        onGo={scrollToId}
+        onGo={navigate}
         cartCount={cartCount}
         showPhotoPrint={showPhotoPrintNav}
         showPostcardGen={postcardEnabled}
         showPhotoRestore={Boolean(photoEnabled)}
         showCalendar={calendarEnabled}
       />
-      <ServiceChooser showPhotoPrint={showPhotoPrintNav} showPostcards onGo={scrollToId} />
-      {hasPhotoPrint && (
-        <PhotoPrint
-          formats10={photoPrintFormats10}
-          formatsCatalog={photoPrintFormatsCatalog}
-          signedIn={signedIn}
-          onAdded={(items) => Array.isArray(items) && setCartItems(items)}
-          onRequireAuth={() => setAuthCtx({ mode: 'account' })}
-        />
-      )}
-      <Postcards
-        filter={pcFilter}
-        onFilter={setPcFilter}
-        onAdd={addPostcard}
-        onDec={decFromCart}
-        cartQtyFor={cartQty}
-        perPage={perPage}
-        priceCents={postcardPriceCents}
-      />
-      {postcardEnabled && (
-        <CustomPostcard
-          sizes={postcardSizes}
-          priceCents={postcardPriceCents}
-          signedIn={signedIn}
-          onAdded={(items) => Array.isArray(items) && setCartItems(items)}
-          onRequireAuth={() => setAuthCtx({ mode: 'account' })}
-        />
-      )}
-      {calendarEnabled && (
-        <CalendarMaker
-          year={calendarYear}
-          priceCents={calendarPriceCents}
-          signedIn={signedIn}
-          onAdded={(items) => Array.isArray(items) && setCartItems(items)}
-          onRequireAuth={() => setAuthCtx({ mode: 'account' })}
-        />
-      )}
-      <Hero />
-      <Categories />
-      <HowItWorks />
-      {photoEnabled && (
+
+      {PAGE === 'home' && (
         <>
-          <Studio />
-          <Restore />
+          <ServiceChooser showPhotoPrint={showPhotoPrintNav} showPostcards onGo={navigate} />
+          <Hero />
+          <Categories />
+          <HowItWorks />
+          {photoEnabled && (
+            <>
+              <Studio />
+              <Restore />
+            </>
+          )}
+          {calendarEnabled && (
+            <CalendarMaker
+              year={calendarYear}
+              priceCents={calendarPriceCents}
+              signedIn={signedIn}
+              onAdded={(items) => Array.isArray(items) && setCartItems(items)}
+              onRequireAuth={() => setAuthCtx({ mode: 'account' })}
+            />
+          )}
+          <Products />
+          <Footer />
         </>
       )}
-      <Products />
-      <Footer />
+
+      {PAGE === 'photos' && (
+        <>
+          <div className="svc-page">{photoPrintNode}</div>
+          <Footer />
+        </>
+      )}
+
+      {PAGE === 'postcards' && (
+        <>
+          <div className="svc-page">
+            <Postcards
+              filter={pcFilter}
+              onFilter={setPcFilter}
+              onAdd={addPostcard}
+              onDec={decFromCart}
+              cartQtyFor={cartQty}
+              perPage={perPage}
+              priceCents={postcardPriceCents}
+            />
+            {postcardEnabled && (
+              <CustomPostcard
+                sizes={postcardSizes}
+                priceCents={postcardPriceCents}
+                signedIn={signedIn}
+                onAdded={(items) => Array.isArray(items) && setCartItems(items)}
+                onRequireAuth={() => setAuthCtx({ mode: 'account' })}
+              />
+            )}
+          </div>
+          <Footer />
+        </>
+      )}
 
       {toast && <div className="toast">{toast}</div>}
 

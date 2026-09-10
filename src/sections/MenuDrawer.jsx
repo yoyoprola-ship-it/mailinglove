@@ -16,7 +16,9 @@ export default function MenuDrawer({
   onAccount,
   onCart,
   onOrders,
-  onHome = () => window.scrollTo({ top: 0, behavior: 'smooth' }),
+  onHome = () => {
+    window.location.href = '/'
+  },
   cartCount = 0,
   showPhotoPrint = false,
   showPostcardGen = false,

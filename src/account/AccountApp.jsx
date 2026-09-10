@@ -16,12 +16,15 @@ const tabParam = params.get('tab') || ''
 
 // From the account pages the menu links jump back to the storefront.
 const goHome = (id) => {
-  window.location.href = `/#${id}`
+  if (id === 'photo-print') window.location.href = '/photos'
+  else if (id === 'postcards') window.location.href = '/postcards'
+  else if (id === 'custom-postcard') window.location.href = '/postcards#custom-postcard'
+  else window.location.href = `/#${id}`
 }
 const goCategory = (type, sub) => {
   const q = new URLSearchParams({ type })
   if (sub) q.set('sub', sub)
-  window.location.href = `/?${q.toString()}#postcards`
+  window.location.href = `/postcards?${q.toString()}`
 }
 
 export default function AccountApp() {

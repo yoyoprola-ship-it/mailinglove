@@ -25,11 +25,11 @@ export default function Hero() {
         </Reveal>
         <Reveal delay={240}>
           <div className="hero__actions">
-            <a className="btn btn--primary" href="#photo-print">
+            <a className="btn btn--primary" href="/photos">
               Print your photos
             </a>
-            <a className="btn btn--ghost" href="#how-it-works">
-              See how it works
+            <a className="btn btn--ghost" href="/postcards">
+              Send a postcard
             </a>
           </div>
         </Reveal>

@@ -7,6 +7,12 @@
   padding-top: 128px;
 }
 
+/* Photos / postcards each get their own page; give the first section
+   room to clear the fixed nav. */
+.svc-page {
+  padding-top: 28px;
+}
+
 /* Keep section tops visible when the nav / hamburger menu scrolls to them. */
 #postcards,
 #photo-print,

@@ -29,7 +29,7 @@ export default function Nav({
             <span />
             <span />
           </button>
-          <a className="brand" href="#top" aria-label="MailingLove — home">
+          <a className="brand" href="/" aria-label="MailingLove — home">
             <img className="brand__logo" src="/logo.png" alt="MailingLove" width="631" height="200" />
           </a>
         </div>
