@@ -16,6 +16,8 @@ import {
 const money = (c) => `$${((c || 0) / 100).toFixed(2)}`
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v))
 const BG_AR = 8 / 10 // the calendar print format
+// Ready-made 8×10 backgrounds bundled with the site (public/calendar-bg).
+const PRESET_BGS = Array.from({ length: 10 }, (_, i) => `/calendar-bg/${i + 1}.jpg`)
 let uid = 0
 
 const mctx = document.createElement('canvas').getContext('2d')
@@ -161,6 +163,12 @@ export default function CalendarMaker({
     if (!file || !file.type.startsWith('image/')) return
     setGenErr('')
     setBgCrop(URL.createObjectURL(file)) // opens the "fit to 8 × 10" window
+  }
+
+  // Ready-made backgrounds are already 8×10 and same-origin — use them as-is.
+  function pickPreset(url) {
+    setGenErr('')
+    setBg(url)
   }
 
   function applyBgCrop(blob) {
@@ -337,6 +345,22 @@ export default function CalendarMaker({
   const ordered = useMemo(() => [...layers].sort((a, b) => a.z - b.z), [layers])
   const hasText = layers.some((l) => l.kind === 'text')
 
+  const presetGrid = (
+    <div className="cme__presets">
+      {PRESET_BGS.map((url) => (
+        <button
+          key={url}
+          type="button"
+          className={`cme__preset${bg === url ? ' is-active' : ''}`}
+          onClick={() => pickPreset(url)}
+          aria-label="Use this background"
+        >
+          <img src={url} alt="" loading="lazy" draggable={false} />
+        </button>
+      ))}
+    </div>
+  )
+
   return (
     <section className="section section--dark" id="calendar">
       <div className="section-inner">
@@ -399,6 +423,9 @@ export default function CalendarMaker({
               </div>
               {gen === 'working' && <p className="studio__note">This takes 15–30 seconds.</p>}
               {genErr && <p className="studio__error">{genErr}</p>}
+
+              <p className="cme__presets-t">Or pick a ready-made background</p>
+              {presetGrid}
             </div>
           ) : (
             <div className="cme">
@@ -516,6 +543,8 @@ export default function CalendarMaker({
                     }}
                   />
                   {genErr && <p className="studio__error">{genErr}</p>}
+                  <p className="cme__presets-t">Ready-made backgrounds</p>
+                  {presetGrid}
                 </div>
 
                 <div className="cme__group">

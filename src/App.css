@@ -2234,6 +2234,40 @@
   color: #fff;
 }
 
+.cme__presets-t {
+  margin: 16px 0 8px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.75);
+}
+.cme__presets {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(64px, 1fr));
+  gap: 8px;
+}
+.cme__preset {
+  padding: 0;
+  border: 2px solid transparent;
+  border-radius: 8px;
+  overflow: hidden;
+  background: none;
+  cursor: pointer;
+  aspect-ratio: 4 / 5;
+  line-height: 0;
+}
+.cme__preset img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.cme__preset:hover {
+  border-color: rgba(255, 255, 255, 0.5);
+}
+.cme__preset.is-active {
+  border-color: #fff;
+}
+
 .cme__group {
   display: flex;
   flex-direction: column;
