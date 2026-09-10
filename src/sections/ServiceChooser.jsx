@@ -43,7 +43,7 @@ export default function ServiceChooser({
     cards.push({
       id: 'calendar',
       icon: 'calendar',
-      img: '/calendar-bg/1.jpg',
+      img: '/chooser-calendar.webp',
       eyebrow: 'Photo calendars',
       title: 'Make a calendar',
       text: 'Pick a background or use your own, place the months, drop in your photos — an 8×10 wall calendar, printed and mailed.',
