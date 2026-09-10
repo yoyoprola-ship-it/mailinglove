@@ -19,6 +19,7 @@ const goHome = (id) => {
   if (id === 'photo-print') window.location.href = '/photos'
   else if (id === 'postcards') window.location.href = '/postcards'
   else if (id === 'custom-postcard') window.location.href = '/postcards#custom-postcard'
+  else if (id === 'calendar') window.location.href = '/calendars'
   else window.location.href = `/#${id}`
 }
 const goCategory = (type, sub) => {

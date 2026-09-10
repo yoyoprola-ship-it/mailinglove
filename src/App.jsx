@@ -22,10 +22,16 @@ import './App.css'
 const countCards = (items) => items.reduce((n, i) => n + (i.qty || 1), 0)
 
 const urlParams = new URLSearchParams(window.location.search)
-// Photo printing and postcards are their own pages now; anything else is
-// the home / landing.
+// Each service has its own page now; anything else is the home / landing.
 const PATH = window.location.pathname
-const PAGE = PATH === '/photos' ? 'photos' : PATH === '/postcards' ? 'postcards' : 'home'
+const PAGE =
+  PATH === '/photos'
+    ? 'photos'
+    : PATH === '/postcards'
+      ? 'postcards'
+      : PATH === '/calendars'
+        ? 'calendars'
+        : 'home'
 
 // ?type=&sub= (from the menu / an old deep link) seeds the postcard filter.
 const initialFilter = {
@@ -40,6 +46,7 @@ const PAGE_META = {
   },
   photos: { title: 'Print & mail your photos — MailingLove', path: '/photos' },
   postcards: { title: 'Send a postcard, printed & mailed — MailingLove', path: '/postcards' },
+  calendars: { title: 'Make a photo calendar — MailingLove', path: '/calendars' },
 }
 
 // Old links pointed at #photo-print / #postcards / ?type= on the home
@@ -51,6 +58,7 @@ if (PAGE === 'home') {
   else if (hash === 'postcards' || urlParams.get('type'))
     window.location.replace(`/postcards${q ? `?${q}` : ''}`)
   else if (hash === 'custom-postcard') window.location.replace('/postcards#custom-postcard')
+  else if (hash === 'calendar') window.location.replace('/calendars')
 }
 
 export default function App() {
@@ -224,6 +232,7 @@ export default function App() {
   function navigate(to) {
     if (to === 'photo-print') return void (window.location.href = '/photos')
     if (to === 'postcards') return void (window.location.href = '/postcards')
+    if (to === 'calendar') return void (window.location.href = '/calendars')
     if (to === 'custom-postcard') {
       if (PAGE === 'postcards') return scrollToId('custom-postcard')
       return void (window.location.href = '/postcards#custom-postcard')
@@ -299,6 +308,18 @@ export default function App() {
     }
   }
 
+  const unavailable = (eyebrow, what) => (
+    <section className="section">
+      <div className="section-inner">
+        <p className="eyebrow">{eyebrow}</p>
+        <h2 className="section__title">{what} isn't available right now</h2>
+        <p className="section__lead">
+          It's temporarily switched off. <a href="/">Back to home</a>.
+        </p>
+      </div>
+    </section>
+  )
+
   const photoPrintNode = hasPhotoPrint ? (
     <PhotoPrint
       formats10={photoPrintFormats10}
@@ -308,15 +329,19 @@ export default function App() {
       onRequireAuth={() => setAuthCtx({ mode: 'account' })}
     />
   ) : (
-    <section className="section" id="photo-print">
-      <div className="section-inner">
-        <p className="eyebrow">Print your photos</p>
-        <h2 className="section__title">Photo printing isn't available right now</h2>
-        <p className="section__lead">
-          It's temporarily switched off. <a href="/">Back to home</a>.
-        </p>
-      </div>
-    </section>
+    unavailable('Print your photos', 'Photo printing')
+  )
+
+  const calendarNode = calendarEnabled ? (
+    <CalendarMaker
+      year={calendarYear}
+      priceCents={calendarPriceCents}
+      signedIn={signedIn}
+      onAdded={(items) => Array.isArray(items) && setCartItems(items)}
+      onRequireAuth={() => setAuthCtx({ mode: 'account' })}
+    />
+  ) : (
+    unavailable('Photo calendars', 'The calendar maker')
   )
 
   return (
@@ -347,15 +372,6 @@ export default function App() {
               <Restore />
             </>
           )}
-          {calendarEnabled && (
-            <CalendarMaker
-              year={calendarYear}
-              priceCents={calendarPriceCents}
-              signedIn={signedIn}
-              onAdded={(items) => Array.isArray(items) && setCartItems(items)}
-              onRequireAuth={() => setAuthCtx({ mode: 'account' })}
-            />
-          )}
           <Products />
           <Footer />
         </>
@@ -364,6 +380,13 @@ export default function App() {
       {PAGE === 'photos' && (
         <>
           <div className="svc-page">{photoPrintNode}</div>
+          <Footer />
+        </>
+      )}
+
+      {PAGE === 'calendars' && (
+        <>
+          <div className="svc-page">{calendarNode}</div>
           <Footer />
         </>
       )}
