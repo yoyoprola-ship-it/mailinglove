@@ -18,8 +18,6 @@ import {
 const money = (c) => `$${((c || 0) / 100).toFixed(2)}`
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v))
 const BG_AR = 8 / 10 // the calendar print format
-// Ready-made 8×10 backgrounds bundled with the site (public/calendar-bg).
-const PRESET_BGS = Array.from({ length: 10 }, (_, i) => `/calendar-bg/${i + 1}.jpg`)
 let uid = 0
 
 const mctx = document.createElement('canvas').getContext('2d')
@@ -46,6 +44,7 @@ export default function CalendarMaker({
   const [bgCrop, setBgCrop] = useState('') // objectURL of an upload awaiting the 8×10 fit
   const [gen, setGen] = useState('idle') // idle | working
   const [genErr, setGenErr] = useState('')
+  const [presets, setPresets] = useState([]) // admin-managed ready-made backgrounds
 
   // --- calendar placement (customer's choice) ---
   const [position, setPosition] = useState('left')
@@ -68,6 +67,13 @@ export default function CalendarMaker({
 
   const ratio = bgImg ? bgImg.naturalWidth / bgImg.naturalHeight : 0.8
   const sel = layers.find((l) => l.id === selId) || null
+
+  useEffect(() => {
+    fetch('/api/calendar-backgrounds')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => Array.isArray(d?.backgrounds) && setPresets(d.backgrounds))
+      .catch(() => {})
+  }, [])
 
   useEffect(() => {
     if (!bg) return setBgImg(null)
@@ -349,15 +355,15 @@ export default function CalendarMaker({
 
   const presetGrid = (
     <div className="cme__presets">
-      {PRESET_BGS.map((url) => (
+      {presets.map((p) => (
         <button
-          key={url}
+          key={p.id}
           type="button"
-          className={`cme__preset${bg === url ? ' is-active' : ''}`}
-          onClick={() => pickPreset(url)}
+          className={`cme__preset${bg === p.image ? ' is-active' : ''}`}
+          onClick={() => pickPreset(p.image)}
           aria-label="Use this background"
         >
-          <img src={url} alt="" loading="lazy" draggable={false} />
+          <img src={p.image} alt="" loading="lazy" draggable={false} />
         </button>
       ))}
     </div>
@@ -426,8 +432,12 @@ export default function CalendarMaker({
               {gen === 'working' && <p className="studio__note">This takes 15–30 seconds.</p>}
               {genErr && <p className="studio__error">{genErr}</p>}
 
-              <p className="cme__presets-t">Or pick a ready-made background</p>
-              {presetGrid}
+              {presets.length > 0 && (
+                <>
+                  <p className="cme__presets-t">Or pick a ready-made background</p>
+                  {presetGrid}
+                </>
+              )}
             </div>
           ) : (
             <div className="cme">
@@ -545,8 +555,12 @@ export default function CalendarMaker({
                     }}
                   />
                   {genErr && <p className="studio__error">{genErr}</p>}
-                  <p className="cme__presets-t">Ready-made backgrounds</p>
-                  {presetGrid}
+                  {presets.length > 0 && (
+                    <>
+                      <p className="cme__presets-t">Ready-made backgrounds</p>
+                      {presetGrid}
+                    </>
+                  )}
                 </div>
 
                 <div className="cme__group">

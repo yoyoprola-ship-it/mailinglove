@@ -60,6 +60,14 @@ import {
   generateCustomPostcard,
 } from './server/customPostcard.js'
 import { validateScene, generateBackground } from './server/calendarBg.js'
+import {
+  getPublicBackgrounds,
+  adminListBackgrounds,
+  addBackground,
+  deleteBackground,
+  setBackgroundHidden,
+  streamBackground,
+} from './server/calendarBackgrounds.js'
 import { streamImage, adminCatalog } from './server/assets.js'
 import {
   getMergedCatalog,
@@ -636,6 +644,79 @@ app.get('/api/postcard-image/:id', async (req, res) => {
     })
   } catch (err) {
     console.error('[assets] image route failed:', err?.message || err)
+    if (!res.headersSent) res.status(500).end()
+  }
+})
+
+// --- admin: calendar background library ----------------------------
+
+app.get('/api/admin/calendar-backgrounds', requireAdmin, async (req, res) => {
+  try {
+    res.json({ backgrounds: await adminListBackgrounds() })
+  } catch (err) {
+    console.error('[admin] calendar backgrounds failed:', err?.message || err)
+    res.status(500).json({ error: 'Could not load the backgrounds.' })
+  }
+})
+
+app.post('/api/admin/calendar-backgrounds', requireAdmin, (req, res) => {
+  upload.single('image')(req, res, async (uploadErr) => {
+    if (uploadErr) return res.status(400).json({ error: uploadErr.message })
+    if (!req.file) return res.status(400).json({ error: 'Attach an image.' })
+    try {
+      const r = await addBackground({ buffer: req.file.buffer, contentType: req.file.mimetype })
+      if (!r.ok) return res.status(400).json({ error: r.error })
+      console.log(`[admin] ${req.adminEmail} added calendar background ${r.background.id}`)
+      res.json({ background: r.background })
+    } catch (err) {
+      console.error('[admin] add calendar background failed:', err?.message || err)
+      res.status(500).json({ error: 'Could not add the background.' })
+    }
+  })
+})
+
+app.post('/api/admin/calendar-backgrounds/:id/hidden', requireAdmin, async (req, res) => {
+  try {
+    const r = await setBackgroundHidden(req.params.id, Boolean((req.body || {}).hidden))
+    if (!r.ok) return res.status(400).json({ error: r.error })
+    res.json({ ok: true })
+  } catch (err) {
+    console.error('[admin] calendar bg hide toggle failed:', err?.message || err)
+    res.status(500).json({ error: 'Could not update.' })
+  }
+})
+
+app.delete('/api/admin/calendar-backgrounds/:id', requireAdmin, async (req, res) => {
+  try {
+    const r = await deleteBackground(req.params.id)
+    if (!r.ok) return res.status(400).json({ error: r.error })
+    console.log(`[admin] ${req.adminEmail} deleted calendar background ${req.params.id}`)
+    res.json({ ok: true })
+  } catch (err) {
+    console.error('[admin] delete calendar background failed:', err?.message || err)
+    res.status(500).json({ error: 'Could not delete the background.' })
+  }
+})
+
+// Public: the ready-made calendar backgrounds (id + image URL only).
+app.get('/api/calendar-backgrounds', async (req, res) => {
+  try {
+    res.setHeader('Cache-Control', 'public, max-age=60')
+    res.json({ backgrounds: await getPublicBackgrounds() })
+  } catch (err) {
+    console.error('[calendarBg] list route failed:', err?.message || err)
+    res.status(500).json({ backgrounds: [] })
+  }
+})
+
+app.get('/api/calendar-bg-image/:id', async (req, res) => {
+  try {
+    await streamBackground(req.params.id, res, {
+      download: String(req.query.download) === '1',
+      versioned: 'v' in req.query,
+    })
+  } catch (err) {
+    console.error('[calendarBg] image route failed:', err?.message || err)
     if (!res.headersSent) res.status(500).end()
   }
 })
