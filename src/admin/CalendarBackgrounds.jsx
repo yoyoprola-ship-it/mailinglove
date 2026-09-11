@@ -106,7 +106,7 @@ export default function CalendarBackgrounds() {
       <div className="adm__gallery">
         {rows.map((bg) => (
           <div className={`adm__gcard${bg.hidden ? ' is-hidden' : ''}`} key={bg.id}>
-            <img className="adm__gimg" src={`${bg.image}&r=${rev}`} alt="" loading="lazy" />
+            <img className="adm__gimg" src={`${bg.thumb || bg.image}&r=${rev}`} alt="" loading="lazy" />
             <div className="adm__gbody">
               {bg.hidden && (
                 <div className="adm__gtags">

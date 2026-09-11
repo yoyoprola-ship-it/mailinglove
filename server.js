@@ -714,6 +714,7 @@ app.get('/api/calendar-bg-image/:id', async (req, res) => {
     await streamBackground(req.params.id, res, {
       download: String(req.query.download) === '1',
       versioned: 'v' in req.query,
+      thumb: String(req.query.thumb) === '1',
     })
   } catch (err) {
     console.error('[calendarBg] image route failed:', err?.message || err)

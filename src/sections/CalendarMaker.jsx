@@ -363,7 +363,7 @@ export default function CalendarMaker({
           onClick={() => pickPreset(p.image)}
           aria-label="Use this background"
         >
-          <img src={p.image} alt="" loading="lazy" draggable={false} />
+          <img src={p.thumb || p.image} alt="" loading="lazy" draggable={false} />
         </button>
       ))}
     </div>
