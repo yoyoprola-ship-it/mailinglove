@@ -57,15 +57,23 @@ export async function firstClassDays(originZip, destZip) {
   return { days }
 }
 
-// The v3 payload has varied slightly across revisions; scan defensively for
-// a First-Class entry and its day count.
+// The v3 response is a bare array of per-mail-class estimates (confirmed
+// live 2026-09-12); older docs/examples showed it wrapped in an object, so
+// keep accepting that shape too in case it varies by account/region.
 function pickFirstClassDays(data) {
-  const buckets = data?.mailClasses || data?.serviceStandards || data?.estimates || []
-  const list = Array.isArray(buckets) ? buckets : []
-  const fc = list.find((m) => /first[- ]?class/i.test(m.mailClass || m.name || m.class || ''))
-  const raw = fc && (fc.serviceStandard ?? fc.days ?? fc.numberOfDays ?? fc.standard)
-  const n = Number(raw)
-  if (Number.isFinite(n) && n > 0 && n < 15) return Math.round(n)
+  const list = Array.isArray(data)
+    ? data
+    : data?.mailClasses || data?.serviceStandards || data?.estimates || []
+
+  // First-Class Mail comes back split into LETTERS / FLATS / CARDS
+  // sub-classes (e.g. "FIRST-CLASS_MAIL_CARDS") which can each carry a
+  // different service standard — take the slowest of the three so the
+  // estimate shown to the customer is never optimistic.
+  const fcDays = list
+    .filter((m) => /first[- ]?class/i.test(m.mailClass || m.name || m.class || ''))
+    .map((m) => Number(m.serviceStandard ?? m.days ?? m.numberOfDays ?? m.standard))
+    .filter((n) => Number.isFinite(n) && n > 0 && n < 15)
+  if (fcDays.length) return Math.round(Math.max(...fcDays))
 
   // fall back to any numeric day value in the response
   const any = list
