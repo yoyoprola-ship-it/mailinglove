@@ -29,6 +29,7 @@ export const MOUNT_LABELS = { wall: 'Wall hanging', stand: 'Tabletop stand' }
 // Common frame opening sizes. `w`/`h` are inches — they set both the crop
 // aspect ratio and the 300 DPI print target for the customer's photo.
 export const FRAME_RATIOS = [
+  { id: '4x4', label: '4×4 in — square', w: 4, h: 4 },
   { id: '4x6', label: '4×6 in', w: 4, h: 6 },
   { id: '5x7', label: '5×7 in', w: 5, h: 7 },
   { id: '8x8', label: '8×8 in — square', w: 8, h: 8 },
