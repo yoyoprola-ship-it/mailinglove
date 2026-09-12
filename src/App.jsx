@@ -11,6 +11,7 @@ import Postcards from './sections/Postcards'
 import CustomPostcard from './sections/CustomPostcard'
 import CalendarMaker from './sections/CalendarMaker'
 import PhotoPrint from './sections/PhotoPrint'
+import FrameShop from './sections/FrameShop'
 import Products from './sections/Products'
 import Footer from './sections/Footer'
 import AuthModal from './components/AuthModal'
@@ -31,7 +32,9 @@ const PAGE =
       ? 'postcards'
       : PATH === '/calendars'
         ? 'calendars'
-        : 'home'
+        : PATH === '/frames'
+          ? 'frames'
+          : 'home'
 
 // ?type=&sub= (from the menu / an old deep link) seeds the postcard filter.
 const initialFilter = {
@@ -47,6 +50,7 @@ const PAGE_META = {
   photos: { title: 'Print & mail your photos — MailingLove', path: '/photos' },
   postcards: { title: 'Send a postcard, printed & mailed — MailingLove', path: '/postcards' },
   calendars: { title: 'Make a photo calendar — MailingLove', path: '/calendars' },
+  frames: { title: 'Photo frames, printed and mailed — MailingLove', path: '/frames' },
 }
 
 // Old links pointed at #photo-print / #postcards / ?type= on the home
@@ -59,6 +63,7 @@ if (PAGE === 'home') {
     window.location.replace(`/postcards${q ? `?${q}` : ''}`)
   else if (hash === 'custom-postcard') window.location.replace('/postcards#custom-postcard')
   else if (hash === 'calendar') window.location.replace('/calendars')
+  else if (hash === 'frames') window.location.replace('/frames')
 }
 
 export default function App() {
@@ -79,6 +84,7 @@ export default function App() {
   const [calendarEnabled, setCalendarEnabled] = useState(false)
   const [calendarYear, setCalendarYear] = useState(2027)
   const [calendarPriceCents, setCalendarPriceCents] = useState(0)
+  const [framesEnabled, setFramesEnabled] = useState(false)
   const [pcFilter, setPcFilter] = useState(initialFilter)
   const [signedIn, setSignedIn] = useState(false)
   const [cartItems, setCartItems] = useState([])
@@ -108,6 +114,7 @@ export default function App() {
         setCalendarEnabled(Boolean(c.calendarEnabled))
         if (Number.isFinite(c.calendarYear)) setCalendarYear(c.calendarYear)
         if (Number.isFinite(c.calendarPriceCents)) setCalendarPriceCents(c.calendarPriceCents)
+        setFramesEnabled(Boolean(c.framesEnabled))
       })
       .catch(() => {
         setPhotoEnabled(true)
@@ -233,6 +240,7 @@ export default function App() {
     if (to === 'photo-print') return void (window.location.href = '/photos')
     if (to === 'postcards') return void (window.location.href = '/postcards')
     if (to === 'calendar') return void (window.location.href = '/calendars')
+    if (to === 'frames') return void (window.location.href = '/frames')
     if (to === 'custom-postcard') {
       if (PAGE === 'postcards') return scrollToId('custom-postcard')
       return void (window.location.href = '/postcards#custom-postcard')
@@ -344,6 +352,16 @@ export default function App() {
     unavailable('Photo calendars', 'The calendar maker')
   )
 
+  const framesNode = framesEnabled ? (
+    <FrameShop
+      signedIn={signedIn}
+      onAdded={(items) => Array.isArray(items) && setCartItems(items)}
+      onRequireAuth={() => setAuthCtx({ mode: 'account' })}
+    />
+  ) : (
+    unavailable('Photo frames', 'The frame shop')
+  )
+
   return (
     <div className="page">
       <Nav
@@ -357,6 +375,7 @@ export default function App() {
         showPostcardGen={postcardEnabled}
         showPhotoRestore={Boolean(photoEnabled)}
         showCalendar={calendarEnabled}
+        showFrames={framesEnabled}
       />
 
       {PAGE === 'home' && (
@@ -392,6 +411,13 @@ export default function App() {
       {PAGE === 'calendars' && (
         <>
           <div className="svc-page">{calendarNode}</div>
+          <Footer />
+        </>
+      )}
+
+      {PAGE === 'frames' && (
+        <>
+          <div className="svc-page">{framesNode}</div>
           <Footer />
         </>
       )}

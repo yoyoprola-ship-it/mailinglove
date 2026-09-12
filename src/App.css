@@ -16,7 +16,8 @@
 /* Keep section tops visible when the nav / hamburger menu scrolls to them. */
 #postcards,
 #photo-print,
-#custom-postcard {
+#custom-postcard,
+#frames {
   scroll-margin-top: 76px;
 }
 
@@ -2315,4 +2316,231 @@
 .cme__seg-b.is-active {
   background: var(--rose);
   border-color: var(--rose);
+}
+
+/* ---------- frame shop ---------- */
+
+.fr-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 24px;
+  margin-top: 14px;
+}
+@media (max-width: 860px) {
+  .fr-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+@media (max-width: 520px) {
+  .fr-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 14px;
+  }
+}
+
+.fr-card {
+  background: #fff;
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: 0 14px 36px rgba(74, 22, 38, 0.08);
+  display: flex;
+  flex-direction: column;
+}
+
+.fr-card__imgbtn {
+  border: none;
+  padding: 0;
+  margin: 0;
+  background: none;
+  cursor: zoom-in;
+  display: block;
+  width: 100%;
+}
+
+.fr-card__img {
+  width: 100%;
+  aspect-ratio: 4 / 5;
+  height: auto;
+  object-fit: cover;
+  display: block;
+  background: var(--blush);
+}
+
+.fr-card__body {
+  padding: 14px 16px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.fr-card__name {
+  color: var(--rose-900);
+}
+
+.fr-card__mounts {
+  font-size: 0.82rem;
+  color: rgba(74, 22, 38, 0.6);
+}
+
+/* ---------- frame detail / add-to-cart modal ---------- */
+
+.fr-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  background: rgba(43, 22, 32, 0.72);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  overflow-y: auto;
+}
+
+.fr-modal__box {
+  position: relative;
+  background: #fff;
+  border-radius: 16px;
+  padding: 16px;
+  max-width: min(92vw, 560px);
+  max-height: 92vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.4);
+}
+
+.fr-modal__close {
+  position: absolute;
+  top: -14px;
+  right: -14px;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: none;
+  background: #fff;
+  color: var(--rose-900);
+  font-size: 1.3rem;
+  line-height: 1;
+  cursor: pointer;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
+  z-index: 1;
+}
+
+.fr-modal__body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 0 4px 4px;
+}
+
+.fr-modal__name {
+  color: var(--rose-900);
+  margin: 0;
+}
+
+.fr-modal__price {
+  color: rgba(74, 22, 38, 0.7);
+  font-size: 0.9rem;
+  margin: 0;
+}
+
+.fr-modal__cta {
+  margin-top: 6px;
+  width: 100%;
+}
+
+.fr-hint {
+  font-size: 0.8rem;
+  color: rgba(74, 22, 38, 0.55);
+  margin: 0;
+}
+
+.fr-error {
+  color: #b3261e;
+  font-size: 0.85rem;
+  margin: 0;
+}
+
+.fr-mounts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.fr-mount {
+  border: 1px solid rgba(74, 22, 38, 0.2);
+  background: #fff;
+  color: var(--rose-900);
+  border-radius: 999px;
+  padding: 7px 14px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.fr-mount.is-active {
+  background: var(--rose);
+  border-color: var(--rose);
+  color: #fff;
+}
+
+/* ---------- frame photo gallery (inside the modal) ---------- */
+
+.fr-gallery__stage {
+  position: relative;
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--blush);
+}
+
+.fr-gallery__img {
+  width: 100%;
+  max-height: 60vh;
+  object-fit: contain;
+  display: block;
+  background: var(--blush);
+}
+
+.fr-gallery__nav {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255, 255, 255, 0.85);
+  color: var(--rose-900);
+  font-size: 1.3rem;
+  line-height: 1;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.2);
+}
+.fr-gallery__nav--prev {
+  left: 10px;
+}
+.fr-gallery__nav--next {
+  right: 10px;
+}
+
+.fr-gallery__dots {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.fr-gallery__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: none;
+  padding: 0;
+  background: rgba(74, 22, 38, 0.22);
+  cursor: pointer;
+}
+
+.fr-gallery__dot.is-active {
+  background: var(--rose);
 }

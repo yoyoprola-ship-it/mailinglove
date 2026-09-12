@@ -68,6 +68,21 @@ import {
   setBackgroundHidden,
   streamBackground,
 } from './server/calendarBackgrounds.js'
+import {
+  getPublicFrames,
+  getFrame,
+  adminListFrames,
+  addFrame,
+  updateFrame,
+  addFrameImages,
+  deleteFrameImage,
+  setFrameHidden,
+  deleteFrame,
+  streamFrameImage,
+  FRAME_RATIOS,
+  MOUNT_OPTIONS,
+  MOUNT_LABELS,
+} from './server/frameProducts.js'
 import { streamImage, adminCatalog } from './server/assets.js'
 import {
   getMergedCatalog,
@@ -325,6 +340,7 @@ app.get('/api/site-config', async (req, res) => {
     calendarEnabled: cfg.calendar.enabled,
     calendarYear: cfg.calendar.year,
     calendarPriceCents: cfg.calendar.priceCents,
+    framesEnabled: cfg.frames.enabled,
   })
 })
 
@@ -722,6 +738,126 @@ app.get('/api/calendar-bg-image/:id', async (req, res) => {
   }
 })
 
+// --- admin: frame products -----------------------------------------
+
+app.get('/api/admin/frames', requireAdmin, async (req, res) => {
+  try {
+    res.json({ frames: await adminListFrames(), ratios: FRAME_RATIOS, mounts: MOUNT_OPTIONS })
+  } catch (err) {
+    console.error('[admin] frames list failed:', err?.message || err)
+    res.status(500).json({ error: 'Could not load the frames.' })
+  }
+})
+
+// Create a new frame product: name, price, mount options, photo size, and
+// one or more listing photos.
+app.post('/api/admin/frames', requireAdmin, (req, res) => {
+  upload.array('images', 8)(req, res, async (uploadErr) => {
+    if (uploadErr) return res.status(400).json({ error: uploadErr.message })
+    if (!req.files?.length) return res.status(400).json({ error: 'Attach at least one photo.' })
+    try {
+      const r = await addFrame({
+        name: req.body.name,
+        priceCents: req.body.priceCents,
+        mounts: req.body.mounts,
+        ratioId: req.body.ratioId,
+        buffers: req.files.map((f) => f.buffer),
+      })
+      if (!r.ok) return res.status(400).json({ error: r.error })
+      console.log(`[admin] ${req.adminEmail} added frame ${r.frame.id}`)
+      res.json({ frame: r.frame })
+    } catch (err) {
+      console.error('[admin] add frame failed:', err?.message || err)
+      res.status(500).json({ error: 'Could not add the frame.' })
+    }
+  })
+})
+
+// Edit a frame's name / price / mount options / photo size.
+app.post('/api/admin/frames/:id', requireAdmin, async (req, res) => {
+  try {
+    const r = await updateFrame(req.params.id, req.body || {})
+    if (!r.ok) return res.status(400).json({ error: r.error })
+    res.json({ frame: r.frame })
+  } catch (err) {
+    console.error('[admin] update frame failed:', err?.message || err)
+    res.status(500).json({ error: 'Could not save.' })
+  }
+})
+
+// Add more listing photos to an existing frame.
+app.post('/api/admin/frames/:id/images', requireAdmin, (req, res) => {
+  upload.array('images', 8)(req, res, async (uploadErr) => {
+    if (uploadErr) return res.status(400).json({ error: uploadErr.message })
+    if (!req.files?.length) return res.status(400).json({ error: 'Attach at least one photo.' })
+    try {
+      const r = await addFrameImages(req.params.id, req.files.map((f) => f.buffer))
+      if (!r.ok) return res.status(400).json({ error: r.error })
+      res.json({ frame: r.frame })
+    } catch (err) {
+      console.error('[admin] add frame images failed:', err?.message || err)
+      res.status(500).json({ error: 'Could not add the photos.' })
+    }
+  })
+})
+
+app.delete('/api/admin/frames/:id/images/:imageId', requireAdmin, async (req, res) => {
+  try {
+    const r = await deleteFrameImage(req.params.id, req.params.imageId)
+    if (!r.ok) return res.status(400).json({ error: r.error })
+    res.json({ frame: r.frame })
+  } catch (err) {
+    console.error('[admin] delete frame image failed:', err?.message || err)
+    res.status(500).json({ error: 'Could not delete the photo.' })
+  }
+})
+
+app.post('/api/admin/frames/:id/hidden', requireAdmin, async (req, res) => {
+  try {
+    const r = await setFrameHidden(req.params.id, Boolean((req.body || {}).hidden))
+    if (!r.ok) return res.status(400).json({ error: r.error })
+    res.json({ ok: true })
+  } catch (err) {
+    console.error('[admin] frame hide toggle failed:', err?.message || err)
+    res.status(500).json({ error: 'Could not update.' })
+  }
+})
+
+app.delete('/api/admin/frames/:id', requireAdmin, async (req, res) => {
+  try {
+    const r = await deleteFrame(req.params.id)
+    if (!r.ok) return res.status(400).json({ error: r.error })
+    console.log(`[admin] ${req.adminEmail} deleted frame ${req.params.id}`)
+    res.json({ ok: true })
+  } catch (err) {
+    console.error('[admin] delete frame failed:', err?.message || err)
+    res.status(500).json({ error: 'Could not delete the frame.' })
+  }
+})
+
+// Public: the frame shop's product list, and its listing photos.
+app.get('/api/frames', async (req, res) => {
+  try {
+    res.setHeader('Cache-Control', 'public, max-age=60')
+    res.json({ frames: await getPublicFrames() })
+  } catch (err) {
+    console.error('[frames] list route failed:', err?.message || err)
+    res.status(500).json({ frames: [] })
+  }
+})
+
+app.get('/api/frame-image/:frameId/:imageId', async (req, res) => {
+  try {
+    await streamFrameImage(req.params.frameId, req.params.imageId, res, {
+      download: String(req.query.download) === '1',
+      thumb: String(req.query.thumb) === '1',
+    })
+  } catch (err) {
+    console.error('[frames] image route failed:', err?.message || err)
+    if (!res.headersSent) res.status(500).end()
+  }
+})
+
 // Admin: download a customer's photo-print file for an order.
 app.get('/api/admin/photo-image/:id', requireAdmin, async (req, res) => {
   try {
@@ -1015,6 +1151,59 @@ app.post('/api/cart/calendar', requireUser, (req, res) => {
       res.json({ items: result.cart })
     } catch (err) {
       console.error('[cart] calendar add failed:', err?.message || err)
+      res.status(500).json({ error: 'Could not add to cart.' })
+    }
+  })
+})
+
+// Add a frame order (a photo the customer cropped to fit) to the cart. The
+// frame + print + shipping are all one flat price, set on the product.
+app.post('/api/cart/frame', requireUser, (req, res) => {
+  photoPrintUpload.single('image')(req, res, async (uploadErr) => {
+    if (uploadErr) return res.status(400).json({ error: uploadErr.message })
+    if (!req.file) return res.status(400).json({ error: 'Attach the cropped photo.' })
+    try {
+      const cfg = await getConfig()
+      if (!cfg.frames.enabled) {
+        return res.status(403).json({ error: 'Frames are not available right now.' })
+      }
+      const frame = await getFrame(String(req.body.frameId || ''))
+      if (!frame || frame.hidden) return res.status(400).json({ error: 'Pick a valid frame.' })
+      if (!frame.priceCents || frame.priceCents <= 0) {
+        return res.status(400).json({ error: 'Pricing is not set up yet.' })
+      }
+      const mount = String(req.body.mount || '')
+      if (!(frame.mounts || []).includes(mount)) {
+        return res.status(400).json({ error: 'Pick a valid mount option.' })
+      }
+      const mountLabel = MOUNT_LABELS[mount] || mount
+
+      const saved = await savePhotoPrint({
+        email: req.userEmail,
+        buffer: req.file.buffer,
+        contentType: req.file.mimetype,
+      })
+      if (!saved.ok) return res.status(400).json({ error: saved.error })
+
+      const result = await addPhotoItem(req.userEmail, {
+        kind: 'frame',
+        photoId: saved.id,
+        storagePath: saved.storagePath,
+        contentType: saved.contentType,
+        formatId: frame.ratioId,
+        formatLabel: `${frame.ratioW}×${frame.ratioH} in`,
+        unitPriceCents: frame.priceCents,
+        title: `${frame.name} — ${mountLabel}`,
+        frameId: frame.id,
+        frameName: frame.name,
+        mount,
+        width: Number(req.body.width) || 0,
+        height: Number(req.body.height) || 0,
+      })
+      if (!result.ok) return cartErr(res, result)
+      res.json({ items: result.cart })
+    } catch (err) {
+      console.error('[cart] frame add failed:', err?.message || err)
       res.status(500).json({ error: 'Could not add to cart.' })
     }
   })

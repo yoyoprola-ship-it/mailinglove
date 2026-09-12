@@ -526,6 +526,10 @@ input.adm__input[type='checkbox'] {
   opacity: 0.55;
 }
 
+.adm__panel.is-hidden {
+  opacity: 0.6;
+}
+
 .adm__gimg {
   width: 100%;
   display: block;

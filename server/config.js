@@ -70,6 +70,9 @@ const DEFAULTS = {
     year: 2027,
     priceCents: 1999, // 8×10 in photo calendar
   },
+  frames: {
+    enabled: false, // off until the admin adds real frame products
+  },
 }
 
 export const CURRENCY = 'usd'
@@ -148,6 +151,13 @@ export const CONFIG_SCHEMA = {
         max: 100000,
         label: 'Price per calendar (USD cents, e.g. 1999 = $19.99)',
       },
+    },
+  },
+  frames: {
+    label: 'Photo frames',
+    hint: 'The "Frames" shop page. Each frame is its own product — set up name, price, mount options, and photos in the Frames admin tab, not here.',
+    fields: {
+      enabled: { type: 'bool', label: 'Section enabled' },
     },
   },
 }
@@ -289,7 +299,12 @@ function migrate(s = {}) {
     },
     photoprint: migratePhotoprint(s.photoprint || {}),
     calendar: migrateCalendar(s.calendar || {}),
+    frames: migrateFrames(s.frames || {}),
   }
+}
+
+function migrateFrames(f) {
+  return { enabled: pick(boolv(f.enabled), DEFAULTS.frames.enabled) }
 }
 
 function migrateCalendar(c) {

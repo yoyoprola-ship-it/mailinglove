@@ -24,6 +24,7 @@ export default function MenuDrawer({
   showPostcardGen = false,
   showPhotoRestore = false,
   showCalendar = false,
+  showFrames = false,
 }) {
   const [expanded, setExpanded] = useState('')
 
@@ -61,6 +62,11 @@ export default function MenuDrawer({
       label: 'Make a photo calendar',
       icon: 'calendar',
       fn: () => goto('calendar'),
+    },
+    showFrames && {
+      label: 'Photo frames',
+      icon: 'image',
+      fn: () => goto('frames'),
     },
     showPhotoRestore && {
       label: 'Restore old photos',

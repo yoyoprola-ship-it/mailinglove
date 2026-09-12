@@ -13,6 +13,7 @@ export default function Nav({
   showPostcardGen = false,
   showPhotoRestore = false,
   showCalendar = false,
+  showFrames = false,
 }) {
   const [menuOpen, setMenuOpen] = useState(false)
 
@@ -62,6 +63,7 @@ export default function Nav({
         showPostcardGen={showPostcardGen}
         showPhotoRestore={showPhotoRestore}
         showCalendar={showCalendar}
+        showFrames={showFrames}
       />
     </header>
   )

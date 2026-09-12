@@ -88,7 +88,9 @@ export async function addItem(email, input, unitPriceCents) {
   return { ok: true, cart: items, merged }
 }
 
-// A finished photo-print the customer composed in the browser.
+// A finished photo-print the customer composed in the browser. Also used
+// for frame orders (kind: 'frame') — same rendered-image shape, plus which
+// frame product and mount option it's going in.
 export async function addPhotoItem(email, p = {}) {
   const ref = await userRef(email)
   const { items } = await getCart(email)
@@ -96,7 +98,7 @@ export async function addPhotoItem(email, p = {}) {
 
   items.push({
     id: crypto.randomBytes(8).toString('hex'),
-    kind: 'photo',
+    kind: p.kind || 'photo',
     postcardId: null,
     photoId: p.photoId,
     storagePath: p.storagePath,
@@ -110,6 +112,9 @@ export async function addPhotoItem(email, p = {}) {
     unitPriceCents: Math.max(0, Math.trunc(p.unitPriceCents || 0)),
     qty: 1,
     note: '',
+    frameId: p.frameId || null,
+    frameName: p.frameName || null,
+    mount: p.mount || null,
     addedAt: Date.now(),
   })
   await ref.set({ cart: items, updatedAt: Date.now() }, { merge: true })
@@ -209,7 +214,7 @@ export async function createPendingOrder(email, fallbackUnitCents = 0, meta = {}
       message: i.note || '',
       recipient,
     }
-    if (i.kind === 'photo') {
+    if (i.kind === 'photo' || i.kind === 'frame') {
       return {
         ...base,
         postcardId: null,
@@ -220,6 +225,9 @@ export async function createPendingOrder(email, fallbackUnitCents = 0, meta = {}
         formatLabel: i.formatLabel || null,
         width: i.width || 0,
         height: i.height || 0,
+        frameId: i.frameId || null,
+        frameName: i.frameName || null,
+        mount: i.mount || null,
       }
     }
     return { ...base, postcardId: i.postcardId, category: i.category || null }

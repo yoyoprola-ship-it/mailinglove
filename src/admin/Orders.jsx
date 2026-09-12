@@ -16,7 +16,7 @@ function addrLines(a) {
 }
 
 const itemImg = (it) =>
-  it.kind === 'photo' ? `/api/admin/photo-image/${it.photoId}` : it.image
+  it.kind === 'photo' || it.kind === 'frame' ? `/api/admin/photo-image/${it.photoId}` : it.image
 
 function OrderRow({ o, onStatus, onOpenGallery, onPreview }) {
   const [open, setOpen] = useState(false)
@@ -95,7 +95,7 @@ function OrderRow({ o, onStatus, onOpenGallery, onPreview }) {
 
           <ul className="adm__order-items">
             {o.items.map((it, i) => {
-              const isPhoto = it.kind === 'photo'
+              const isPhoto = it.kind === 'photo' || it.kind === 'frame'
               const src = itemImg(it)
               return (
                 <li key={i} className="adm__order-item">
@@ -121,6 +121,7 @@ function OrderRow({ o, onStatus, onOpenGallery, onPreview }) {
                     {isPhoto ? (
                       <span className="adm__muted">
                         {it.width}×{it.height}px
+                        {it.kind === 'frame' && it.mount && ` · ${it.mount} mount`}
                       </span>
                     ) : (
                       <span className="adm__muted">({it.category})</span>
