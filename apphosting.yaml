@@ -142,3 +142,16 @@ env:
     value: live # real payments — live PayPal + Stripe secrets confirmed 2026-09-04
     availability:
       - RUNTIME
+
+  # --- USPS (delivery-time estimates) ---
+  # OAuth2 client-credentials app registered at developer.usps.com, Default
+  # Access tier (Service Standards) — not enrolled in USPS SHIP, so no EPS
+  # deposit. See server/usps.js.
+  - variable: USPS_CLIENT_ID
+    secret: USPS_CLIENT_ID
+    availability:
+      - RUNTIME
+  - variable: USPS_CLIENT_SECRET
+    secret: USPS_CLIENT_SECRET
+    availability:
+      - RUNTIME
