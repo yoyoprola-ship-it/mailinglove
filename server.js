@@ -759,6 +759,7 @@ app.post('/api/admin/frames', requireAdmin, (req, res) => {
       const r = await addFrame({
         name: req.body.name,
         priceCents: req.body.priceCents,
+        costCents: req.body.costCents,
         mounts: req.body.mounts,
         ratioId: req.body.ratioId,
         buffers: req.files.map((f) => f.buffer),

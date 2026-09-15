@@ -7,6 +7,7 @@ const money = (c) => `$${((c || 0) / 100).toFixed(2)}`
 function NewFrameForm({ ratios, mounts, onAdded }) {
   const [name, setName] = useState('')
   const [price, setPrice] = useState('')
+  const [cost, setCost] = useState('')
   const [ratioId, setRatioId] = useState(ratios[0]?.id || '')
   const [picked, setPicked] = useState([])
   const [files, setFiles] = useState([])
@@ -23,6 +24,8 @@ function NewFrameForm({ ratios, mounts, onAdded }) {
     if (!name.trim()) return setError('Name is required.')
     const priceCents = Math.round(Number(price))
     if (!Number.isFinite(priceCents) || priceCents <= 0) return setError('Set a price greater than $0.')
+    const costCents = cost === '' ? 0 : Math.round(Number(cost))
+    if (!Number.isFinite(costCents) || costCents < 0) return setError('Cost must be $0 or more.')
     if (!picked.length) return setError('Pick at least one mount option.')
     if (!files.length) return setError('Add at least one photo of this frame.')
 
@@ -31,6 +34,7 @@ function NewFrameForm({ ratios, mounts, onAdded }) {
       const body = new FormData()
       body.append('name', name.trim())
       body.append('priceCents', String(priceCents))
+      body.append('costCents', String(costCents))
       body.append('mounts', picked.join(','))
       body.append('ratioId', ratioId)
       files.forEach((f) => body.append('images', f))
@@ -39,6 +43,7 @@ function NewFrameForm({ ratios, mounts, onAdded }) {
       if (!res.ok) throw new Error(d.error || 'Could not add the frame.')
       setName('')
       setPrice('')
+      setCost('')
       setPicked([])
       setFiles([])
       onAdded(d.frame)
@@ -64,7 +69,7 @@ function NewFrameForm({ ratios, mounts, onAdded }) {
       </div>
 
       <div className="adm__field">
-        <label className="adm__label">Price (USD cents, e.g. 2999 = $29.99)</label>
+        <label className="adm__label">Sale price (USD cents, e.g. 2999 = $29.99)</label>
         <input
           className="adm__input adm__input--sm"
           type="number"
@@ -73,7 +78,20 @@ function NewFrameForm({ ratios, mounts, onAdded }) {
           value={price}
           onChange={(e) => setPrice(e.target.value)}
         />
-        <p className="adm__hint">Includes the frame, the print, and shipping.</p>
+        <p className="adm__hint">What the customer pays — includes the frame, the print, and shipping.</p>
+      </div>
+
+      <div className="adm__field">
+        <label className="adm__label">Purchase cost (USD cents, optional)</label>
+        <input
+          className="adm__input adm__input--sm"
+          type="number"
+          min={0}
+          max={100000}
+          value={cost}
+          onChange={(e) => setCost(e.target.value)}
+        />
+        <p className="adm__hint">What the frame costs you to buy — for your own records, never shown to customers.</p>
       </div>
 
       <div className="adm__field">
@@ -216,6 +234,7 @@ function FrameCard({ frame, ratios, mounts, onChanged, onRemoved }) {
   const [form, setForm] = useState({
     name: frame.name,
     priceCents: frame.priceCents,
+    costCents: frame.costCents || 0,
     mounts: frame.mounts,
     ratioId: frame.ratioId,
   })
@@ -226,6 +245,7 @@ function FrameCard({ frame, ratios, mounts, onChanged, onRemoved }) {
   const dirty =
     form.name !== frame.name ||
     form.priceCents !== frame.priceCents ||
+    form.costCents !== (frame.costCents || 0) ||
     form.ratioId !== frame.ratioId ||
     form.mounts.join(',') !== frame.mounts.join(',')
 
@@ -280,6 +300,9 @@ function FrameCard({ frame, ratios, mounts, onChanged, onRemoved }) {
 
   const ratioLabel = ratios.find((r) => r.id === frame.ratioId)?.label || frame.ratioId
   const mountLabel = frame.mounts.map((m) => MOUNT_LABELS[m] || m).join(', ')
+  const cost = frame.costCents || 0
+  const margin = frame.priceCents - cost
+  const noCost = cost === 0
 
   return (
     <div className={`adm__fr-row${frame.hidden ? ' is-hidden' : ''}`}>
@@ -289,7 +312,11 @@ function FrameCard({ frame, ratios, mounts, onChanged, onRemoved }) {
         <span className="adm__fr-info">
           <strong className="adm__fr-name">{frame.name}</strong>
           <span className="adm__muted adm__fr-meta">
-            {money(frame.priceCents)} · {ratioLabel} · {mountLabel}
+            Venta {money(frame.priceCents)}
+            {!noCost && ` · Costo ${money(cost)} · Margen ${money(margin)}`}
+            {noCost && ' · sin costo registrado'}
+            {' · '}
+            {ratioLabel} · {mountLabel}
             {frame.hidden && ' · hidden'}
           </span>
         </span>
@@ -310,7 +337,7 @@ function FrameCard({ frame, ratios, mounts, onChanged, onRemoved }) {
           </div>
 
           <div className="adm__field">
-            <label className="adm__label">Price (USD cents)</label>
+            <label className="adm__label">Sale price (USD cents)</label>
             <input
               className="adm__input adm__input--sm"
               type="number"
@@ -323,6 +350,25 @@ function FrameCard({ frame, ratios, mounts, onChanged, onRemoved }) {
               }}
             />
             <span className="adm__muted"> {money(form.priceCents)}</span>
+          </div>
+
+          <div className="adm__field">
+            <label className="adm__label">Purchase cost (USD cents)</label>
+            <input
+              className="adm__input adm__input--sm"
+              type="number"
+              min={0}
+              max={100000}
+              value={form.costCents}
+              onChange={(e) => {
+                setForm((f) => ({ ...f, costCents: Number(e.target.value) }))
+                setMsg('')
+              }}
+            />
+            <span className="adm__muted">
+              {' '}
+              {money(form.costCents)} · Margin {money(form.priceCents - form.costCents)}
+            </span>
           </div>
 
           <div className="adm__field">

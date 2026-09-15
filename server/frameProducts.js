@@ -11,11 +11,15 @@ import { saveFile, downloadFile, deleteFile } from './bucket.js'
 // calendarBackgrounds, so the shop grid never has to pull full-size images.
 //
 // frameProducts/<id> = {
-//   id, name, priceCents, mounts: ['wall' | 'stand', ...],
+//   id, name, priceCents, costCents, mounts: ['wall' | 'stand', ...],
 //   ratioId, ratioW, ratioH,               // the frame's photo opening
 //   images: [{ id, path, thumbPath, contentType }],
 //   hidden, order, createdAt, updatedAt,
 // }
+//
+// priceCents is what the customer pays (frame + print + shipping).
+// costCents is what the frame itself costs to buy — admin-only bookkeeping,
+// never sent to the storefront.
 
 const COLL = 'frameProducts'
 const MAX_IMAGES = 8
@@ -102,14 +106,19 @@ export async function getFrame(id) {
   }
 }
 
+// Admin projection: everything the public one has, plus hidden/cost/updatedAt
+// — cost is never sent to the storefront.
+const adminFrame = (f) => ({
+  ...publicFrame(f),
+  costCents: f.costCents || 0,
+  hidden: Boolean(f.hidden),
+  updatedAt: f.updatedAt || 0,
+})
+
 // Admin: every product, hidden included.
 export async function adminListFrames() {
   const rows = await listAll()
-  return rows.map((f) => ({
-    ...publicFrame(f),
-    hidden: Boolean(f.hidden),
-    updatedAt: f.updatedAt || 0,
-  }))
+  return rows.map(adminFrame)
 }
 
 // --- writes ------------------------------------------------------
@@ -122,6 +131,13 @@ function validMounts(v) {
 
 function ratioFor(id) {
   return FRAME_RATIOS.find((r) => r.id === id) || null
+}
+
+// Cost is optional bookkeeping — 0/absent just means "not tracked yet".
+function costCentsOf(v) {
+  if (v === undefined || v === null || v === '') return 0
+  const n = Math.trunc(Number(v))
+  return Number.isFinite(n) && n >= 0 ? n : null
 }
 
 async function buildImageEntry(id, buffer) {
@@ -143,13 +159,15 @@ async function buildImageEntry(id, buffer) {
   return { id: imgId, path, thumbPath, contentType: 'image/jpeg' }
 }
 
-export async function addFrame({ name, priceCents, mounts, ratioId, buffers = [] }) {
+export async function addFrame({ name, priceCents, costCents, mounts, ratioId, buffers = [] }) {
   const db = getDb()
   if (!db) return { ok: false, error: 'Storage is not available right now.' }
   const nm = String(name || '').trim().slice(0, 80)
   if (!nm) return { ok: false, error: 'Name is required.' }
   const price = Math.trunc(Number(priceCents))
   if (!Number.isFinite(price) || price <= 0) return { ok: false, error: 'Set a price greater than $0.' }
+  const cost = costCentsOf(costCents)
+  if (cost === null) return { ok: false, error: 'Cost must be $0 or more.' }
   const mts = validMounts(mounts)
   if (!mts.length) return { ok: false, error: 'Pick at least one mount option.' }
   const ratio = ratioFor(ratioId)
@@ -169,6 +187,7 @@ export async function addFrame({ name, priceCents, mounts, ratioId, buffers = []
     id,
     name: nm,
     priceCents: price,
+    costCents: cost,
     mounts: mts,
     ratioId: ratio.id,
     ratioW: ratio.w,
@@ -181,7 +200,7 @@ export async function addFrame({ name, priceCents, mounts, ratioId, buffers = []
   }
   await db.collection(COLL).doc(id).set(doc)
   invalidateFrameProducts()
-  return { ok: true, frame: publicFrame(doc) }
+  return { ok: true, frame: adminFrame(doc) }
 }
 
 export async function updateFrame(id, patch = {}) {
@@ -201,6 +220,11 @@ export async function updateFrame(id, patch = {}) {
     if (!Number.isFinite(price) || price <= 0) return { ok: false, error: 'Set a price greater than $0.' }
     upd.priceCents = price
   }
+  if (patch.costCents !== undefined) {
+    const cost = costCentsOf(patch.costCents)
+    if (cost === null) return { ok: false, error: 'Cost must be $0 or more.' }
+    upd.costCents = cost
+  }
   if (patch.mounts !== undefined) {
     const mts = validMounts(patch.mounts)
     if (!mts.length) return { ok: false, error: 'Pick at least one mount option.' }
@@ -216,7 +240,7 @@ export async function updateFrame(id, patch = {}) {
   await ref.set(upd, { merge: true })
   invalidateFrameProducts()
   const fresh = (await ref.get()).data()
-  return { ok: true, frame: publicFrame(fresh) }
+  return { ok: true, frame: adminFrame(fresh) }
 }
 
 export async function addFrameImages(id, buffers = []) {
@@ -238,7 +262,7 @@ export async function addFrameImages(id, buffers = []) {
   const images = [...existing, ...added]
   await ref.set({ images, updatedAt: Date.now() }, { merge: true })
   invalidateFrameProducts()
-  return { ok: true, frame: publicFrame({ ...frame, images }) }
+  return { ok: true, frame: adminFrame({ ...frame, images }) }
 }
 
 export async function deleteFrameImage(id, imageId) {
@@ -257,7 +281,7 @@ export async function deleteFrameImage(id, imageId) {
   if (img.thumbPath) await deleteFile(img.thumbPath)
   await ref.set({ images: next, updatedAt: Date.now() }, { merge: true })
   invalidateFrameProducts()
-  return { ok: true, frame: publicFrame({ ...frame, images: next }) }
+  return { ok: true, frame: adminFrame({ ...frame, images: next }) }
 }
 
 export async function setFrameHidden(id, hidden) {
