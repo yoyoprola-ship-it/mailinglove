@@ -212,6 +212,7 @@ function FrameImages({ frame, onChanged }) {
 }
 
 function FrameCard({ frame, ratios, mounts, onChanged, onRemoved }) {
+  const [open, setOpen] = useState(false)
   const [form, setForm] = useState({
     name: frame.name,
     priceCents: frame.priceCents,
@@ -277,92 +278,105 @@ function FrameCard({ frame, ratios, mounts, onChanged, onRemoved }) {
     }
   }
 
+  const ratioLabel = ratios.find((r) => r.id === frame.ratioId)?.label || frame.ratioId
+  const mountLabel = frame.mounts.map((m) => MOUNT_LABELS[m] || m).join(', ')
+
   return (
-    <div className={`adm__panel adm__panel--narrow${frame.hidden ? ' is-hidden' : ''}`}>
-      {frame.hidden && (
-        <div className="adm__gtags">
-          <span className="adm__gtag">hidden</span>
+    <div className={`adm__fr-row${frame.hidden ? ' is-hidden' : ''}`}>
+      <button type="button" className="adm__fr-summary" onClick={() => setOpen((v) => !v)}>
+        <span className="adm__chevron">{open ? '▾' : '▸'}</span>
+        <img className="adm__fr-thumb" src={frame.thumb} alt="" loading="lazy" />
+        <span className="adm__fr-info">
+          <strong className="adm__fr-name">{frame.name}</strong>
+          <span className="adm__muted adm__fr-meta">
+            {money(frame.priceCents)} · {ratioLabel} · {mountLabel}
+            {frame.hidden && ' · hidden'}
+          </span>
+        </span>
+      </button>
+
+      {open && (
+        <div className="adm__fr-body">
+          <div className="adm__field">
+            <label className="adm__label">Name</label>
+            <input
+              className="adm__input"
+              value={form.name}
+              onChange={(e) => {
+                setForm((f) => ({ ...f, name: e.target.value }))
+                setMsg('')
+              }}
+            />
+          </div>
+
+          <div className="adm__field">
+            <label className="adm__label">Price (USD cents)</label>
+            <input
+              className="adm__input adm__input--sm"
+              type="number"
+              min={1}
+              max={100000}
+              value={form.priceCents}
+              onChange={(e) => {
+                setForm((f) => ({ ...f, priceCents: Number(e.target.value) }))
+                setMsg('')
+              }}
+            />
+            <span className="adm__muted"> {money(form.priceCents)}</span>
+          </div>
+
+          <div className="adm__field">
+            <label className="adm__label">Photo opening</label>
+            <select
+              className="adm__input"
+              value={form.ratioId}
+              onChange={(e) => {
+                setForm((f) => ({ ...f, ratioId: e.target.value }))
+                setMsg('')
+              }}
+            >
+              {ratios.map((r) => (
+                <option key={r.id} value={r.id}>
+                  {r.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="adm__field">
+            <label className="adm__label">Mount options</label>
+            <div className="adm__chips">
+              {mounts.map((m) => (
+                <button
+                  key={m}
+                  type="button"
+                  className={`adm__chip${form.mounts.includes(m) ? ' is-active' : ''}`}
+                  onClick={() => toggleMount(m)}
+                >
+                  {MOUNT_LABELS[m] || m}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <FrameImages frame={frame} onChanged={onChanged} />
+
+          {error && <p className="adm__error">{error}</p>}
+          {msg && !dirty && <p className="adm__ok">{msg}</p>}
+
+          <div className="adm__gactions">
+            <button className="adm__btn" type="button" disabled={busy || !dirty} onClick={save}>
+              {busy ? 'Saving…' : 'Save changes'}
+            </button>
+            <button className="adm__chip" type="button" disabled={busy} onClick={toggleHidden}>
+              {frame.hidden ? 'Show' : 'Hide'}
+            </button>
+            <button className="adm__chip adm__chip--danger" type="button" disabled={busy} onClick={remove}>
+              Delete
+            </button>
+          </div>
         </div>
       )}
-
-      <div className="adm__field">
-        <label className="adm__label">Name</label>
-        <input
-          className="adm__input"
-          value={form.name}
-          onChange={(e) => {
-            setForm((f) => ({ ...f, name: e.target.value }))
-            setMsg('')
-          }}
-        />
-      </div>
-
-      <div className="adm__field">
-        <label className="adm__label">Price (USD cents)</label>
-        <input
-          className="adm__input adm__input--sm"
-          type="number"
-          min={1}
-          max={100000}
-          value={form.priceCents}
-          onChange={(e) => {
-            setForm((f) => ({ ...f, priceCents: Number(e.target.value) }))
-            setMsg('')
-          }}
-        />
-        <span className="adm__muted"> {money(form.priceCents)}</span>
-      </div>
-
-      <div className="adm__field">
-        <label className="adm__label">Photo opening</label>
-        <select
-          className="adm__input"
-          value={form.ratioId}
-          onChange={(e) => {
-            setForm((f) => ({ ...f, ratioId: e.target.value }))
-            setMsg('')
-          }}
-        >
-          {ratios.map((r) => (
-            <option key={r.id} value={r.id}>
-              {r.label}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      <div className="adm__field">
-        <label className="adm__label">Mount options</label>
-        <div className="adm__chips">
-          {mounts.map((m) => (
-            <button
-              key={m}
-              type="button"
-              className={`adm__chip${form.mounts.includes(m) ? ' is-active' : ''}`}
-              onClick={() => toggleMount(m)}
-            >
-              {MOUNT_LABELS[m] || m}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <FrameImages frame={frame} onChanged={onChanged} />
-
-      {error && <p className="adm__error">{error}</p>}
-      {msg && !dirty && <p className="adm__ok">{msg}</p>}
-
-      <div className="adm__gactions">
-        <button className="adm__btn" type="button" disabled={busy || !dirty} onClick={save}>
-          {busy ? 'Saving…' : 'Save changes'}
-        </button>
-        <button className="adm__chip" type="button" disabled={busy} onClick={toggleHidden}>
-          {frame.hidden ? 'Show' : 'Hide'}
-        </button>
-        <button className="adm__chip adm__chip--danger" type="button" disabled={busy} onClick={remove}>
-          Delete
-        </button>
-      </div>
     </div>
   )
 }
@@ -410,10 +424,13 @@ export default function Frames() {
 
       <NewFrameForm ratios={ratios} mounts={mounts} onAdded={onAdded} />
 
-      {rows.length === 0 && <p className="adm__muted">No frames yet — add one above.</p>}
-      {rows.map((f) => (
-        <FrameCard key={f.id} frame={f} ratios={ratios} mounts={mounts} onChanged={onChanged} onRemoved={onRemoved} />
-      ))}
+      <div className="adm__panel">
+        <h2 className="adm__h2">Your frames ({rows.length})</h2>
+        {rows.length === 0 && <p className="adm__muted">No frames yet — add one above.</p>}
+        {rows.map((f) => (
+          <FrameCard key={f.id} frame={f} ratios={ratios} mounts={mounts} onChanged={onChanged} onRemoved={onRemoved} />
+        ))}
+      </div>
     </div>
   )
 }

@@ -530,6 +530,68 @@ input.adm__input[type='checkbox'] {
   opacity: 0.6;
 }
 
+/* ---------- frames: collapsible rows ---------- */
+
+.adm__fr-row {
+  border: 1px solid rgba(74, 22, 38, 0.12);
+  border-radius: 10px;
+  margin-bottom: 8px;
+  overflow: hidden;
+}
+
+.adm__fr-row.is-hidden {
+  opacity: 0.6;
+}
+
+.adm__fr-summary {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  text-align: left;
+}
+
+.adm__fr-summary:hover {
+  background: rgba(74, 22, 38, 0.03);
+}
+
+.adm__fr-thumb {
+  width: 44px;
+  height: 44px;
+  border-radius: 8px;
+  object-fit: cover;
+  flex-shrink: 0;
+  background: rgba(74, 22, 38, 0.06);
+}
+
+.adm__fr-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.adm__fr-name {
+  color: var(--rose-900);
+  font-size: 0.9rem;
+}
+
+.adm__fr-meta {
+  font-size: 0.8rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.adm__fr-body {
+  padding: 4px 14px 14px 14px;
+  border-top: 1px solid rgba(74, 22, 38, 0.08);
+}
+
 .adm__gimg {
   width: 100%;
   display: block;
