@@ -48,12 +48,14 @@ export default function Dashboard() {
   const choosePhotos = stats.events?.choose_photos || 0
   const choosePostcards = stats.events?.choose_postcards || 0
   const chooseCalendars = stats.events?.choose_calendars || 0
-  const chooseTotal = choosePhotos + choosePostcards + chooseCalendars
-  const maxChoose = Math.max(1, choosePhotos, choosePostcards, chooseCalendars)
+  const chooseFrames = stats.events?.choose_frames || 0
+  const chooseTotal = choosePhotos + choosePostcards + chooseCalendars + chooseFrames
+  const maxChoose = Math.max(1, choosePhotos, choosePostcards, chooseCalendars, chooseFrames)
   const chooseRows = [
     { label: '📷 Print photos', n: choosePhotos },
     { label: '✉️ Send a postcard', n: choosePostcards },
     ...(chooseCalendars > 0 ? [{ label: '📅 Make a calendar', n: chooseCalendars }] : []),
+    ...(chooseFrames > 0 ? [{ label: '🖼️ Frame a photo', n: chooseFrames }] : []),
   ]
 
   return (

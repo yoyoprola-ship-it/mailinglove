@@ -6,6 +6,7 @@ const CHOOSE_EVENT = {
   'photo-print': 'choose_photos',
   postcards: 'choose_postcards',
   calendar: 'choose_calendars',
+  frames: 'choose_frames',
 }
 
 // The top of the page: pick a service. Each card just goes to that
@@ -14,6 +15,7 @@ export default function ServiceChooser({
   showPhotoPrint = true,
   showPostcards = true,
   showCalendars = false,
+  showFrames = false,
   onGo,
 }) {
   const cards = []
@@ -48,6 +50,17 @@ export default function ServiceChooser({
       title: 'Make a calendar',
       text: 'Pick a background or use your own, place the months, drop in your photos — an 8×10 wall calendar, printed and mailed.',
       cta: 'Build a calendar',
+    })
+  }
+  if (showFrames) {
+    cards.push({
+      id: 'frames',
+      icon: 'image',
+      img: '/chooser-frames.webp',
+      eyebrow: 'Framed photos',
+      title: 'Frame a photo',
+      text: 'Pick a frame style, choose wall or stand, then upload and crop your photo — the frame, the print, and shipping in one price.',
+      cta: 'Browse frames',
     })
   }
   if (!cards.length) return null

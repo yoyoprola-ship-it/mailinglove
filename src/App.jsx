@@ -384,6 +384,7 @@ export default function App() {
             showPhotoPrint={showPhotoPrintNav}
             showPostcards
             showCalendars={calendarEnabled}
+            showFrames={framesEnabled}
             onGo={navigate}
           />
           <PostcardStrip />
