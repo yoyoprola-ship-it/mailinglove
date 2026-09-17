@@ -208,9 +208,20 @@ export default function FrameShop({ signedIn, onAdded, onRequireAuth }) {
       .finally(() => setLoaded(true))
   }, [])
 
-  const cards = useMemo(() => frames, [frames])
+  // Grouped by photo-opening size (smallest first) so the grid the customer
+  // already knows stays the same, just split into labeled sections.
+  const groups = useMemo(() => {
+    const byRatio = new Map()
+    for (const f of frames) {
+      if (!byRatio.has(f.ratioId)) {
+        byRatio.set(f.ratioId, { ratioId: f.ratioId, ratioW: f.ratioW, ratioH: f.ratioH, items: [] })
+      }
+      byRatio.get(f.ratioId).items.push(f)
+    }
+    return [...byRatio.values()].sort((a, b) => a.ratioW * a.ratioH - b.ratioW * b.ratioH)
+  }, [frames])
 
-  if (loaded && !cards.length) {
+  if (loaded && !frames.length) {
     return (
       <section className="section" id="frames">
         <div className="section-inner">
@@ -240,26 +251,38 @@ export default function FrameShop({ signedIn, onAdded, onRequireAuth }) {
           </p>
         </Reveal>
 
-        <div className="fr-grid">
-          {cards.map((f, i) => (
-            <Reveal key={f.id} delay={(i % 4) * 50}>
-              <article className="fr-card">
-                <button type="button" className="fr-card__imgbtn" onClick={() => setOpen(f)} aria-label={`See ${f.name}`}>
-                  <img className="fr-card__img" src={f.thumb} alt={f.name} loading="lazy" />
-                </button>
-                <div className="fr-card__body">
-                  <strong className="fr-card__name">{f.name}</strong>
-                  <span className="fr-card__mounts">
-                    {f.mounts.map((m) => MOUNT_LABELS[m] || m).join(' · ')}
-                  </span>
-                  <button type="button" className="btn btn--primary btn--sm" onClick={() => setOpen(f)}>
-                    {money(f.priceCents)} — see &amp; add
-                  </button>
-                </div>
-              </article>
-            </Reveal>
-          ))}
-        </div>
+        {groups.map((g) => (
+          <div className="fr-sizegroup" key={g.ratioId}>
+            <h3 className="fr-sizegroup__title">
+              {g.ratioW}×{g.ratioH} in{g.ratioW === g.ratioH ? ' — square' : ''}
+            </h3>
+            <div className="fr-grid">
+              {g.items.map((f, i) => (
+                <Reveal key={f.id} delay={(i % 4) * 50}>
+                  <article className="fr-card">
+                    <button
+                      type="button"
+                      className="fr-card__imgbtn"
+                      onClick={() => setOpen(f)}
+                      aria-label={`See ${f.name}`}
+                    >
+                      <img className="fr-card__img" src={f.thumb} alt={f.name} loading="lazy" />
+                    </button>
+                    <div className="fr-card__body">
+                      <strong className="fr-card__name">{f.name}</strong>
+                      <span className="fr-card__mounts">
+                        {f.mounts.map((m) => MOUNT_LABELS[m] || m).join(' · ')}
+                      </span>
+                      <button type="button" className="btn btn--primary btn--sm" onClick={() => setOpen(f)}>
+                        {money(f.priceCents)} — see &amp; add
+                      </button>
+                    </div>
+                  </article>
+                </Reveal>
+              ))}
+            </div>
+          </div>
+        ))}
       </div>
 
       {open && (

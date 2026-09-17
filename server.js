@@ -77,6 +77,7 @@ import {
   updateFrame,
   addFrameImages,
   deleteFrameImage,
+  setFrameCoverCrop,
   setFrameHidden,
   deleteFrame,
   streamFrameImage,
@@ -799,6 +800,23 @@ app.post('/api/admin/frames/:id/images', requireAdmin, (req, res) => {
     } catch (err) {
       console.error('[admin] add frame images failed:', err?.message || err)
       res.status(500).json({ error: 'Could not add the photos.' })
+    }
+  })
+})
+
+// Re-crop the cover thumbnail from an admin-supplied crop of the cover
+// photo (the shop grid image) — the full-size gallery photos don't change.
+app.post('/api/admin/frames/:id/cover', requireAdmin, (req, res) => {
+  upload.single('image')(req, res, async (uploadErr) => {
+    if (uploadErr) return res.status(400).json({ error: uploadErr.message })
+    if (!req.file) return res.status(400).json({ error: 'Attach the cropped image.' })
+    try {
+      const r = await setFrameCoverCrop(req.params.id, req.file.buffer)
+      if (!r.ok) return res.status(400).json({ error: r.error })
+      res.json({ frame: r.frame })
+    } catch (err) {
+      console.error('[admin] frame cover crop failed:', err?.message || err)
+      res.status(500).json({ error: 'Could not save the crop.' })
     }
   })
 })

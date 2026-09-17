@@ -25,7 +25,7 @@ const COLL = 'frameProducts'
 const MAX_IMAGES = 8
 const IMG_MAX = 1400 // long edge of a stored gallery photo — these are marketing shots, not the print file
 const THUMB_W = 480
-const THUMB_H = 480
+const THUMB_H = 600 // matches the storefront card's 4:5 crop, so the admin's cover crop lines up exactly
 
 export const MOUNT_OPTIONS = ['wall', 'stand']
 export const MOUNT_LABELS = { wall: 'Wall hanging', stand: 'Tabletop stand' }
@@ -265,6 +265,35 @@ export async function addFrameImages(id, buffers = []) {
   return { ok: true, frame: adminFrame({ ...frame, images }) }
 }
 
+// Re-crop the cover thumbnail (the frame's first photo, shown on the shop
+// grid) from an admin-supplied crop of that same photo. Only the cover's
+// thumbnail changes — the full-size gallery photos are untouched, so the
+// customer still sees the whole original once they open the frame.
+export async function setFrameCoverCrop(id, buffer) {
+  const db = getDb()
+  if (!db) return { ok: false, error: 'Storage is not available right now.' }
+  const ref = db.collection(COLL).doc(String(id))
+  const snap = await ref.get()
+  if (!snap.exists) return { ok: false, error: 'Unknown frame.' }
+  const frame = snap.data()
+  const images = frame.images || []
+  const cover = images[0]
+  if (!cover) return { ok: false, error: 'Add a photo first.' }
+
+  const thumb = await sharp(buffer)
+    .resize({ width: THUMB_W, height: THUMB_H, fit: 'cover', position: 'centre' })
+    .jpeg({ quality: 72 })
+    .toBuffer()
+  const thumbPath = cover.thumbPath || `${COLL}/${id}/${cover.id}-thumb.jpg`
+  await saveFile(thumbPath, thumb, 'image/jpeg')
+
+  const nextImages = images.map((img, i) => (i === 0 ? { ...img, thumbPath } : img))
+  await ref.set({ images: nextImages, updatedAt: Date.now() }, { merge: true })
+  invalidateFrameProducts()
+  const fresh = (await ref.get()).data()
+  return { ok: true, frame: adminFrame(fresh) }
+}
+
 export async function deleteFrameImage(id, imageId) {
   const db = getDb()
   if (!db) return { ok: false, error: 'Storage is not available right now.' }
@@ -324,9 +353,13 @@ export async function streamFrameImage(frameId, imageId, res, { download = false
     if (download) {
       res.setHeader('Content-Disposition', `attachment; filename="frame-${frameId}-${imageId}.jpg"`)
       res.setHeader('Cache-Control', 'no-store')
+    } else if (useThumb) {
+      // The cover thumbnail can be re-cropped in place (same URL, new
+      // bytes) — cache briefly rather than forever.
+      res.setHeader('Cache-Control', 'public, max-age=3600')
     } else {
-      // Image ids never get overwritten (only added/deleted), so this is
-      // safe to cache forever.
+      // Full gallery photos are only ever added/deleted, never overwritten
+      // in place, so this is safe to cache forever.
       res.setHeader('Cache-Control', 'public, max-age=31536000, immutable')
     }
     res.end(buf)

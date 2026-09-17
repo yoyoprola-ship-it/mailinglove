@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { api } from './api'
+import CropModal from '../components/CropModal'
 
 const MOUNT_LABELS = { wall: 'Wall hanging', stand: 'Tabletop stand' }
 const money = (c) => `$${((c || 0) / 100).toFixed(2)}`
@@ -141,9 +142,10 @@ function NewFrameForm({ ratios, mounts, onAdded }) {
   )
 }
 
-function FrameImages({ frame, onChanged }) {
+function FrameImages({ frame, onChanged, rev, bumpRev }) {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  const [cropping, setCropping] = useState(false)
 
   async function addFiles(fileList) {
     const files = [...(fileList || [])].filter((f) => f.type.startsWith('image/'))
@@ -186,15 +188,59 @@ function FrameImages({ frame, onChanged }) {
     }
   }
 
+  async function applyCoverCrop(blob) {
+    setBusy(true)
+    setError('')
+    try {
+      const body = new FormData()
+      body.append('image', blob, 'cover.jpg')
+      const res = await fetch(`/api/admin/frames/${frame.id}/cover`, {
+        method: 'POST',
+        credentials: 'same-origin',
+        body,
+      })
+      const d = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(d.error || 'Could not save the crop.')
+      onChanged(d.frame)
+      bumpRev()
+      setCropping(false)
+    } catch (e) {
+      setError(e.message)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const cover = frame.images[0]
+
   return (
     <div className="adm__field">
       <label className="adm__label">Photos ({frame.images.length}/8)</label>
+      <p className="adm__hint">
+        The first photo is the cover shown on the shop grid — crop it to fit; the full
+        photos (including this one) only show once a customer opens the frame.
+      </p>
       <div className="adm__gallery">
-        {frame.images.map((img) => (
+        {frame.images.map((img, i) => (
           <div className="adm__gcard" key={img.id}>
-            <img className="adm__gimg" src={img.thumb} alt="" loading="lazy" />
+            <img className="adm__gimg" src={`${img.thumb}${i === 0 ? `&r=${rev}` : ''}`} alt="" loading="lazy" />
             <div className="adm__gbody">
+              {i === 0 && (
+                <div className="adm__gtags">
+                  <span className="adm__gtag">cover</span>
+                </div>
+              )}
               <div className="adm__gactions">
+                {i === 0 && (
+                  <button
+                    type="button"
+                    className="adm__chip"
+                    disabled={busy}
+                    onClick={() => setCropping(true)}
+                  >
+                    Crop cover
+                  </button>
+                )}
                 <button
                   type="button"
                   className="adm__chip adm__chip--danger"
@@ -225,12 +271,23 @@ function FrameImages({ frame, onChanged }) {
         </label>
       )}
       {error && <p className="adm__error">{error}</p>}
+
+      {cropping && (
+        <CropModal
+          src={`${cover.image}${cover.image.includes('?') ? '&' : '?'}r=${rev}`}
+          title="Crop the cover photo"
+          aspect={4 / 5}
+          onCancel={() => setCropping(false)}
+          onApply={applyCoverCrop}
+        />
+      )}
     </div>
   )
 }
 
 function FrameCard({ frame, ratios, mounts, onChanged, onRemoved }) {
   const [open, setOpen] = useState(false)
+  const [rev, setRev] = useState(0) // bumped after a cover crop, to bust the cached thumb
   const [form, setForm] = useState({
     name: frame.name,
     priceCents: frame.priceCents,
@@ -308,7 +365,12 @@ function FrameCard({ frame, ratios, mounts, onChanged, onRemoved }) {
     <div className={`adm__fr-row${frame.hidden ? ' is-hidden' : ''}`}>
       <button type="button" className="adm__fr-summary" onClick={() => setOpen((v) => !v)}>
         <span className="adm__chevron">{open ? '▾' : '▸'}</span>
-        <img className="adm__fr-thumb" src={frame.thumb} alt="" loading="lazy" />
+        <img
+          className="adm__fr-thumb"
+          src={`${frame.thumb}${frame.thumb?.includes('?') ? '&' : '?'}r=${rev}`}
+          alt=""
+          loading="lazy"
+        />
         <span className="adm__fr-info">
           <strong className="adm__fr-name">{frame.name}</strong>
           <span className="adm__muted adm__fr-meta">
@@ -405,7 +467,7 @@ function FrameCard({ frame, ratios, mounts, onChanged, onRemoved }) {
             </div>
           </div>
 
-          <FrameImages frame={frame} onChanged={onChanged} />
+          <FrameImages frame={frame} onChanged={onChanged} rev={rev} bumpRev={() => setRev((r) => r + 1)} />
 
           {error && <p className="adm__error">{error}</p>}
           {msg && !dirty && <p className="adm__ok">{msg}</p>}

@@ -2432,6 +2432,21 @@
 
 /* ---------- frame shop ---------- */
 
+.fr-sizegroup {
+  margin-top: 36px;
+}
+.fr-sizegroup:first-of-type {
+  margin-top: 14px;
+}
+.fr-sizegroup__title {
+  font-family: var(--serif);
+  font-size: 1.3rem;
+  color: var(--rose-900);
+  margin: 0 0 4px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(74, 22, 38, 0.12);
+}
+
 .fr-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
