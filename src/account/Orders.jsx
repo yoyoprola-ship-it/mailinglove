@@ -95,6 +95,19 @@ export default function Orders() {
               )
             })()}
 
+            {o.trackingNumber && (
+              <p className="acc__eta">
+                📦 USPS tracking: <strong>{o.trackingNumber}</strong> —{' '}
+                <a
+                  href={`https://tools.usps.com/go/TrackConfirmAction?tLabels=${encodeURIComponent(o.trackingNumber)}`}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  track your package ↗
+                </a>
+              </p>
+            )}
+
             {showShots && (
               <div className="acc__order-shots">
                 {o.items.map((it, i) => (

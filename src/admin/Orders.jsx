@@ -18,7 +18,58 @@ function addrLines(a) {
 const itemImg = (it) =>
   it.kind === 'photo' || it.kind === 'frame' ? `/api/admin/photo-image/${it.photoId}` : it.image
 
-function OrderRow({ o, onStatus, onOpenGallery, onPreview }) {
+function TrackingField({ order, onSave }) {
+  const [value, setValue] = useState(order.trackingNumber || '')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+  const dirty = value.trim() !== (order.trackingNumber || '')
+
+  async function save() {
+    setBusy(true)
+    setError('')
+    try {
+      await onSave(order.id, value.trim())
+    } catch (e) {
+      setError(e.message)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div className="adm__tracking">
+      <label className="adm__label" htmlFor={`track-${order.id}`}>
+        USPS tracking number
+      </label>
+      <div className="adm__tracking-row">
+        <input
+          id={`track-${order.id}`}
+          className="adm__input adm__input--sm"
+          placeholder="9400 1000 0000 0000 0000 00"
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+        />
+        <button className="adm__chip" type="button" disabled={busy || !dirty || !value.trim()} onClick={save}>
+          {busy ? 'Saving…' : 'Save'}
+        </button>
+        {order.trackingNumber && (
+          <a
+            className="adm__chip"
+            href={`https://tools.usps.com/go/TrackConfirmAction?tLabels=${encodeURIComponent(order.trackingNumber)}`}
+            target="_blank"
+            rel="noreferrer"
+          >
+            Track ↗
+          </a>
+        )}
+      </div>
+      <p className="adm__hint">Saving a new number emails the customer a tracking link.</p>
+      {error && <p className="adm__error">{error}</p>}
+    </div>
+  )
+}
+
+function OrderRow({ o, onStatus, onTracking, onOpenGallery, onPreview }) {
   const [open, setOpen] = useState(false)
   const rec = o.recipient || o.items[0]?.recipient
   const cards = o.items.reduce((n, it) => n + (it.qty || 1), 0)
@@ -90,6 +141,8 @@ function OrderRow({ o, onStatus, onOpenGallery, onPreview }) {
               <div key={j}>{l}</div>
             ))}
           </div>
+
+          <TrackingField order={o} onSave={onTracking} />
 
           <AuditHistory email={o.userEmail} />
 
@@ -212,6 +265,11 @@ export default function Orders({ onOpenGallery }) {
     }
   }
 
+  async function setTracking(id, trackingNumber) {
+    await api.put(`/api/admin/orders/${id}/tracking`, { trackingNumber })
+    load()
+  }
+
   return (
     <div className="adm__panel">
       <h2 className="adm__h2">Orders</h2>
@@ -238,6 +296,7 @@ export default function Orders({ onOpenGallery }) {
             key={o.id}
             o={o}
             onStatus={setStatus}
+            onTracking={setTracking}
             onOpenGallery={onOpenGallery}
             onPreview={setPreview}
           />

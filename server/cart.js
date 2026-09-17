@@ -396,6 +396,9 @@ const STATUS_EMAIL = {
   },
 }
 
+export const uspsTrackingUrl = (n) =>
+  `https://tools.usps.com/go/TrackConfirmAction?tLabels=${encodeURIComponent(n)}`
+
 export async function setOrderStatus(orderId, status) {
   if (!ORDER_STATUSES.includes(status)) return { ok: false, error: 'Bad status.' }
   const ref = getDb().collection('orders').doc(String(orderId))
@@ -411,6 +414,7 @@ export async function setOrderStatus(orderId, status) {
   if (tpl && emailConfigured() && order.userEmail) {
     const cards = (order.items || []).reduce((n, i) => n + (i.qty || 1), 0)
     const oid = String(order.id).slice(0, 8)
+    const tracking = status === 'mailed' ? order.trackingNumber : null
     sendEmail(
       order.userEmail,
       tpl.subject,
@@ -425,13 +429,52 @@ export async function setOrderStatus(orderId, status) {
               ['Order', `#${oid}`],
               ['Items', `${cards} print${cards === 1 ? '' : 's'}`],
               ...(order.recipient?.name ? [['To', order.recipient.name]] : []),
+              ...(tracking ? [['USPS tracking #', tracking]] : []),
             ],
           },
         ],
-        cta: { label: 'View your orders', href: 'https://mailinglove.com/account?tab=orders' },
+        cta: tracking
+          ? { label: 'Track your package', href: uspsTrackingUrl(tracking) }
+          : { label: 'View your orders', href: 'https://mailinglove.com/account?tab=orders' },
       })
     ).catch((err) => console.error('[order] status email failed:', err?.message || err))
   }
 
   return { ok: true, order: { ...order, status } }
+}
+
+// Attach/update a USPS tracking number on an order. Fires a one-time email
+// to the customer with the tracking link the first time a number is set
+// (or whenever it actually changes) — not on every re-save of the same value.
+export async function setOrderTracking(orderId, trackingNumber) {
+  const db = getDb()
+  const ref = db.collection('orders').doc(String(orderId))
+  const snap = await ref.get()
+  if (!snap.exists) return { ok: false, error: 'Order not found.' }
+  const order = snap.data()
+  const num = clip(trackingNumber, 40).replace(/\s+/g, '')
+  if (!num) return { ok: false, error: 'Enter a tracking number.' }
+  const changed = order.trackingNumber !== num
+
+  await ref.set({ trackingNumber: num, updatedAt: Date.now() }, { merge: true })
+
+  if (changed && emailConfigured() && order.userEmail) {
+    const oid = String(order.id).slice(0, 8)
+    sendEmail(
+      order.userEmail,
+      'Your MailingLove package has a tracking number',
+      renderEmail({
+        preheader: `Track it on USPS.com — #${num}`,
+        title: 'Your package is on its way',
+        greeting: `Hi${order.userName ? ' ' + order.userName : ''},`,
+        blocks: [
+          { p: 'Your order shipped with USPS. Here is your tracking number — tap below to see live updates.' },
+          { rows: [['Order', `#${oid}`], ['USPS tracking #', num]] },
+        ],
+        cta: { label: 'Track your package', href: uspsTrackingUrl(num) },
+      })
+    ).catch((err) => console.error('[order] tracking email failed:', err?.message || err))
+  }
+
+  return { ok: true, order: { ...order, trackingNumber: num } }
 }

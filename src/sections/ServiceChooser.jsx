@@ -59,7 +59,7 @@ export default function ServiceChooser({
       img: '/chooser-frames.webp',
       eyebrow: 'Framed photos',
       title: 'Frame a photo',
-      text: 'Pick a frame style, choose wall or stand, then upload and crop your photo — the frame, the print, and shipping in one price.',
+      text: 'Pick a frame style, choose wall or stand, then upload and crop your photo — the frame, the print, and shipping in one price. Once it ships, USPS tracking shows up on your orders page and by email.',
       cta: 'Browse frames',
     })
   }

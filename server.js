@@ -47,6 +47,7 @@ import {
   listOrders,
   listAllOrders,
   setOrderStatus,
+  setOrderTracking,
   cartTotal,
 } from './server/cart.js'
 import {
@@ -1673,6 +1674,20 @@ app.put('/api/admin/orders/:id', requireAdmin, async (req, res) => {
   } catch (err) {
     console.error('[admin] order update failed:', err?.message || err)
     res.status(500).json({ error: 'Could not update the order.' })
+  }
+})
+
+// Attach/update the USPS tracking number for an order — emails the
+// customer the first time (or whenever the number actually changes).
+app.put('/api/admin/orders/:id/tracking', requireAdmin, async (req, res) => {
+  try {
+    const result = await setOrderTracking(req.params.id, (req.body || {}).trackingNumber)
+    if (!result.ok) return res.status(400).json({ error: result.error })
+    console.log(`[admin] ${req.adminEmail} set tracking for order ${req.params.id}`)
+    res.json({ order: result.order })
+  } catch (err) {
+    console.error('[admin] order tracking update failed:', err?.message || err)
+    res.status(500).json({ error: 'Could not save the tracking number.' })
   }
 })
 

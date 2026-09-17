@@ -468,6 +468,22 @@ input.adm__input[type='checkbox'] {
   color: var(--text-dark);
 }
 
+.adm__tracking {
+  margin-top: 10px;
+}
+.adm__tracking-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+.adm__tracking-row .adm__input--sm {
+  flex: 1;
+  min-width: 180px;
+  margin: 0;
+}
+
 .adm__msg {
   margin-top: 4px;
   font-style: italic;

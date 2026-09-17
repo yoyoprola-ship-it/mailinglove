@@ -235,7 +235,8 @@ export default function FrameShop({ signedIn, onAdded, onRequireAuth }) {
           <p className="section__lead">
             Pick a frame, choose wall or stand, then upload and crop the photo
             that goes inside. The frame, the print, and mailing it to you are
-            all one price.
+            all one price. Once it ships, you'll get a USPS tracking number
+            by email and on your orders page, so you always know where it is.
           </p>
         </Reveal>
 
