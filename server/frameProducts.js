@@ -65,14 +65,18 @@ async function listAll() {
   return rows
 }
 
-const imgUrl = (frameId, img, thumb) =>
-  `/api/frame-image/${frameId}/${img.id}${thumb ? '?thumb=1' : ''}`
+// `v` (the frame's updatedAt) busts the cache on any edit — a cover crop
+// overwrites the thumb file in place at the same id, so without this the
+// browser/CDN could easily keep serving the pre-crop bytes for a while.
+const imgUrl = (frameId, img, thumb, v) =>
+  `/api/frame-image/${frameId}/${img.id}?v=${v || 0}${thumb ? '&thumb=1' : ''}`
 
 const publicFrame = (f) => {
+  const v = f.updatedAt || 0
   const images = (f.images || []).map((img) => ({
     id: img.id,
-    image: imgUrl(f.id, img, false),
-    thumb: img.thumbPath ? imgUrl(f.id, img, true) : imgUrl(f.id, img, false),
+    image: imgUrl(f.id, img, false, v),
+    thumb: img.thumbPath ? imgUrl(f.id, img, true, v) : imgUrl(f.id, img, false, v),
   }))
   return {
     id: f.id,
@@ -353,13 +357,10 @@ export async function streamFrameImage(frameId, imageId, res, { download = false
     if (download) {
       res.setHeader('Content-Disposition', `attachment; filename="frame-${frameId}-${imageId}.jpg"`)
       res.setHeader('Cache-Control', 'no-store')
-    } else if (useThumb) {
-      // The cover thumbnail can be re-cropped in place (same URL, new
-      // bytes) — cache briefly rather than forever.
-      res.setHeader('Cache-Control', 'public, max-age=3600')
     } else {
-      // Full gallery photos are only ever added/deleted, never overwritten
-      // in place, so this is safe to cache forever.
+      // The URL now carries ?v=<updatedAt>, so any edit (including a cover
+      // re-crop, which overwrites the thumb file in place) mints a brand
+      // new URL — safe to cache forever under the old one.
       res.setHeader('Cache-Control', 'public, max-age=31536000, immutable')
     }
     res.end(buf)
