@@ -1140,17 +1140,32 @@
   font-size: 0.9rem;
 }
 
-.footer__links {
+.footer__link-cols {
   display: flex;
-  gap: 18px;
-  font-size: 0.85rem;
+  gap: 48px;
+  margin-top: 4px;
 }
-.footer__links a {
+
+.footer__col {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 9px;
+  font-size: 0.85rem;
+  text-align: left;
+}
+.footer__col a {
   color: var(--rose-900);
   text-decoration: none;
 }
-.footer__links a:hover {
+.footer__col a:hover {
   color: var(--rose);
+}
+
+@media (max-width: 420px) {
+  .footer__link-cols {
+    gap: 28px;
+  }
 }
 
 .footer__copy {
@@ -1870,7 +1885,10 @@
     align-items: center;
     justify-content: center;
     position: absolute;
-    top: 50%;
+    /* Fixed to the row's own center, not the card's — the card grows
+       taller once the description panel opens below the row, so a
+       50%-based offset would drift down and overlap that text. */
+    top: 32px;
     right: 10px;
     transform: translateY(-50%);
     z-index: 3;
