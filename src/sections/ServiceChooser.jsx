@@ -1,5 +1,5 @@
+import { useState } from 'react'
 import Reveal from '../components/Reveal'
-import Icon from '../components/Icon'
 import { trackEvent } from '../track'
 
 const CHOOSE_EVENT = {
@@ -9,8 +9,10 @@ const CHOOSE_EVENT = {
   frames: 'choose_frames',
 }
 
-// The top of the page: pick a service. Each card just goes to that
-// service's page. The cart serves all of them.
+// The top of the page: pick a service. Each row is collapsed to a compact
+// thumbnail + title by default — tap it to read the description, tap the
+// CTA to actually go. Keeps every option visible on one mobile screen
+// instead of a tall illustrated card per service.
 export default function ServiceChooser({
   showPhotoPrint = true,
   showPostcards = true,
@@ -18,11 +20,12 @@ export default function ServiceChooser({
   showFrames = false,
   onGo,
 }) {
+  const [openId, setOpenId] = useState(null)
+
   const cards = []
   if (showPhotoPrint) {
     cards.push({
       id: 'photo-print',
-      icon: 'image',
       img: '/chooser-photos.webp',
       eyebrow: 'Your photos',
       title: 'Print your photos',
@@ -33,7 +36,6 @@ export default function ServiceChooser({
   if (showPostcards) {
     cards.push({
       id: 'postcards',
-      icon: 'mail',
       img: '/chooser-postcards.webp',
       eyebrow: 'Ready to send',
       title: 'Send a postcard',
@@ -44,7 +46,6 @@ export default function ServiceChooser({
   if (showCalendars) {
     cards.push({
       id: 'calendar',
-      icon: 'calendar',
       img: '/chooser-calendar.webp',
       eyebrow: 'Photo calendars',
       title: 'Make a calendar',
@@ -55,7 +56,6 @@ export default function ServiceChooser({
   if (showFrames) {
     cards.push({
       id: 'frames',
-      icon: 'image',
       img: '/chooser-frames.webp',
       eyebrow: 'Framed photos',
       title: 'Frame a photo',
@@ -64,6 +64,11 @@ export default function ServiceChooser({
     })
   }
   if (!cards.length) return null
+
+  function go(id) {
+    trackEvent(CHOOSE_EVENT[id])
+    onGo(id)
+  }
 
   return (
     <section className="section chooser" id="start">
@@ -74,36 +79,44 @@ export default function ServiceChooser({
         </Reveal>
         <Reveal delay={80}>
           <p className="section__lead">
-            We print it and mail it — to you, or straight to someone you love.
+            We print it and mail it — to you, or straight to someone you love. Tap one to see more.
           </p>
         </Reveal>
 
         <div className={`chooser__grid${cards.length === 1 ? ' is-single' : ''}`}>
-          {cards.map((c, i) => (
-            <Reveal key={c.id} delay={120 + i * 90}>
-              <button
-                type="button"
-                className={`chooser__card chooser__card--${c.id}`}
-                onClick={() => {
-                  trackEvent(CHOOSE_EVENT[c.id])
-                  onGo(c.id)
-                }}
-              >
-                <span className="chooser__body">
-                  <span className="chooser__icon">
-                    <Icon name={c.icon} size={26} />
-                  </span>
-                  <span className="chooser__eyebrow">{c.eyebrow}</span>
-                  <span className="chooser__name">{c.title}</span>
-                  <span className="chooser__text">{c.text}</span>
-                  <span className="chooser__cta">{c.cta} →</span>
-                </span>
-                <span className="chooser__media">
-                  <img src={c.img} alt="" loading="lazy" />
-                </span>
-              </button>
-            </Reveal>
-          ))}
+          {cards.map((c, i) => {
+            const open = openId === c.id
+            return (
+              <Reveal key={c.id} delay={80 + i * 40}>
+                <div className={`chooser__card chooser__card--${c.id}${open ? ' is-open' : ''}`}>
+                  <button
+                    type="button"
+                    className="chooser__head"
+                    onClick={() => setOpenId(open ? null : c.id)}
+                    aria-expanded={open}
+                  >
+                    <img className="chooser__thumb" src={c.img} alt="" loading="lazy" />
+                    <span className="chooser__head-text">
+                      <span className="chooser__eyebrow">{c.eyebrow}</span>
+                      <span className="chooser__name">{c.title}</span>
+                    </span>
+                    <span className="chooser__chev" aria-hidden="true">
+                      {open ? '▾' : '▸'}
+                    </span>
+                  </button>
+
+                  {open && (
+                    <div className="chooser__more">
+                      <p className="chooser__text">{c.text}</p>
+                      <button type="button" className="chooser__go" onClick={() => go(c.id)}>
+                        {c.cta} →
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </Reveal>
+            )
+          })}
         </div>
       </div>
     </section>
