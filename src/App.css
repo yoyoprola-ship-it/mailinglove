@@ -1845,10 +1845,10 @@
     display: none;
   }
   .chooser__eyebrow {
-    font-size: 0.64rem;
+    font-size: 0.7rem;
   }
   .chooser__name {
-    font-size: 1rem;
+    font-size: 1.1rem;
   }
   .chooser__text,
   .chooser__cta {
@@ -1860,15 +1860,15 @@
   .chooser__card--postcards .chooser__media {
     position: static;
     order: -1;
-    width: 44px;
+    width: 52px;
     right: auto;
     top: auto;
     transform: none;
   }
   .chooser__media img,
   .chooser__card--calendar .chooser__media img {
-    width: 44px;
-    height: 44px;
+    width: 52px;
+    height: 52px;
     border-radius: 10px;
     object-fit: cover;
     filter: none;
@@ -1888,7 +1888,7 @@
     /* Fixed to the row's own center, not the card's — the card grows
        taller once the description panel opens below the row, so a
        50%-based offset would drift down and overlap that text. */
-    top: 32px;
+    top: 36px;
     right: 10px;
     transform: translateY(-50%);
     z-index: 3;
