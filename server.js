@@ -1178,6 +1178,10 @@ app.post('/api/cart/frame', requireUser, (req, res) => {
         return res.status(400).json({ error: 'Pick a valid mount option.' })
       }
       const mountLabel = MOUNT_LABELS[mount] || mount
+      const frameThumbImg = frame.images?.[0]
+      const frameThumb = frameThumbImg
+        ? `/api/frame-image/${frame.id}/${frameThumbImg.id}?thumb=1`
+        : null
 
       const saved = await savePhotoPrint({
         email: req.userEmail,
@@ -1197,6 +1201,7 @@ app.post('/api/cart/frame', requireUser, (req, res) => {
         title: `${frame.name} — ${mountLabel}`,
         frameId: frame.id,
         frameName: frame.name,
+        frameThumb,
         mount,
         width: Number(req.body.width) || 0,
         height: Number(req.body.height) || 0,

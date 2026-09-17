@@ -114,6 +114,7 @@ export async function addPhotoItem(email, p = {}) {
     note: '',
     frameId: p.frameId || null,
     frameName: p.frameName || null,
+    frameThumb: p.frameThumb || null,
     mount: p.mount || null,
     addedAt: Date.now(),
   })
@@ -227,6 +228,7 @@ export async function createPendingOrder(email, fallbackUnitCents = 0, meta = {}
         height: i.height || 0,
         frameId: i.frameId || null,
         frameName: i.frameName || null,
+        frameThumb: i.frameThumb || null,
         mount: i.mount || null,
       }
     }

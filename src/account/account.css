@@ -553,6 +553,17 @@
   line-height: 0;
 }
 
+/* Frame cart lines: the frame's own photo + the customer's cropped
+   photo, side by side instead of a single thumbnail. */
+.acc__item-imgs {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+}
+.acc__item-img--pair {
+  width: 40px;
+}
+
 .acc__img-modal {
   position: fixed;
   inset: 0;

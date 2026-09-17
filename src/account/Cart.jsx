@@ -36,6 +36,7 @@ function CartLine({ item, unitPrice, currency, onQty, onRemove, onSaveNote, onPr
   const [open, setOpen] = useState(false)
   const [draft, setDraft] = useState(item.note || '')
   const isPhoto = item.kind === 'photo'
+  const isFrame = item.kind === 'frame'
   const unit = unitPrice != null ? unitPrice : item.unitPriceCents || 0
 
   function done() {
@@ -45,14 +46,35 @@ function CartLine({ item, unitPrice, currency, onQty, onRemove, onSaveNote, onPr
 
   return (
     <li className="acc__item acc__item--note">
-      <button
-        type="button"
-        className="acc__item-imgbtn"
-        onClick={() => onPreview(item)}
-        aria-label={`Enlarge ${item.title}`}
-      >
-        <img className="acc__item-img" src={item.image} alt={item.title} />
-      </button>
+      {isFrame && item.frameThumb ? (
+        <span className="acc__item-imgs">
+          <button
+            type="button"
+            className="acc__item-imgbtn"
+            onClick={() => onPreview({ ...item, image: item.frameThumb, title: item.frameName || item.title })}
+            aria-label={`Enlarge ${item.frameName || 'frame'}`}
+          >
+            <img className="acc__item-img acc__item-img--pair" src={item.frameThumb} alt={item.frameName || ''} />
+          </button>
+          <button
+            type="button"
+            className="acc__item-imgbtn"
+            onClick={() => onPreview(item)}
+            aria-label={`Enlarge your photo for ${item.title}`}
+          >
+            <img className="acc__item-img acc__item-img--pair" src={item.image} alt={item.title} />
+          </button>
+        </span>
+      ) : (
+        <button
+          type="button"
+          className="acc__item-imgbtn"
+          onClick={() => onPreview(item)}
+          aria-label={`Enlarge ${item.title}`}
+        >
+          <img className="acc__item-img" src={item.image} alt={item.title} />
+        </button>
+      )}
       <div className="acc__item-body">
         <div className="acc__item-head">
           <strong>{item.title}</strong>

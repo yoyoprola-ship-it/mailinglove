@@ -99,6 +99,15 @@ function OrderRow({ o, onStatus, onOpenGallery, onPreview }) {
               const src = itemImg(it)
               return (
                 <li key={i} className="adm__order-item">
+                  {it.kind === 'frame' && it.frameThumb && (
+                    <button
+                      className="adm__order-thumbbtn"
+                      onClick={() => onPreview({ src: it.frameThumb, title: it.frameName || 'Frame' })}
+                      title={`View the ${it.frameName || 'frame'}`}
+                    >
+                      <img className="adm__order-thumb" src={it.frameThumb} alt={it.frameName || ''} />
+                    </button>
+                  )}
                   <button
                     className="adm__order-thumbbtn"
                     onClick={() => onPreview({ src, title: it.title })}
