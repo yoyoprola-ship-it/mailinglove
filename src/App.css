@@ -1639,119 +1639,278 @@
 
 .chooser__title {
   font-family: var(--serif);
-  font-size: 2.2rem;
+  font-size: 2.6rem;
   line-height: 1.15;
   color: var(--rose-900);
   margin-top: 6px;
 }
 
-/* Compact, collapsible rows — every service fits on one mobile screen at
-   once; tap a row to read its description, tap the button inside to go. */
 .chooser__grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 12px;
-  margin-top: 24px;
-  align-items: start;
+  gap: 26px;
+  margin-top: 60px;
+  align-items: stretch;
 }
 .chooser__grid.is-single {
   grid-template-columns: 1fr;
-  max-width: 480px;
+  max-width: 560px;
 }
 
+/* Desktop: the whole card is one big illustrated button (unchanged from
+   the original design). `.chooser__nav` is that button; `.chooser__card`
+   is just the outer border/shadow shell, so a sibling `.chooser__info`
+   button (mobile-only, see below) has somewhere to sit. */
 .chooser__card {
+  position: relative;
   border: 1px solid rgba(74, 22, 38, 0.12);
-  border-radius: 16px;
+  border-radius: 22px;
   background: #fff;
-  overflow: hidden;
-  box-shadow: 0 8px 20px rgba(74, 22, 38, 0.06);
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  overflow: visible;
+  box-shadow: 0 18px 44px rgba(74, 22, 38, 0.08);
+  transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
 }
-.chooser__card.is-open {
+.chooser__card:hover {
+  transform: translateY(-4px);
   border-color: var(--rose);
-  box-shadow: 0 12px 28px rgba(74, 22, 38, 0.12);
+  box-shadow: 0 28px 64px rgba(74, 22, 38, 0.16);
 }
 
-.chooser__head {
-  width: 100%;
+.chooser__nav {
+  position: relative;
   display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 10px 14px;
+  width: 100%;
+  min-height: 236px;
+  text-align: left;
+  padding: 0;
   border: none;
   background: none;
   cursor: pointer;
-  text-align: left;
+  overflow: visible;
 }
 
-.chooser__thumb {
-  width: 44px;
-  height: 44px;
-  border-radius: 10px;
-  object-fit: cover;
-  flex-shrink: 0;
-  background: var(--blush);
-}
-
-.chooser__head-text {
+.chooser__body {
+  position: relative;
+  z-index: 2;
   display: flex;
   flex-direction: column;
-  gap: 1px;
-  min-width: 0;
-  flex: 1;
+  align-items: flex-start;
+  gap: 8px;
+  width: 53%;
+  padding: 30px 14px 28px 30px;
 }
 
-.chooser__chev {
-  color: var(--muted);
-  flex-shrink: 0;
+.chooser__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 54px;
+  height: 54px;
+  border-radius: 15px;
+  background: var(--blush);
+  color: var(--rose);
+  margin-bottom: 8px;
+}
+
+/* product cutout (transparent PNG/WebP) — a sticker anchored to the
+   bottom-right, spilling off the top of the card. Its left edge stays
+   clear of the text column (body is 53%). */
+.chooser__media {
+  position: absolute;
+  z-index: 1;
+  right: -26px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 48%;
+  pointer-events: none;
+}
+.chooser__media img {
+  width: 100%;
+  height: auto;
+  display: block;
+  filter: drop-shadow(0 14px 22px rgba(74, 22, 38, 0.24));
+  transition: transform 0.35s ease;
+}
+.chooser__card:hover .chooser__media img {
+  transform: scale(1.04) translateY(-3px);
+}
+
+/* "Send a postcard" art: 15% taller only, growing upward (bottom-anchored) */
+.chooser__card--postcards .chooser__media img {
+  transform: scaleY(1.15);
+  transform-origin: center bottom;
+}
+.chooser__card--postcards:hover .chooser__media img {
+  transform: scaleY(1.19) translateY(-3px);
+  transform-origin: center bottom;
+}
+
+/* The calendar card spans the full row when all three are shown, and its
+   art is a real photo — frame it rather than treat it as a cutout. */
+.chooser__card--calendar {
+  grid-column: 1 / -1;
+}
+.chooser__card--calendar .chooser__media {
+  width: 32%;
+  right: 20px;
+}
+.chooser__card--calendar .chooser__media img {
+  border-radius: 14px;
+  filter: drop-shadow(0 16px 30px rgba(74, 22, 38, 0.3));
+}
+.chooser__card--calendar:hover .chooser__media img {
+  transform: scale(1.04) translateY(-3px);
 }
 
 .chooser__eyebrow {
-  font-size: 0.68rem;
+  font-size: 0.72rem;
   font-weight: 700;
-  letter-spacing: 0.07em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--rose);
 }
 
 .chooser__name {
   font-family: var(--serif);
-  font-size: 1.05rem;
+  font-size: 1.5rem;
   color: var(--rose-900);
-  line-height: 1.25;
-}
-
-.chooser__more {
-  padding: 0 14px 14px 70px;
 }
 
 .chooser__text {
-  font-size: 0.88rem;
+  font-size: 0.95rem;
   color: var(--muted);
-  line-height: 1.45;
-  margin: 0;
+  line-height: 1.5;
+  flex: 1;
 }
 
-.chooser__go {
-  margin-top: 10px;
-  border: none;
-  background: var(--rose);
-  color: #fff;
+.chooser__cta {
+  margin-top: 16px;
   font-weight: 700;
-  font-size: 0.85rem;
-  padding: 9px 16px;
-  border-radius: 999px;
-  cursor: pointer;
+  color: var(--rose);
 }
 
-@media (max-width: 640px) {
+/* Mobile-only bits — hidden on desktop. */
+.chooser__info {
+  display: none;
+}
+.chooser__panel {
+  display: none;
+}
+
+@media (max-width: 860px) {
   .chooser__grid {
     grid-template-columns: 1fr;
-    max-width: 480px;
-    gap: 8px;
+    max-width: 560px;
   }
   .chooser__title {
-    font-size: 1.7rem;
+    font-size: 2.1rem;
+  }
+}
+
+/* Phones: collapse each card to a compact row (small thumb + title).
+   Tapping the row still goes straight to the service; a separate ⓘ
+   button reveals the description instead of navigating. */
+@media (max-width: 520px) {
+  .chooser__card {
+    overflow: hidden;
+  }
+  .chooser__nav {
+    min-height: 0;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 46px 10px 14px;
+  }
+  .chooser__body {
+    width: auto;
+    flex: 1;
+    padding: 0;
+    gap: 1px;
+  }
+  .chooser__icon {
+    display: none;
+  }
+  .chooser__eyebrow {
+    font-size: 0.64rem;
+  }
+  .chooser__name {
+    font-size: 1rem;
+  }
+  .chooser__text,
+  .chooser__cta {
+    display: none;
+  }
+
+  .chooser__media,
+  .chooser__card--calendar .chooser__media,
+  .chooser__card--postcards .chooser__media {
+    position: static;
+    order: -1;
+    width: 44px;
+    right: auto;
+    top: auto;
+    transform: none;
+  }
+  .chooser__media img,
+  .chooser__card--calendar .chooser__media img {
+    width: 44px;
+    height: 44px;
+    border-radius: 10px;
+    object-fit: cover;
+    filter: none;
+  }
+  .chooser__card:hover .chooser__media img,
+  .chooser__card--postcards .chooser__media img,
+  .chooser__card--postcards:hover .chooser__media img,
+  .chooser__card--calendar:hover .chooser__media img {
+    transform: none;
+  }
+
+  .chooser__info {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: absolute;
+    top: 50%;
+    right: 10px;
+    transform: translateY(-50%);
+    z-index: 3;
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    border: 1px solid rgba(74, 22, 38, 0.22);
+    background: #fff;
+    color: var(--rose);
+    font-size: 0.78rem;
+    font-weight: 700;
+    font-style: italic;
+    padding: 0;
+    cursor: pointer;
+  }
+  .chooser__card.is-open .chooser__info {
+    background: var(--rose);
+    border-color: var(--rose);
+    color: #fff;
+  }
+
+  .chooser__card.is-open .chooser__panel {
+    display: block;
+    padding: 0 16px 16px 14px;
+  }
+  .chooser__panel p {
+    font-size: 0.86rem;
+    color: var(--muted);
+    line-height: 1.45;
+    margin: 0 0 10px;
+  }
+  .chooser__go {
+    border: none;
+    background: var(--rose);
+    color: #fff;
+    font-weight: 700;
+    font-size: 0.82rem;
+    padding: 8px 15px;
+    border-radius: 999px;
+    cursor: pointer;
   }
 }
 

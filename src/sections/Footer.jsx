@@ -1,4 +1,4 @@
-export default function Footer() {
+export default function Footer({ showCalendar = false, showFrames = false }) {
   return (
     <footer className="footer">
       <div className="section-inner footer__inner">
@@ -9,6 +9,8 @@ export default function Footer() {
         <nav className="footer__links">
           <a href="/photos">Print your photos</a>
           <a href="/postcards">Send a postcard</a>
+          {showCalendar && <a href="/calendars">Make a calendar</a>}
+          {showFrames && <a href="/frames">Frame a photo</a>}
           <a href="/terms">Terms &amp; Conditions</a>
           <a href="/privacy">Privacy Policy</a>
           <a href="mailto:joesoftwareusallc@gmail.com">Contact</a>

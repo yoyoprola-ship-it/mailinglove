@@ -398,28 +398,28 @@ export default function App() {
             </>
           )}
           <Products />
-          <Footer />
+          <Footer showCalendar={calendarEnabled} showFrames={framesEnabled} />
         </>
       )}
 
       {PAGE === 'photos' && (
         <>
           <div className="svc-page">{photoPrintNode}</div>
-          <Footer />
+          <Footer showCalendar={calendarEnabled} showFrames={framesEnabled} />
         </>
       )}
 
       {PAGE === 'calendars' && (
         <>
           <div className="svc-page">{calendarNode}</div>
-          <Footer />
+          <Footer showCalendar={calendarEnabled} showFrames={framesEnabled} />
         </>
       )}
 
       {PAGE === 'frames' && (
         <>
           <div className="svc-page">{framesNode}</div>
-          <Footer />
+          <Footer showCalendar={calendarEnabled} showFrames={framesEnabled} />
         </>
       )}
 
@@ -445,7 +445,7 @@ export default function App() {
               />
             )}
           </div>
-          <Footer />
+          <Footer showCalendar={calendarEnabled} showFrames={framesEnabled} />
         </>
       )}
 
